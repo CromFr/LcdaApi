@@ -40,7 +40,6 @@ int main(string[] args){
 		"node_modules/",
 		new HTTPFileServerSettings("/node_modules"))//Strips "/node_modules" from path
 	);
-	//router.registerRestInterface(new Api);
 	router.registerWebInterface(new Api);
 
 

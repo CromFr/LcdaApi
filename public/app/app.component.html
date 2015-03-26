@@ -13,15 +13,15 @@
 				</li>
 			</ul>
 			<ul class="right">
-				<!-- <li *ngIf="isLoggedIn" class="flow-text">{{account}}</li>
+				<li *ngIf="isLoggedIn" class="flow-text">{{account}}</li>
 				<li>
-					<a *ngIf="!isLoggedIn" href="#" class="btn waves-effect waves-light modal-trigger" data-target="modal-login">
+					<a *ngIf="!isLoggedIn" href="#" id="modal-login" class="btn waves-effect waves-light modal-trigger" data-target="modal-login" materialize="leanModal">
 						Connexion
 					</a>
 					<a *ngIf="isLoggedIn" id="logout" href="#" class="btn waves-effect waves-light modal-trigger" data-target="modal-login">
 						Déconnexion
 					</a>
-				</li> -->
+				</li>
 			</ul>
 		</div>
 
@@ -51,6 +51,21 @@
 <div id="modal-login" class="modal">
 	<div class="modal-content">
 		<h4>Connexion</h4>
+		<form action="/login" method="POST" enctype="application/x-www-form-urlencoded">
+			<div class="input-field">
+				<div class="material-icons prefix">account_circle</div>
+				<input type="text" class="validate" id="login" name="login">
+				<label for="login">Compte</label>
+			</div>
+			<div class="input-field">
+				<div class="material-icons prefix">lock</div>
+				<input type="password" class="validate" id="password" name="password">
+				<label for="password">Mot de passe</label>
+			</div>
+			<div class="input-field">
+				<input type="submit" class="btn waves-effect waves-light" value="Connexion">
+			</div>
+		</form>
 	</div>
 </div>
 
@@ -66,31 +81,31 @@
 
 
 <script>
-	$(document).ready(function(){
-		$('.modal-trigger').leanModal();
-		$('.button-collapse').sideNav();
+	// $(document).ready(function(){
+	// 	$('.modal-trigger').leanModal();
+	// 	$('.button-collapse').sideNav();
 
-		$('a.activable').each(function(){
-			if($(this).attr("href")==$(location).attr('href')	)
-				$(this).addClass("active");
-		});
-	});
-	function post(path, parameters) {
-		var form = $('<form method="post"></form>');
-		form.attr("action", path);
+	// 	$('a.activable').each(function(){
+	// 		if($(this).attr("href")==$(location).attr('href'))
+	// 			$(this).addClass("active");
+	// 	});
+	// });
+	// function post(path, parameters) {
+	// 	var form = $('<form method="post"></form>');
+	// 	form.attr("action", path);
 
-		if(parameters){
-			$.each(parameters, function(key, value) {
-				var field = $('<input type="hidden"></input>');
-				field.attr("name", key);
-				field.attr("value", value);
-				form.append(field);
-			});
-		}
-		$(document.body).append(form);
-		form.submit();
-	}
-	$('#logout').click(function(){
-		post("/logout");
-	});
+	// 	if(parameters){
+	// 		$.each(parameters, function(key, value) {
+	// 			var field = $('<input type="hidden"></input>');
+	// 			field.attr("name", key);
+	// 			field.attr("value", value);
+	// 			form.append(field);
+	// 		});
+	// 	}
+	// 	$(document.body).append(form);
+	// 	form.submit();
+	// }
+	// $('#logout').click(function(){
+	// 	post("/logout");
+	// });
 </script>

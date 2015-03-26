@@ -8,6 +8,6 @@ import {CharListComponent} from "./charlist.component";
     templateUrl: "app/app.component.html",
 })
 export class AppComponent {
-    public isLoggedIn: bool = false;
+    public isLoggedIn: boolean = false;
     public account: string;
 }

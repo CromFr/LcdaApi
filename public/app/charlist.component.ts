@@ -3,7 +3,7 @@ import {HTTP_PROVIDERS}    from "angular2/http";
 
 import {CharListService}   from "./charlist.service";
 
-interface Character {
+export interface Character {
     name: string;
 }
 
