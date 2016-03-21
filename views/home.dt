@@ -1,0 +1,7 @@
+
+
+
+.center
+	- if(!session.authenticated)
+		h1 Connectez vous avec votre compte LCDA enregistré sur le serveur
+		a.btn.waves-effect.waves-light.modal-trigger(data-target="modal-login") Connexion

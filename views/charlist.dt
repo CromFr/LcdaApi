@@ -1,0 +1,16 @@
+//variables:
+//  charList
+//
+table.highlight
+	thead
+		tr
+			th Nom
+			th Niveau
+			th Race
+	tbody
+		- foreach(c ; charList)
+			tr
+				td
+					a(href="/#{session.account}/#{c.name}") #{c.name}
+				td #{c.lvl}
+				//- td #{c.race}

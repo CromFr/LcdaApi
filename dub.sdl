@@ -1,0 +1,7 @@
+name "lcdacharremover"
+description "A minimal D application."
+copyright "Copyright © 2016, crom"
+authors "crom"
+license "GPLv3"
+dependency "vibe-d"  version="~>0.7.29-alpha.2"
+dependency "mysql-lited" version="~>0.3.5"
