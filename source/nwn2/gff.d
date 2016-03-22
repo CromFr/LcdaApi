@@ -4,54 +4,12 @@ module nwn2.gff;
 import std.stdint;
 import std.string;
 import std.conv;
+import nwn2.tlk;
+
 
 class GffNode{
 	string label;
 	Type type;
-	@property{
-		ref auto value(Type T)(){
-			static if(T==Type.Byte)
-				return cast(byte)simpleTypeContainer;
-			else static if(T==Type.Char)
-				return cast(char)simpleTypeContainer;
-			else static if(T==Type.Word)
-				return cast(ushort)simpleTypeContainer;
-			else static if(T==Type.Short)
-				return cast(short)simpleTypeContainer;
-			else static if(T==Type.DWord)
-				return cast(uint)simpleTypeContainer;
-			else static if(T==Type.Int)
-				return cast(int)simpleTypeContainer;
-			else static if(T==Type.DWord64)
-				return cast(ulong)simpleTypeContainer;
-			else static if(T==Type.Int64)
-				return cast(long)simpleTypeContainer;
-			else static if(T==Type.Float)
-				return cast(float)simpleTypeContainer;
-			else static if(T==Type.Double)
-				return cast(double)simpleTypeContainer;
-			else static if(T==Type.ExoString)
-				return cast(string)stringContainer;
-			else static if(T==Type.ResRef)
-				return cast(string)stringContainer;
-			else static if(T==Type.ExoLocString){
-				pragma(msg, "Warning: Incomplete implementation of GffNode.value!(GffNode.Type.ExoLocString)");
-				if(exoLocStringID!=uint32_t.max)
-					return "{{STRREF:"~exoLocStringID.to!string~"}}";
-				else{
-					return exoLocStringContainer.values[0];
-				}
-			}
-			else static if(T==Type.Void)
-				return cast(void[])rawContainer;
-			else static if(T==Type.Struct)
-				return structContainer;
-			else static if(T==Type.List)
-				return listContainer;
-			else
-				static assert(0, "Type conversion not handled");
-		}
-	}
 
 	ref auto to(T)(){
 		import std.traits;
@@ -122,8 +80,7 @@ class GffNode{
 		ExoLocString = 12,
 		Void         = 13,
 		Struct       = 14,
-		List         = 15,
-		//TopLevelStruct = 0xFFFFFFFF
+		List         = 15
 	}
 
 
