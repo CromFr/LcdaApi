@@ -1,9 +1,14 @@
 import vibe.d;
+import mysql;
 import std.stdio;
 import nwn2.resman;
 import nwn2.tlk;
 
-
+//TODO: exploit this trick internally in resman
+class ConnectionWrap{
+	alias data this;
+	MySQLClient.LockedConnection data;
+}
 
 int main(string[] args){
 
@@ -13,6 +18,12 @@ int main(string[] args){
 		new Tlk("/home/crom/.wine-nwn2/drive_c/Neverwinter Nights 2/dialog.TLK"),
 		new Tlk("/home/crom/Documents/Neverwinter Nights 2/tlk/Lcda.tlk"));
 	ResMan.addRes("resolver", strresolv);
+
+
+	auto client = new MySQLClient("host=localhost;user=root;pwd=123;db=nwnx");
+	auto conn = new ConnectionWrap;
+	conn.data = client.lockConnection();
+	ResMan.addRes("sql", conn);
 
 
 	auto settings = new HTTPServerSettings;
@@ -88,9 +99,21 @@ class WebInterface {
 	}
 
 	void postLogin(string login, string password){
+
+		import mysql;
+		auto conn = ResMan.get!ConnectionWrap("sql");
+
+		//TODO: move query to settings
+		//TODO: escape fields !!!
+		bool credsOK;
+		conn.execute("SELECT (`password`=SHA(?)) FROM `account` WHERE `name`=?", password, login, (MySQLRow row) {
+			credsOK = row[0].get!int == 1;
+		});
+
+		enforceHTTP(credsOK, HTTPStatus.forbidden);
+
 		authenticated = true;
 		account = login;
-
 		redirect("/");
 	}
 
