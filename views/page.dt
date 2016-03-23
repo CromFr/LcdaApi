@@ -1,44 +1,73 @@
-//variables:
-//  page: current page to include
-//  session: WebInterface instance
-//  ?: additionnal page-specific variables
-//
 doctype html
 html
 	head
-		title La Colère d'Aurile - Votre compte
+		title La Colère d'Aurile
 
 		meta(http-equiv="Content-Type",content="text/html;charset=utf-8")
 		meta(name="viewport",content="width=device-width, initial-scale=1")
 
 		link(rel="stylesheet",href="https://fonts.googleapis.com/icon?family=Material+Icons")
 		link(rel="stylesheet",href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.5/css/materialize.min.css")
+
+		:css
+			header, main, footer {
+				padding-left: 240px;
+			}
+			@media only screen and (max-width : 992px) {
+				header, main, footer {
+					padding-left: 0;
+				}
+			}
+			#slide-out{
+				top: 64px;
+				bottom: 0px;
+				height: auto;
+			}
+			table.condensed td,
+			tr.condensed td{
+				padding: 8px 5px;
+			}
+			.small-padding{
+				padding: 5px;
+			}
+
 	body
 		.navbar-fixed
 			nav.light-blue.lighten-1(role="navigation")
 				.nav-wrapper.container
-					a.brand-logo(href="#")
-						img(src="/img/logo.png",style="vertical-align: middle;")
-						span La Colère d'Aurile - Votre compte
+
 
 					ul.right
+						li.flow-text #{session.account}
 						li
-							strong #{session.account}
 							- if(!session.authenticated)
 								a.btn.waves-effect.waves-light.modal-trigger(data-target="modal-login") Connexion
 							- else
 								a#logout.btn.waves-effect.waves-light Déconnexion
 
-					- if(session.authenticated)
-						ul.left
-							li
-								a.button-collapse(href="#",data-activates="slide-out")
-									i.mdi-navigation-menu
+					ul.left
+						li
+							a.button-collapse(href="#",data-activates="slide-out")
+								i.mdi-navigation-menu
 
-		- if(session.authenticated)
-			ul#slide-out.side-nav.fixed
+						li
+							a.flow-text(href="#")
+								img(src="/img/logo.png",style="vertical-align: middle;")
+								span La Colère d'Aurile
+
+		ul#slide-out.side-nav.fixed
+			- if(session.authenticated)
 				li
-					a(href="/#{session.account}/charlist") Personnages
+					a.activable(href="/#{session.account}/charlist") Personnages
+						i.material-icons.left(style="line-height: 64px;") face
+				li
+					hr
+			li
+				a(href="http://lacoleredaurile.xooit.fr/t1207-Procedure-pour-jouer-sur-le-serveur.htm") Nouveau compte
+					i.material-icons.left(style="line-height: 64px;") add_circle_outline
+			li
+				a(href="http://lacoleredaurile.xooit.fr/") Forum
+					i.material-icons.left(style="line-height: 64px;") forum
 
 		#modal-login.modal
 			.modal-content
@@ -57,15 +86,16 @@ html
 
 
 		//CONTENT ===============================================
-		.container
-			//include #{page}
+		main
+			.container
+				//include #{page}
 
-			- static if(page=="index")
-				include home
-			- else static if(page=="charlist")
-				include charlist
-			- else static if(page=="char")
-				include char
+				- static if(page=="index")
+					include home
+				- else static if(page=="charlist")
+					include charlist
+				- else static if(page=="char")
+					include char
 
 
 
@@ -76,7 +106,27 @@ html
 				$(document).ready(function(){
 					$('.modal-trigger').leanModal();
 					$('.button-collapse').sideNav();
+
+					$('a.activable').each(function(){
+						if($(this).attr("href")==$(location).attr('href')	)
+							$(this).addClass("active");
+					});
 				});
+				function post(path, parameters) {
+					var form = $('<form method="post"></form>');
+					form.attr("action", path);
+
+					if(parameters){
+						$.each(parameters, function(key, value) {
+							var field = $('<input type="hidden"></input>');
+							field.attr("name", key);
+							field.attr("value", value);
+							form.append(field);
+						});
+					}
+					$(document.body).append(form);
+					form.submit();
+				}
 				$('#logout').click(function(){
-					$.post("/logout");
+					post("/logout");
 				});
