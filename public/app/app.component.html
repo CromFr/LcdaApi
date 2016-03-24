@@ -1,0 +1,96 @@
+<div class="navbar-fixed">
+	<nav role="navigation" class="light-blue lighten-1">
+		<div class="nav-wrapper container">
+			<ul class="left">
+				<li>
+					<a href="#" class="button-collapse" data-activates="slide-out"><i class="mdi-navigation-menu"></i></a>
+				</li>
+				<li>
+					<a href="/" class="flow-text">
+						<img src="/img/logo.png" style="vertical-align: middle;" alt="">
+						La Colère d'Aurile
+					</a>
+				</li>
+			</ul>
+			<ul class="right">
+				<!-- <li *ngIf="isLoggedIn" class="flow-text">{{account}}</li>
+				<li>
+					<a *ngIf="!isLoggedIn" href="#" class="btn waves-effect waves-light modal-trigger" data-target="modal-login">
+						Connexion
+					</a>
+					<a *ngIf="isLoggedIn" id="logout" href="#" class="btn waves-effect waves-light modal-trigger" data-target="modal-login">
+						Déconnexion
+					</a>
+				</li> -->
+			</ul>
+		</div>
+
+	</nav>
+</div>
+<ul id="slide-out" class="side-nav fixed">
+	<li>
+		<a href="#" class="activable">
+			<i class="material-icons left" style="line-height: 64px;">face</i>
+			Personnages
+		</a>
+	</li>
+	<li><hr></li>
+	<li>
+		<a href="#" class="activable">
+			<i class="material-icons left" style="line-height: 64px;">add_circle_outline</i>
+			Nouveau compte
+		</a>
+	</li>
+	<li>
+		<a href="#" class="activable">
+			<i class="material-icons left" style="line-height: 64px;">forum</i>
+			Forum
+		</a>
+	</li>
+</ul>
+<div id="modal-login" class="modal">
+	<div class="modal-content">
+		<h4>Connexion</h4>
+	</div>
+</div>
+
+<!-- PAGE CONTENT -->
+<main>
+	<div class="container">
+		<charlist>
+			Content not loaded
+		</charlist>
+	</div>
+</main>
+
+
+
+<script>
+	$(document).ready(function(){
+		$('.modal-trigger').leanModal();
+		$('.button-collapse').sideNav();
+
+		$('a.activable').each(function(){
+			if($(this).attr("href")==$(location).attr('href')	)
+				$(this).addClass("active");
+		});
+	});
+	function post(path, parameters) {
+		var form = $('<form method="post"></form>');
+		form.attr("action", path);
+
+		if(parameters){
+			$.each(parameters, function(key, value) {
+				var field = $('<input type="hidden"></input>');
+				field.attr("name", key);
+				field.attr("value", value);
+				form.append(field);
+			});
+		}
+		$(document.body).append(form);
+		form.submit();
+	}
+	$('#logout').click(function(){
+		post("/logout");
+	});
+</script>

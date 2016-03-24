@@ -1,5 +1,5 @@
-name "lcdacharremover"
-description "A minimal D application."
+name "LcdaAccountManager"
+description "Manage NWN2 accounts"
 copyright "Copyright © 2016, crom"
 authors "crom"
 license "GPLv3"
