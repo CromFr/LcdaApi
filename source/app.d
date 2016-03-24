@@ -34,6 +34,10 @@ int main(string[] args){
 
 	auto router = new URLRouter;
 	router.get("*", serveStaticFiles("public/"));//TODO: not great
+	router.get("/node_modules/*", serveStaticFiles(
+		"node_modules/",
+		new HTTPFileServerSettings("/node_modules"))//Strips "/node_modules" from path
+	);
 	router.registerRestInterface(new Api);
 
 

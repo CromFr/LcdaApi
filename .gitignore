@@ -7,6 +7,9 @@ LcdaAccountManager.exe
 #Angular / Node
 node_modules/
 typings/
+npm-debug.log.*
+public/app/*.js
+public/app/*.js.map
 
 #Project
 LcdaAccountManager.sublime-workspace
