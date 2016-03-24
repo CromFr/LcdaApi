@@ -3,30 +3,80 @@ import std.typecons;
 
 import nwn2.character;
 
-interface RestAPI{
 
-	alias CharList = Tuple!(Character[],"active",Character[],"deleted");
+private string implementJsonIface(API)(){
+	import std.traits;
+	import std.meta : AliasSeq;
+	import std.string : format;
+	string ret;
 
-	@path("/:account/char/list")
-	CharList getCharList(string _account);
+	foreach(member ; __traits(allMembers, API)){
+		static if(__traits(getProtection, mixin("API."~member))=="package"
+			&& isCallable!(mixin("API."~member))
+			&& member[0]=='_'){
 
-	@path("/:account/char/:char")
-	Character getCharInfo(string _account, string _char);
+			enum attributes = __traits(getFunctionAttributes, mixin("API."~member));
+			alias UDAs = AliasSeq!(__traits(getAttributes, mixin("API."~member)));
+			alias ParamNames = ParameterIdentifierTuple!(mixin("API."~member));
+			alias ParamTypes = Parameters!(mixin("API."~member));
+			alias Return = ReturnType!(mixin("API."~member));
 
-	@path("/:account/char/:char/delete")
-	void postDeleteChar(string _account, string _char);
+			enum paramTypes = ParamTypes.stringof[1..$-1].split(", ");
 
-	void postLogin(string login, string password);
-	void postLogout();
+			//UDAs
+			foreach(uda ; UDAs)
+				ret ~= "@"~uda.stringof~" ";
+			ret ~= "\n";
+			//Return type
+			static if(is(Return==void))
+				ret ~= "void ";
+			else
+				ret ~= "Json ";
+			//Name
+			ret ~= member[1..$];
+			//Parameters
+			ret ~= "(";
+			static if(ParamNames.length>0){
+				foreach(i, name ; ParamNames){
+					static if(i>0) ret ~= ", ";
+					ret ~= paramTypes[i]~" "~name;
+				}
+			}
+			ret ~= ") ";
+			//Function attributes
+			ret ~= [attributes].join(" ")~"{\n";
+			//Body
+			ret ~= "\treturn this."~member~"(";
+			static if(ParamNames.length>0)
+				ret ~= [ParamNames].join(", ");
+			ret ~= ")";
+			//Body - Serialization
+			static if(!is(Return==void))
+				ret ~= ".serializeToJson()";
+			ret ~= ";\n";
+			//end
+			ret ~= "}\n";
+		}
+
+	}
+	return ret;
 }
 
 
+class Api{
 
-class Api : RestAPI{
+	mixin(implementJsonIface!Api);
 
-	CharList getCharList(string _account){
-		//enforceHTTP(authenticated, HTTPStatus.forbidden);
+
+package:
+	alias CharList = Tuple!(Character[],"active",Character[],"deleted");
+
+	@path("/:account/char/list")
+	CharList _getCharList(string _account){
+		//enforceHTTP(req.session, HTTPStatus.unauthorized);
+		//enforceHTTP(authenticated, HTTPStatus.unauthorized);
 		//enforceHTTP(admin || _account==account, HTTPStatus.forbidden);
+		//enforceHTTP(req.session.get!bool("isAdmin") || _account==session.get!string("account"), HTTPStatus.forbidden);
 
 		//TODO: what if _account="../../secureThing" ?
 
@@ -60,9 +110,10 @@ class Api : RestAPI{
 
 		return CharList(activeChars, deletedChars);
 	}
-	Character getCharInfo(string _account, string _char){
-		enforceHTTP(authenticated, HTTPStatus.forbidden);
-		enforceHTTP(admin || _account==account, HTTPStatus.forbidden);
+	@path("/:account/char/:char")
+	Character _getCharInfo(string _account, string _char){
+		//enforceHTTP(authenticated, HTTPStatus.forbidden);
+		//enforceHTTP(admin || _account==account, HTTPStatus.forbidden);
 
 		import std.file : DirEntry;
 		import std.path : buildNormalizedPath;
@@ -72,10 +123,10 @@ class Api : RestAPI{
 				_account,
 				_char~".bic"
 				)));
-
 	}
-	void postDeleteChar(string _account, string _char){}
-	void postLogin(string login, string password){
+	@path("/:account/char/:char/delete")
+	void _postDeleteChar(string _account, string _char){}
+	void _postLogin(string login, string password){
 		import mysql;
 		import nwn2.resman;
 		import app : ConnectionWrap;
@@ -90,10 +141,11 @@ class Api : RestAPI{
 
 		enforceHTTP(credsOK, HTTPStatus.forbidden);
 
-		authenticated = true;
-		account = login;
+		//session = startSession();
+		//authenticated = true;
+		//account = login;
 	}
-	void postLogout(){
+	void _postLogout(){
 		terminateSession();
 	}
 

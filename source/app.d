@@ -25,12 +25,14 @@ int main(string[] args){
 	auto conn = new ConnectionWrap;
 	conn.data = client.lockConnection();
 	ResMan.addRes("sql", conn);
+	//TODO handle if mysql disconnected
 
 
 	auto settings = new HTTPServerSettings;
 	settings.port = 8080;
 	//settings.sessionStore = new MemorySessionStore;
 	settings.sessionStore = new RedisSessionStore("127.0.0.1", 1);
+	//TODO check is redis started
 
 	auto router = new URLRouter;
 	router.get("*", serveStaticFiles("public/"));//TODO: not great
@@ -38,7 +40,8 @@ int main(string[] args){
 		"node_modules/",
 		new HTTPFileServerSettings("/node_modules"))//Strips "/node_modules" from path
 	);
-	router.registerRestInterface(new Api);
+	//router.registerRestInterface(new Api);
+	router.registerWebInterface(new Api);
 
 
 	listenHTTP(settings, router);
