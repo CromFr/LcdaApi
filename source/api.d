@@ -62,7 +62,7 @@ private string implementJsonIface(API)(){
 	return ret;
 }
 
-
+@path("/api")
 class Api{
 
 	mixin(implementJsonIface!Api);

@@ -18,3 +18,16 @@ tr.condensed td{
 .small-padding{
 	padding: 5px;
 }
+
+.progress.char-alignment{
+	background-color: #BC1F15;
+	height: 8px;
+}
+.progress.char-alignment>div{
+	background-color: #00B80E;
+}
+
+a{
+	/* Links with Angular have no href property */
+	cursor: pointer;
+}

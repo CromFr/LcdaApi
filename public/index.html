@@ -4,27 +4,29 @@
 		<title>LCDA - Compte</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<base href="/">
 
 		<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-		<link rel="stylesheet" href="node_modules/materialize-css/dist/css/materialize.min.css">
-		<link rel="stylesheet" href="style.css">
+		<link rel="stylesheet" href="/node_modules/materialize-css/dist/css/materialize.min.css">
+		<link rel="stylesheet" href="/style.css">
 
 		<!-- Angular libraries -->
 		<!-- IE required polyfills, in this exact order -->
-		<script src="node_modules/es6-shim/es6-shim.min.js"></script>
-		<script src="node_modules/systemjs/dist/system-polyfills.js"></script>
-		<script src="node_modules/angular2/es6/dev/src/testing/shims_for_IE.js"></script>
+		<script src="/node_modules/es6-shim/es6-shim.min.js"></script>
+		<script src="/node_modules/systemjs/dist/system-polyfills.js"></script>
+		<script src="/node_modules/angular2/es6/dev/src/testing/shims_for_IE.js"></script>
 
-		<script src="node_modules/angular2/bundles/angular2-polyfills.js"></script>
-		<script src="node_modules/systemjs/dist/system.src.js"></script>
-		<script src="node_modules/rxjs/bundles/Rx.js"></script>
-		<script src="node_modules/angular2/bundles/angular2.dev.js"></script>
-		<script src="node_modules/angular2/bundles/http.dev.js"></script>
+		<script src="/node_modules/angular2/bundles/angular2-polyfills.js"></script>
+		<script src="/node_modules/systemjs/dist/system.src.js"></script>
+		<script src="/node_modules/rxjs/bundles/Rx.js"></script>
+		<script src="/node_modules/angular2/bundles/angular2.dev.js"></script>
+		<script src="/node_modules/angular2/bundles/http.dev.js"></script>
+		<script src="/node_modules/angular2/bundles/router.dev.js"></script>
 
 		<!-- Materialize -->
-		<script src="node_modules/jquery/dist/jquery.min.js"></script>
-		<script src="node_modules/hammerjs/hammer.min.js"></script>
-		<script src="node_modules/materialize-css/dist/js/materialize.min.js"></script>
+		<script src="/node_modules/jquery/dist/jquery.min.js"></script>
+		<script src="/node_modules/hammerjs/hammer.min.js"></script>
+		<script src="/node_modules/materialize-css/dist/js/materialize.min.js"></script>
 
 		<script>
 			System.config({
@@ -35,7 +37,7 @@
 					}
 				},
 				map: {
-					moment: 'node_modules/moment/moment.js'
+					moment: '/node_modules/moment/moment.js'
 				}
 			});
 			System.import('app/main')

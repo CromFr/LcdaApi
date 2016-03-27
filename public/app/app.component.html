@@ -29,9 +29,15 @@
 </div>
 <ul id="sidebar" class="side-nav fixed">
 	<li>
-		<a href="#" class="activable">
+		<a [routerLink]="['CharList',{account:'Crom 29'}]" class="activable">
 			<i class="material-icons left" style="line-height: 64px;">face</i>
-			Personnages
+			Crom 29/list
+		</a>
+	</li>
+	<li>
+		<a [routerLink]="['CharDetails',{account:'Crom 29', char:'aoroducormyr'}]" class="activable">
+			<i class="material-icons left" style="line-height: 64px;">face</i>
+			aoroducormyr
 		</a>
 	</li>
 	<li><hr></li>
@@ -72,9 +78,8 @@
 <!-- PAGE CONTENT -->
 <main>
 	<div class="container">
-		<charlist>
-			Content not loaded
-		</charlist>
+		<router-outlet>
+		</router-outlet>
 	</div>
 </main>
 

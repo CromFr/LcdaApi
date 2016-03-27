@@ -31,7 +31,7 @@ class Character{
 			immutable classLvl = n["ClassLevel"].to!int;
 
 			lvl += classLvl;
-			classes[strref.get(class2da.get!uint("Name", classID))] = classLvl;
+			classes ~= Class(strref.get(class2da.get!uint("Name", classID)), classLvl);
 		}
 
 		//Race
@@ -61,7 +61,11 @@ class Character{
 	string name;
 
 	int lvl;
-	int[string] classes;
+	struct Class{
+		string name;
+		int lvl;
+	}
+	Class[] classes;
 
 	string race;
 
@@ -79,16 +83,6 @@ class Character{
 
 
 
-	immutable string bicFile;
-	immutable string bicFileName;
-
-
-	string classesToString(){
-		string ret;
-		foreach(name, lvl ; classes){
-			ret ~= name~" ("~lvl.to!string~") ";
-		}
-		return ret;
-	}
-
+	string bicFile;
+	string bicFileName;
 }

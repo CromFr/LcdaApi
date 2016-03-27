@@ -1,0 +1,55 @@
+
+<div class="row">
+	<h3>Personnages actifs</h3>
+
+	<table class="highlight">
+		<thead>
+			<tr>
+				<th>Nom</th>
+				<th>Race</th>
+				<th>Niveau</th>
+				<th>Classe(s)</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr *ngFor="#c of activeChars">
+				<td class="flow-text"><a (click)="gotoHeroDetails(c)">{{c.name}}</a></td>
+				<td>{{c.race}}</td>
+				<td>{{c.lvl}}</td>
+				<td>
+					<span *ngFor="#cl of c.classes">
+						{{cl.name}} ({{cl.lvl}})
+					</span>
+				</td>
+			</tr>
+		</tbody>
+	</table>
+
+</div>
+
+<div class="row">
+	<h3>Personnages supprimés</h3>
+
+	<table class="highlight">
+		<thead>
+			<tr>
+				<th>Nom</th>
+				<th>Race</th>
+				<th>Niveau</th>
+				<th>Classe(s)</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr *ngFor="#c of deletedChars">
+				<td class="flow-text"><a href="#">{{c?.name}}</a></td>
+				<td>{{c?.race}}</td>
+				<td>{{c?.lvl}}</td>
+				<td>
+					<span *ngFor="#cl of c?.classes">
+						{{cl.name}} ({{cl.lvl}})
+					</span>
+				</td>
+			</tr>
+		</tbody>
+	</table>
+</div>

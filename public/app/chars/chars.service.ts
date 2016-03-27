@@ -2,15 +2,20 @@ import {Injectable} from "angular2/core";
 import {Http, Response} from "angular2/http";
 import {Observable}     from "rxjs/Observable";
 
-import {Character}      from "./charlist.component";
 
 @Injectable()
-export class CharListService {
+export class CharsService {
     constructor (private http: Http) {}
 
-    getList() {
-        return this.http.get("/Crom 29/char/list")
-                   .map(res => <Character[][]> res.json())
+    getList(account: string) {
+        return this.http.get("/api/" + account + "/char/list")
+                   .map(res => <any> res.json())
+                   .catch(this.handleError);
+    }
+
+    getChar(account: string, char: string) {
+        return this.http.get("/api/" + account + "/char/" + char)
+                   .map(res => <any>res.json())
                    .catch(this.handleError);
     }
 
