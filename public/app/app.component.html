@@ -3,7 +3,7 @@
 		<div class="nav-wrapper container">
 			<ul class="left">
 				<li>
-					<a href="#" class="button-collapse" data-activates="slide-out"><i class="mdi-navigation-menu"></i></a>
+					<a href="#" id="sidebar-button" class="button-collapse" data-activates="sidebar"><i class="mdi-navigation-menu"></i></a>
 				</li>
 				<li>
 					<a href="/" class="flow-text">
@@ -15,10 +15,10 @@
 			<ul class="right">
 				<li *ngIf="isLoggedIn" class="flow-text">{{account}}</li>
 				<li>
-					<a *ngIf="!isLoggedIn" href="#" id="modal-login" class="btn waves-effect waves-light modal-trigger" data-target="modal-login" materialize="leanModal">
+					<a *ngIf="!isLoggedIn" href="#modal-login" id="modal-login-button" class="btn waves-effect waves-light modal-trigger" data-target="modal-login" materialize="leanModal">
 						Connexion
 					</a>
-					<a *ngIf="isLoggedIn" id="logout" href="#" class="btn waves-effect waves-light modal-trigger" data-target="modal-login">
+					<a *ngIf="isLoggedIn" id="logout" href="#" class="btn waves-effect waves-light modal-trigger">
 						Déconnexion
 					</a>
 				</li>
@@ -27,7 +27,7 @@
 
 	</nav>
 </div>
-<ul id="slide-out" class="side-nav fixed">
+<ul id="sidebar" class="side-nav fixed">
 	<li>
 		<a href="#" class="activable">
 			<i class="material-icons left" style="line-height: 64px;">face</i>
@@ -83,7 +83,7 @@
 <script>
 	// $(document).ready(function(){
 	// 	$('.modal-trigger').leanModal();
-	// 	$('.button-collapse').sideNav();
+	// 	$('.sidebar-button').sideNav();
 
 	// 	$('a.activable').each(function(){
 	// 		if($(this).attr("href")==$(location).attr('href'))
