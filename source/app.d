@@ -35,13 +35,21 @@ int main(string[] args){
 	//TODO check is redis started
 
 	auto router = new URLRouter;
-	router.get("*", serveStaticFiles("public/"));//TODO: not great
+	//router.get("*", serveStaticFiles("./public/"));
 	router.get("/node_modules/*", serveStaticFiles(
 		"node_modules/",
 		new HTTPFileServerSettings("/node_modules"))//Strips "/node_modules" from path
 	);
 	router.registerWebInterface(new Api);
+	router.get("*", function(req, res){
+			//TODO: don't serve index.html if requested file type is css/js/png, etc.
+			auto settings = new HTTPFileServerSettings();
+			settings.options = HTTPFileServerOption.failIfNotFound;
 
+			try return serveStaticFiles("./public/", settings)(req, res);
+			catch(HTTPStatusException e){}
+			return serveStaticFile("./public/index.html")(req, res);
+		});
 
 	listenHTTP(settings, router);
 	runEventLoop();
