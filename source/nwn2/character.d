@@ -4,12 +4,14 @@ import std.conv;
 
 class Character{
 
-	this(in string bicFile){
+	this(in string bicFile, bool isDeleted=false){
 		import std.path : baseName;
 		import nwn2.resman;
 		import nwn2.gff;
 		import nwn2.tlk;
 		import nwn2.twoda;
+
+		deleted = isDeleted;
 
 		this.bicFile = bicFile;
 		bicFileName = baseName(bicFile, ".bic");
@@ -57,6 +59,7 @@ class Character{
 		}
 	}
 
+	bool deleted;
 
 	string name;
 

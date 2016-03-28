@@ -7,14 +7,16 @@ import {Observable}     from "rxjs/Observable";
 export class CharsService {
     constructor (private http: Http) {}
 
-    getList(account: string) {
-        return this.http.get("/api/" + account + "/char/list")
+    getLists(account: string) {
+        return this.http.get("/api/" + account + "/characters/list")
                    .map(res => <any> res.json())
                    .catch(this.handleError);
     }
 
-    getChar(account: string, char: string) {
-        return this.http.get("/api/" + account + "/char/" + char)
+    getChar(account: string, bicFileName: string, deleted: boolean) {
+        let path = "/api/" + account + "/characters/" + (deleted ? "deleted/" : "") + bicFileName;
+
+        return this.http.get(path)
                    .map(res => <any>res.json())
                    .catch(this.handleError);
     }
@@ -23,5 +25,5 @@ export class CharsService {
     private handleError (error: Response) {
         // console.error("======>", error;
         return Observable.throw(error.json().error || "Server error");
-      }
+    }
 }

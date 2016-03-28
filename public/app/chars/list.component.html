@@ -41,11 +41,11 @@
 		</thead>
 		<tbody>
 			<tr *ngFor="#c of deletedChars">
-				<td class="flow-text"><a href="#">{{c?.name}}</a></td>
-				<td>{{c?.race}}</td>
-				<td>{{c?.lvl}}</td>
+				<td class="flow-text"><a (click)="gotoHeroDetails(c)">{{c.name}}</a></td>
+				<td>{{c.race}}</td>
+				<td>{{c.lvl}}</td>
 				<td>
-					<span *ngFor="#cl of c?.classes">
+					<span *ngFor="#cl of c.classes">
 						{{cl.name}} ({{cl.lvl}})
 					</span>
 				</td>

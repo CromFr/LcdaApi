@@ -16,7 +16,7 @@ export class CharListComponent implements OnInit {
     constructor(private _charsService: CharsService, private _router: Router, private _routeParams: RouteParams) { }
 
     ngOnInit() {
-        this._charsService.getList(this._routeParams.get("account"))
+        this._charsService.getLists(this._routeParams.get("account"))
             .subscribe(
               list => {
                 this.activeChars = list[0];
@@ -28,8 +28,16 @@ export class CharListComponent implements OnInit {
     public errorMsg: string;
 
     gotoHeroDetails(character) {
-        console.log("character: ", character);
-        this._router.navigate(["CharDetails", { account: this._routeParams.get("account"), char: character.bicFileName }]);
+        if (!character.deleted) {
+            this._router.navigate(["CharDetails", {
+                account: this._routeParams.get("account"),
+                char: character.bicFileName }]);
+        }
+        else {
+            this._router.navigate(["DeletedCharDetails", {
+                account: this._routeParams.get("account"),
+                char: character.bicFileName }]);
+        }
     }
 
 

@@ -109,7 +109,7 @@ package:
 		if(deletedVaultPath.exists && deletedVaultPath.isDir){
 			deletedChars = DirEntry(deletedVaultPath)
 					.dirEntries("*.bic", SpanMode.shallow)
-					.map!(a => new Character(a))
+					.map!(a => new Character(a, true))
 					.array
 					.sort!"a.name<b.name"
 					.array;

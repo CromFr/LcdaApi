@@ -17,8 +17,9 @@ declare var $: any;
     templateUrl: "app/app.component.html",
 })
 @RouteConfig([
-  {path: "/:account/chars", name: "CharList", component: CharListComponent}, // useAsDefault: true
-  {path: "/:account/chars/:char", name: "CharDetails", component: CharDetailsComponent}
+  {path: "/:account/characters",       name: "CharList",    component: CharListComponent}, // useAsDefault: true
+  {path: "/:account/characters/:char", name: "CharDetails", component: CharDetailsComponent},
+  {path: "/:account/characters/deleted/:char", name: "DeletedCharDetails", component: CharDetailsComponent, data: {deleted: true}},
 ])
 export class AppComponent implements AfterViewInit {
     public isLoggedIn: boolean = false;
