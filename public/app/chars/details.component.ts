@@ -18,9 +18,14 @@ export class CharDetailsComponent implements OnInit {
     ngOnInit() {
         this._charsService.getChar(this._routeParams.get("account"), this._routeParams.get("char"))
             .subscribe(
-              c => { this.character = c; console.log(c);},
+              c => { this.character = c; console.log(c); },
               error => this.errorMsg = <any>error);
     }
     public errorMsg: string;
     public character: any;
+
+    abilityModifier(value: number) {
+        return Math.floor(value / 2) - 5;
+    }
+
 }

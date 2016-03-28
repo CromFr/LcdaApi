@@ -18,7 +18,7 @@
 						<tr *ngFor="#a of character?.abilities">
 							<td class="flow-text">{{a.label}}</td>
 							<td class="flow-text">{{a.value}}</td>
-							<td class="center">{{a.value/2-5}}</td>
+							<td class="center">{{abilityModifier(a.value)}}</td>
 						</tr>
 					</tbody>
 				</table>
