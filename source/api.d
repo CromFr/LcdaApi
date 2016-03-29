@@ -82,10 +82,8 @@ package:
 
 	@path("/:account/characters/list")
 	CharList _getCharList(string _account){
-		//enforceHTTP(req.session, HTTPStatus.unauthorized);
 		enforceHTTP(authenticated, HTTPStatus.unauthorized);
 		enforceHTTP(admin || _account==account, HTTPStatus.forbidden);
-		//enforceHTTP(req.session.get!bool("isAdmin") || _account==session.get!string("account"), HTTPStatus.forbidden);
 
 		//TODO: what if _account="../../secureThing" ?
 
@@ -119,18 +117,21 @@ package:
 	}
 	@path("/:account/characters/:char")
 	Character _getActiveCharInfo(string _account, string _char){
-		//enforceHTTP(authenticated, HTTPStatus.forbidden);
-		//enforceHTTP(admin || _account==account, HTTPStatus.forbidden);
+		enforceHTTP(authenticated, HTTPStatus.unauthorized);
+		enforceHTTP(admin || _account==account, HTTPStatus.forbidden);
 		return getCharInfo(_account, _char);
 	}
 	@path("/:account/characters/deleted/:char")
 	Character _getDeletedCharInfo(string _account, string _char){
-		//enforceHTTP(authenticated, HTTPStatus.forbidden);
-		//enforceHTTP(admin || _account==account, HTTPStatus.forbidden);
+		enforceHTTP(authenticated, HTTPStatus.unauthorized);
+		enforceHTTP(admin || _account==account, HTTPStatus.forbidden);
 		return getCharInfo(_account, _char, true);
 	}
 	@path("/:account/characters/:char/delete")
 	void _postDeleteChar(string _account, string _char){
+		enforceHTTP(authenticated, HTTPStatus.unauthorized);
+		enforceHTTP(admin || _account==account, HTTPStatus.forbidden);
+
 		import std.file : exists, isDir, rename, mkdir;
 		import std.path : buildNormalizedPath;
 
@@ -138,14 +139,17 @@ package:
 			"/home/crom/Documents/Neverwinter Nights 2/servervault/",
 			_account);
 
-		auto deletedFolder = buildNormalizedPath(accountVault, "deleted");
+		auto charToDelete = buildNormalizedPath(accountVault, _char);
+		enforceHTTP(charToDelete.exists, HTTPStatus.notFound, "Character not found");
 
-		if(!deletedFolder.exists){
-			mkdir(deletedFolder);
+		auto destinationFolder = buildNormalizedPath(accountVault, "deleted");
+
+		if(!destinationFolder.exists){
+			mkdir(destinationFolder);
 		}
 
 
-		auto target = buildNormalizedPath(deletedFolder, _char~".bic");
+		auto target = buildNormalizedPath(destinationFolder, _char~".bic");
 		if(target.exists){
 			import std.regex : ctRegex, matchFirst;
 			enum rgx = ctRegex!r"^(.+?)(\d*)$";
@@ -156,7 +160,7 @@ package:
 			int index = match[2].to!int;
 
 			while(target.exists){
-				target = buildNormalizedPath(deletedFolder, newName~(++index).to!string~".bic");
+				target = buildNormalizedPath(destinationFolder, newName~(++index).to!string~".bic");
 			}
 		}
 
@@ -166,7 +170,6 @@ package:
 	}
 
 	Json _postLogin(string login, string password){
-	//bool _postLogin(string login, string password){
 		import mysql;
 		import nwn2.resman;
 		import app : ConnectionWrap;
@@ -179,7 +182,7 @@ package:
 			credsOK = row[0].get!int == 1;
 		});
 
-		enforceHTTP(credsOK, HTTPStatus.forbidden);
+		enforceHTTP(credsOK, HTTPStatus.unauthorized);
 
 		authenticated = true;
 		account = login;
@@ -200,7 +203,7 @@ package:
 	void _postLogout(){
 		terminateSession();
 
-		enforceHTTP(false, HTTPStatus.ok);//TODO: There must be a better way
+		//enforceHTTP(false, HTTPStatus.ok);//TODO: There must be a better way
 	}
 
 private:

@@ -3,12 +3,13 @@ import {HTTP_PROVIDERS}    from "angular2/http";
 import {RouteParams, RouteData} from "angular2/router";
 
 import {CharsService}   from "./chars.service";
+import {LoadingComponent, LoadingStatus}   from "../loading.component";
 
 
 @Component({
     selector:    "chardetails",
     templateUrl: "app/chars/details.component.html",
-    directives:  [],
+    directives:  [LoadingComponent],
     providers:   [HTTP_PROVIDERS, CharsService]
 })
 export class CharDetailsComponent implements OnInit {
@@ -24,10 +25,17 @@ export class CharDetailsComponent implements OnInit {
     ngOnInit() {
         this._charsService.getChar(this._routeParams.get("account"), this._routeParams.get("char"), this.isDeletedChar)
             .subscribe(
-              c => this.character = c,
-              error => this.errorMsg = <any>error);
+                c => {
+                    this.character = c;
+                    this.loadingStatus.setSuccess();
+                },
+                error => {
+                    this.loadingStatus.setError(error.text());
+                }
+            );
     }
-    public errorMsg: string;
+
+    public loadingStatus: LoadingStatus = new LoadingStatus();
     public character: any;
 
     abilityModifier(value: number) {

@@ -1,111 +1,110 @@
+<loading [status]="loadingStatus"></loading>
+<div *ngIf="loadingStatus.isOk()">
 
-
-<div class="row">
-	<h1 class="col s12 center">{{character?.name}}</h1>
-</div>
-
-<hr class="row">
-
-<div class="row">
-	<div class="col s10 offset-s1 m4">
-		<div class="z-depth-1">
-			<div class="brown z-depth-1 small-padding">
-				<h4 class="white-text">Caracs</h4>
-			</div>
-			<div class="small-padding">
-				<table class="bordered condensed">
-					<tbody>
-						<tr *ngFor="#a of character?.abilities">
-							<td class="flow-text">{{a.label}}</td>
-							<td class="flow-text">{{a.value}}</td>
-							<td class="center">{{abilityModifier(a.value)}}</td>
-						</tr>
-					</tbody>
-				</table>
-			</div>
-		</div>
-	</div>
-	<div class="col s12 m8">
-		<div class="z-depth-1">
-			<div class="teal z-depth-1 small-padding">
-				<h4 class="white-text">Niveau {{character?.lvl}}</h4>
-			</div>
-			<div class="small-padding">
-				<table class="bordered flow-text">
-					<tbody>
-						<tr *ngFor="#c of character?.classes">
-							<td>{{c.name}}</td>
-							<td class="center"><strong>{{c.lvl}}</strong></td>
-						</tr>
-					</tbody>
-				</table>
-			</div>
-		</div>
-	</div>
-</div>
-
-<div class="row">
-	<div class="col s12">
-		<div class="z-depth-1">
-			<div class="blue-grey lighten-2 z-depth-1 small-padding">
-				<h4 class="white-text">Divers</h4>
-			</div>
-			<div class="small-padding">
-				<table class="flow-text">
-					<tbody>
-						<tr>
-							<td>Race</td>
-							<td>{{character?.race}}</td>
-						</tr>
-						<tr>
-							<td>Dieu</td>
-							<td>{{character?.god}}</td>
-						</tr>
-						<tr>
-							<td>Alignement</td>
-							<td>{{character?.alignment?.name}}</td>
-						</tr>
-						<tr class="condensed">
-							<td class="right">Mauvais - Bon</td>
-							<td>
-								<div class="progress char-alignment">
-									<div class="determinate" style="width: {{character?.alignment?.good_evil}}%"></div>
-								</div>
-							</td>
-						</tr>
-						<tr class="condensed">
-							<td class="right">Chaotique - Loyal</td>
-							<td>
-								<div class="progress char-alignment">
-									<div class="determinate" style="width: {{character?.alignment?.law_chaos}}%"></div>
-								</div>
-							</td>
-						</tr>
-					</tbody>
-				</table>
-			</div>
-		</div>
-	</div>
-</div>
-
-<hr class="row">
-
-<div class="row">
-	<h3>Actions</h3>
 	<div class="row">
-		<a href="#" class="btn-large waves-effect waves-light">
-			<i class="material-icons left">get_app</i>
-			<span>Télécharger le fichier de personnage</span>
-		</a>
+		<h1 class="col s12 center">{{character?.name}}</h1>
 	</div>
+
+	<hr class="row">
+
 	<div class="row">
-		<a href="" class="btn-large waves-effect waves-light red darken-4 text-white">
-			<i class="material-icons left">delete</i>
-			<span><strong>Supprimer</strong> le personnage</span>
-		</a>
+		<div class="col s10 offset-s1 m4">
+			<div class="z-depth-1">
+				<div class="brown z-depth-1 small-padding">
+					<h4 class="white-text">Caracs</h4>
+				</div>
+				<div class="small-padding">
+					<table class="bordered condensed">
+						<tbody>
+							<tr *ngFor="#a of character?.abilities">
+								<td class="flow-text">{{a.label}}</td>
+								<td class="flow-text">{{a.value}}</td>
+								<td class="center">{{abilityModifier(a.value)}}</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+		<div class="col s12 m8">
+			<div class="z-depth-1">
+				<div class="teal z-depth-1 small-padding">
+					<h4 class="white-text">Niveau {{character?.lvl}}</h4>
+				</div>
+				<div class="small-padding">
+					<table class="bordered flow-text">
+						<tbody>
+							<tr *ngFor="#c of character?.classes">
+								<td>{{c.name}}</td>
+								<td class="center"><strong>{{c.lvl}}</strong></td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
 	</div>
 
+	<div class="row">
+		<div class="col s12">
+			<div class="z-depth-1">
+				<div class="blue-grey lighten-2 z-depth-1 small-padding">
+					<h4 class="white-text">Divers</h4>
+				</div>
+				<div class="small-padding">
+					<table class="flow-text">
+						<tbody>
+							<tr>
+								<td>Race</td>
+								<td>{{character?.race}}</td>
+							</tr>
+							<tr>
+								<td>Dieu</td>
+								<td>{{character?.god}}</td>
+							</tr>
+							<tr>
+								<td>Alignement</td>
+								<td>{{character?.alignment?.name}}</td>
+							</tr>
+							<tr class="condensed">
+								<td class="right">Mauvais - Bon</td>
+								<td>
+									<div class="progress char-alignment">
+										<div class="determinate" style="width: {{character?.alignment?.good_evil}}%"></div>
+									</div>
+								</td>
+							</tr>
+							<tr class="condensed">
+								<td class="right">Chaotique - Loyal</td>
+								<td>
+									<div class="progress char-alignment">
+										<div class="determinate" style="width: {{character?.alignment?.law_chaos}}%"></div>
+									</div>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<hr class="row">
+
+	<div class="row">
+		<h3>Actions</h3>
+		<div class="row">
+			<a href="#" class="btn-large waves-effect waves-light">
+				<i class="material-icons left">get_app</i>
+				<span>Télécharger le fichier de personnage</span>
+			</a>
+		</div>
+		<div class="row">
+			<a href="" class="btn-large waves-effect waves-light red darken-4 text-white">
+				<i class="material-icons left">delete</i>
+				<span><strong>Supprimer</strong> le personnage</span>
+			</a>
+		</div>
+
+	</div>
 </div>
-
-
-
