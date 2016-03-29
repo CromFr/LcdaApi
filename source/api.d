@@ -1,5 +1,6 @@
 import vibe.d;
 import std.typecons;
+debug import std.stdio : writeln;
 
 import nwn2.character;
 
@@ -51,7 +52,7 @@ private string implementJsonIface(API)(){
 				ret ~= [ParamNames].join(", ");
 			ret ~= ")";
 			//Body - Serialization
-			static if(!is(Return==void))
+			static if(!is(Return==void) && !is(Return==Json))
 				ret ~= ".serializeToJson()";
 			ret ~= ";\n";
 			//end
@@ -67,7 +68,6 @@ private string implementJsonIface(API)(){
 ///    /api/:account/characters/list
 ///    /api/:account/characters/:char/
 ///    /api/:account/characters/:char/delete
-///  - /api/:account/characters/:char/undelete
 ///    /api/:account/characters/deleted/:char/
 ///  - /api/:account/characters/deleted/:char/undelete
 ///
@@ -83,8 +83,8 @@ package:
 	@path("/:account/characters/list")
 	CharList _getCharList(string _account){
 		//enforceHTTP(req.session, HTTPStatus.unauthorized);
-		//enforceHTTP(authenticated, HTTPStatus.unauthorized);
-		//enforceHTTP(admin || _account==account, HTTPStatus.forbidden);
+		enforceHTTP(authenticated, HTTPStatus.unauthorized);
+		enforceHTTP(admin || _account==account, HTTPStatus.forbidden);
 		//enforceHTTP(req.session.get!bool("isAdmin") || _account==session.get!string("account"), HTTPStatus.forbidden);
 
 		//TODO: what if _account="../../secureThing" ?
@@ -165,7 +165,8 @@ package:
 		rename(accountVault, target);
 	}
 
-	void _postLogin(string login, string password){
+	Json _postLogin(string login, string password){
+	//bool _postLogin(string login, string password){
 		import mysql;
 		import nwn2.resman;
 		import app : ConnectionWrap;
@@ -180,18 +181,35 @@ package:
 
 		enforceHTTP(credsOK, HTTPStatus.forbidden);
 
-		//session = startSession();
-		//authenticated = true;
-		//account = login;
+		authenticated = true;
+		account = login;
+
+		return _getSession();
+	}
+	Json _getSession(){
+		import std.traits : hasUDA;
+
+		auto ret = Json.emptyObject;
+		foreach(member ; __traits(allMembers, Api)){
+			static if(hasUDA!(mixin("Api."~member), session)){
+				ret[member] = mixin(member~".value");
+			}
+		}
+		return ret;
 	}
 	void _postLogout(){
 		terminateSession();
+
+		enforceHTTP(false, HTTPStatus.ok);//TODO: There must be a better way
 	}
 
 private:
-	SessionVar!(bool, "authenticated") authenticated;
-	SessionVar!(bool, "admin") admin;
-	SessionVar!(string, "account") account;
+	enum session;
+	@session{
+		SessionVar!(bool, "authenticated") authenticated;
+		SessionVar!(bool, "admin") admin;
+		SessionVar!(string, "account") account;
+	}
 
 
 	Character getCharInfo(in string account, in string bicName, bool deleted=false){

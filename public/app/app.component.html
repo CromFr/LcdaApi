@@ -13,12 +13,12 @@
 				</li>
 			</ul>
 			<ul class="right">
-				<li *ngIf="isLoggedIn" class="flow-text">{{account}}</li>
+				<li *ngIf="session.authenticated" class="flow-text">{{session.account}}</li>
 				<li>
-					<a *ngIf="!isLoggedIn" href="#modal-login" id="modal-login-button" class="btn waves-effect waves-light modal-trigger" data-target="modal-login" materialize="leanModal">
+					<a *ngIf="!session.authenticated" href="#modal-login" id="modal-login-button" class="btn waves-effect waves-light modal-trigger" data-target="modal-login" materialize="leanModal">
 						Connexion
 					</a>
-					<a *ngIf="isLoggedIn" id="logout" href="#" class="btn waves-effect waves-light modal-trigger">
+					<a *ngIf="session.authenticated" href="#" (click)="logout()" class="btn waves-effect waves-light modal-trigger">
 						Déconnexion
 					</a>
 				</li>
@@ -57,15 +57,15 @@
 <div id="modal-login" class="modal">
 	<div class="modal-content">
 		<h4>Connexion</h4>
-		<form action="/login" method="POST" enctype="application/x-www-form-urlencoded">
+		<form (ngSubmit)="submitLoginForm()">
 			<div class="input-field">
 				<div class="material-icons prefix">account_circle</div>
-				<input type="text" class="validate" id="login" name="login">
-				<label for="login">Compte</label>
+				<input type="text" class="validate" id="login" name="login" [(ngModel)]="loginForm.login">
+				<label for="login">Compte {{loginForm.name}}</label>
 			</div>
 			<div class="input-field">
 				<div class="material-icons prefix">lock</div>
-				<input type="password" class="validate" id="password" name="password">
+				<input type="password" class="validate" id="password" name="password" [(ngModel)]="loginForm.password">
 				<label for="password">Mot de passe</label>
 			</div>
 			<div class="input-field">

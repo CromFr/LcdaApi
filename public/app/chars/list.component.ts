@@ -31,12 +31,14 @@ export class CharListComponent implements OnInit {
         if (!character.deleted) {
             this._router.navigate(["CharDetails", {
                 account: this._routeParams.get("account"),
-                char: character.bicFileName }]);
+                char: character.bicFileName
+            }]);
         }
         else {
             this._router.navigate(["DeletedCharDetails", {
                 account: this._routeParams.get("account"),
-                char: character.bicFileName }]);
+                char: character.bicFileName
+            }]);
         }
     }
 
