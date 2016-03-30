@@ -28,19 +28,13 @@
 	</nav>
 </div>
 <ul id="sidebar" class="side-nav fixed">
-	<li>
-		<a [routerLink]="['CharList',{account:'Crom 29'}]" class="activable">
+	<li *ngIf="session.authenticated">
+		<a [routerLink]="['CharList',{account: session.account}]" class="activable">
 			<i class="material-icons left" style="line-height: 64px;">face</i>
-			Crom 29/list
+			Personnages
 		</a>
 	</li>
-	<li>
-		<a [routerLink]="['CharDetails',{account:'Crom 29', char:'aoroducormyr'}]" class="activable">
-			<i class="material-icons left" style="line-height: 64px;">face</i>
-			aoroducormyr
-		</a>
-	</li>
-	<li><hr></li>
+	<li *ngIf="session.authenticated"><hr></li>
 	<li>
 		<a href="#" class="activable">
 			<i class="material-icons left" style="line-height: 64px;">add_circle_outline</i>
