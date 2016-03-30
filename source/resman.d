@@ -1,4 +1,4 @@
-module nwn2.resman;
+module resman;
 
 
 import std.file;
@@ -19,54 +19,54 @@ class ResMan{
 static:
 	///	Add a resource to the manager
 	///	Throws: ResourceException if the resource name already exists for this resource type
-	void addRes(T)(in string sName, ref T res){
+	void register(T)(in string name, ref T res){
 		TypeInfo ti = typeid(T);
-		if(!(ti in m_loadedRes && sName in m_loadedRes[ti]))
-			m_loadedRes[typeid(T)][sName] = res;
+		if(!(ti in m_loadedRes && name in m_loadedRes[ti]))
+			m_loadedRes[typeid(T)][name] = res;
 		else
-			throw new ResourceException("Resource '"~sName~"' already exists");
+			throw new ResourceException("Resource '"~name~"' already exists");
 	}
 
 
 	///	Constructs a resource and add it to the manager
 	///	Params:
-	///		sName = Name of the resource to create
+	///		name = Name of the resource to create
 	///		ctorArgs = Arguments passed to the resource constructor
 	///	Throws: ResourceException if the resource name already exists for this resource type
 	///	Returns: the created resource
-	ref T createRes(T, VT...)(in string sName, VT ctorArgs){
+	auto ref constructResource(T, VT...)(in string name, VT ctorArgs){
 		T res = new T(ctorArgs);
-		addRes!T(sName, res);
-		return *(cast(T*)&(m_loadedRes[typeid(T)][sName]));
+		register!T(name, res);
+		return *(cast(T*)&(m_loadedRes[typeid(T)][name]));
 	}
 
 	///	Removes a resource from the manager
 	///	Will let the D garbage collector handle destruction if not used somewhere else
 	///	Params:
-	///		sName = registered name of the resource
-	///		bForce = true to force destruction (can cause seg faults if the resource is used somewhere else)
+	///		name = registered name of the resource
+	///		destroy = true to force destruction (can cause seg faults if the resource is used somewhere else)
 	///	Throws: ResourceException if the resource name does not exist
-	void removeRes(T)(in string sName, bool bForce=false){
+	void discard(T)(in string name, bool destroy=false){
 		TypeInfo ti = typeid(T);
-		if(!(ti in m_loadedRes && sName in m_loadedRes[ti])){
-			if(bForce)
-				destroy(m_loadedRes[typeid(T)][sName]);
+		if(!(ti in m_loadedRes && name in m_loadedRes[ti])){
+			if(destroy)
+				destroy(m_loadedRes[typeid(T)][name]);
 			else
-				m_loadedRes[typeid(T)][sName] = null;
+				m_loadedRes[typeid(T)][name] = null;
 		}
 		else
-			throw new ResourceException("Resource '"~sName~"' not found");
+			throw new ResourceException("Resource '"~name~"' not found");
 	}
 
 
 	///	Gets the resource with its name
 	///	Throws: ResourceException if the resource name does not exist
-	ref T get(T)(in string sName){
+	auto ref get(T)(in string name){
 		TypeInfo ti = typeid(T);
-		if(ti in m_loadedRes && sName in m_loadedRes[ti])
-			return *(cast(T*)&(m_loadedRes[ti][sName]));
+		if(ti in m_loadedRes && name in m_loadedRes[ti])
+			return *(cast(T*)&(m_loadedRes[ti][name]));
 
-		throw new ResourceException("Resource '"~sName~"' not found");
+		throw new ResourceException("Resource '"~name~"' not found");
 	}
 
 	///	Loads the resources contained in directory matching filePatern
@@ -76,44 +76,50 @@ static:
 	///		filePatern = file patern to load (ie: "*", "*.vtx", ...)
 	///		recursive = true to search in subfolders
 	///		ctorArgs = Arguments passed to the resource constructor
-	void loadFromFiles(T, VT...)(in string directory, in string filePatern, in bool recursive, VT ctorArgs){
+	void constructFromFiles(T, VT...)(in string directory, in string filePatern, in bool recursive, VT ctorArgs){
 		import std.path : dirSeparator;
 
 		foreach(ref file ; dirEntries(directory, filePatern, recursive?SpanMode.depth:SpanMode.shallow)){
 			if(file.isFile){
-				string sName = file.name.chompPrefix(directory~dirSeparator);
-				createRes!T(sName, file, ctorArgs);
+				immutable name = file.name.chompPrefix(directory~dirSeparator);
+				constructResource!T(name, file, ctorArgs);
 			}
 		}
 	}
 
 
-	void cachePath(){
+
+	///Paths where the resource manager will search for resource files
+	__gshared string[] path;
+
+
+	///Builds a lookup table containing all resource file names with their paths.
+	/// This is usefull when there are a lot of resources and you can't afford doing
+	/// disk operations each time you need a resource
+	void cacheResourcePaths(){
 		foreach(p ; path){
 			if(p.exists && p.isDir){
 				foreach(ref file ; dirEntries(p, SpanMode.depth)){
 					if(file.isFile){
-						cachedFiles[file.baseName.toLower] = DirEntry(file.name);
+						cachedPaths[file.baseName.toLower] = DirEntry(file.name);
 					}
 				}
 			}
 		}
 	}
 
-
-
-	T findFileRes(T)(in string fileName){
+	T getOrConstruct(T)(in string fileName){
 		try return get!T(fileName);
 		catch(ResourceException e){
-			if(fileName.toLower in cachedFiles){
-				return createRes!T(fileName, cachedFiles[fileName.toLower]);
+			if(fileName.toLower in cachedPaths){
+				return constructResource!T(fileName, cachedPaths[fileName.toLower]);
 			}
 			foreach(p ; path){
 				if(p.exists && p.isDir){
 					foreach(ref file ; dirEntries(p, SpanMode.depth)){
 						if(file.isFile && filenameCmp!(CaseSensitive.no)(file.name.baseName, fileName)==0){
 							//info("Loaded ",fileName," from ",file.name);
-							return createRes!T(fileName, file);
+							return constructResource!T(fileName, file);
 						}
 					}
 				}
@@ -122,10 +128,10 @@ static:
 			throw new ResourceException("Resource '"~fileName~"' not found in path");
 		}
 	}
-	string findFilePath(in string fileName){
+	deprecated string findFile(in string fileName){
 		foreach(p ; path){
-			if(fileName.toLower in cachedFiles){
-				return cachedFiles[fileName.toLower];
+			if(fileName.toLower in cachedPaths){
+				return cachedPaths[fileName.toLower];
 			}
 			if(p.exists && p.isDir){
 				foreach(ref file ; dirEntries(p, SpanMode.depth)){
@@ -137,14 +143,13 @@ static:
 		}
 		return null;
 	}
-	__gshared string[] path;
 
 
 
 private:
 	this(){}
 	__gshared Object[string][TypeInfo] m_loadedRes;
-	__gshared DirEntry[string] cachedFiles;
+	__gshared DirEntry[string] cachedPaths;
 }
 
 
@@ -160,14 +165,14 @@ unittest {
 	auto rm = new Resource;
 
 	auto foo = new Foo;
-	rm.AddRes("yolo", foo);
+	rm.register("yolo", foo);
 
 	assert(rm.Get!Foo("yolo") == foo);
 	assert(rm.Get!Foo("yolo") is foo);
 
-	rm.LoadFromFiles!Foo(".", "dub.json", false, 5);
+	rm.constructFromFiles!Foo(".", "dub.json", false, 5);
 	assert(rm.Get!Foo("dub.json") !is null);
 
 	auto fe = new FileException("ahahaha");
-	rm.AddRes("Boom headshot", fe);
+	rm.register("Boom headshot", fe);
 }

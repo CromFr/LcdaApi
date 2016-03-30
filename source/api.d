@@ -171,7 +171,7 @@ package:
 
 	Json _postLogin(string login, string password){
 		import mysql;
-		import nwn2.resman;
+		import resman;
 		import app : ConnectionWrap;
 		auto conn = ResMan.get!ConnectionWrap("sql");
 

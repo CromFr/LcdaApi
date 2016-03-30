@@ -6,7 +6,7 @@ class Character{
 
 	this(in string bicFile, bool isDeleted=false){
 		import std.path : baseName;
-		import nwn2.resman;
+		import resman;
 		import nwn2.gff;
 		import nwn2.tlk;
 		import nwn2.twoda;
@@ -18,10 +18,10 @@ class Character{
 
 		auto strref = ResMan.get!StrRefResolver("resolver");
 		auto gff = new Gff(bicFile);
-		auto class2da = ResMan.findFileRes!TwoDA("classes.2da");
-		auto race2da = ResMan.findFileRes!TwoDA("racialsubtypes.2da");
-		auto abilities2da = ResMan.findFileRes!TwoDA("iprp_abilities.2da");
-		auto alignment2da = ResMan.findFileRes!TwoDA("iprp_alignment.2da");
+		auto class2da = ResMan.getOrConstruct!TwoDA("classes.2da");
+		auto race2da = ResMan.getOrConstruct!TwoDA("racialsubtypes.2da");
+		auto abilities2da = ResMan.getOrConstruct!TwoDA("iprp_abilities.2da");
+		auto alignment2da = ResMan.getOrConstruct!TwoDA("iprp_alignment.2da");
 
 		//Name
 		name = gff["FirstName"].to!string~" "~gff["LastName"].to!string;

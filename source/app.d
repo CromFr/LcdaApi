@@ -1,7 +1,7 @@
 import vibe.d;
 import mysql;
 import std.stdio;
-import nwn2.resman;
+import resman;
 import nwn2.tlk;
 import api;
 
@@ -18,13 +18,13 @@ int main(string[] args){
 	auto strresolv = new StrRefResolver(
 		new Tlk("/home/crom/.wine-nwn2/drive_c/Neverwinter Nights 2/dialog.TLK"),
 		new Tlk("/home/crom/Documents/Neverwinter Nights 2/tlk/Lcda.tlk"));
-	ResMan.addRes("resolver", strresolv);
+	ResMan.register("resolver", strresolv);
 
 
 	auto client = new MySQLClient("host=localhost;user=root;pwd=123;db=nwnx");
 	auto conn = new ConnectionWrap;
 	conn.data = client.lockConnection();
-	ResMan.addRes("sql", conn);
+	ResMan.register("sql", conn);
 	//TODO handle if mysql disconnected
 
 
