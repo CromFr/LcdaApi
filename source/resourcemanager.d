@@ -15,7 +15,7 @@ class ResourceException : Exception{
 class ResourceManager{
 __gshared static:
 
-	///Saves a resource into the Resource manager.
+	///Saves a resource into the Resource manager registry.
 	/// Warning: the resource is copied, unless it is a class
 	void save(T)(in string name, auto ref T data) if(isMutable!T){
 		//writeln("Mutable:   ",name," = ",T.stringof);
@@ -26,6 +26,27 @@ __gshared static:
 	void save(T)(in string name, auto ref immutable(T) data){
 		//writeln("Immutable: ",name," = ",T.stringof);
 		saveResource(name, cast(T)data, Flags.IMMUTABLE);
+	}
+
+	///Removes a resource from the registry
+	void remove(T)(in string name){
+		mixin SetupAlias!T;
+
+		if(RA* ra = typeid(T) in container){
+			if(name in *ra){
+				container[typeid(T)].remove(name);
+				return;
+			}
+			throw new ResourceException("Resource name '"~name~"' of type '"~T.stringof~"' not found in registry");
+		}
+		throw new ResourceException("Resource type '"~T.stringof~"' not found in registry");
+	}
+
+	///Check if a resource exists in the registry
+	bool exists(T)(in string name){
+		mixin SetupAlias!T;
+		immutable ra = typeid(T) in container;
+		return ra && name in ra;
 	}
 
 
@@ -69,16 +90,7 @@ private:
 	}
 
 	auto ref getResource(T)(in string name){
-		static if(is(T==class)){
-			alias RA = ObjectResourceArray;
-			alias R = ObjectResource;
-			alias container = objectResources;
-		}
-		else{
-			alias RA = ResourceArray;
-			alias R = Resource;
-			alias container = resources;
-		}
+		mixin SetupAlias!T;
 
 		if(RA* ra = typeid(T) in container){
 			if(R* r = name in *ra){
@@ -104,8 +116,19 @@ private:
 
 			resources[typeid(T)][name] = r;
 		}
+	}
 
-
+	mixin template SetupAlias(T){
+		static if(is(T==class)){
+			alias RA = ObjectResourceArray;
+			alias R = ObjectResource;
+			alias container = objectResources;
+		}
+		else{
+			alias RA = ResourceArray;
+			alias R = Resource;
+			alias container = resources;
+		}
 	}
 
 	unittest{
@@ -241,10 +264,16 @@ private:
 			save("poly", cast(TestClass)child);
 		}
 		GC.collect(); GC.minimize();
+		assertThrown!ResourceException(get!TestClassChild("poly"));
 		assert(get!TestClass("poly").formatText() == "Child:HelloChild");
 
 
+		//Not found exceptions & remove
+		assertThrown!ResourceException(get!TestClass("poly123"));
 
+		assertNotThrown(get!TestClass("poly"));
+		remove!TestClass("poly");
+		assertThrown!ResourceException(get!TestClass("poly"));
 	}
 
 }
