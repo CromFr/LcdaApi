@@ -3,6 +3,9 @@ module resourcemanager;
 import std.stdio;
 import std.typecons;
 import std.traits;
+import std.algorithm;
+import std.file;
+import std.path;
 
 
 class ResourceException : Exception{
@@ -15,20 +18,35 @@ class ResourceException : Exception{
 class ResourceManager{
 __gshared static:
 
-	///Saves a resource into the Resource manager registry.
+	///Stores a resource into the Resource manager registry.
 	/// Warning: the resource is copied, unless it is a class
-	void save(T)(in string name, auto ref T data) if(isMutable!T){
+	/// TODO: not thread-safe
+	void store(T)(in string name, auto ref T data) if(isMutable!T){
 		//writeln("Mutable:   ",name," = ",T.stringof);
-		saveResource!T(name, data, Flags.NONE);
+		storeResource!T(name, data, Flags.NONE);
 	}
 
 	///ditto
-	void save(T)(in string name, auto ref immutable(T) data){
+	/// TODO: not thread-safe
+	void store(T)(in string name, auto ref immutable(T) data){
 		//writeln("Immutable: ",name," = ",T.stringof);
-		saveResource(name, cast(T)data, Flags.IMMUTABLE);
+		storeResource(name, cast(T)data, Flags.IMMUTABLE);
 	}
 
+	///Construct a resource and store it in the registry as mutable.
+	auto ref T construct(T, VT...)(in string name, lazy VT constructorArgs){
+		static if(is(T==class)){
+			store(name, new T(constructorArgs));
+		}
+		else{
+			store(name, T(constructorArgs));
+		}
+		return getMut!T(name);
+	}
+
+
 	///Removes a resource from the registry
+	/// TODO: not thread-safe
 	void remove(T)(in string name){
 		mixin SetupAlias!T;
 
@@ -49,7 +67,7 @@ __gshared static:
 		return ra && name in ra;
 	}
 
-
+	///Gets a reference to the resource matching the name and type T
 	auto ref immutable(T) get(T)(in string name){
 		static if(is(T==class)){
 			return cast(immutable(T))(getResource!T(name).data);
@@ -59,6 +77,9 @@ __gshared static:
 		}
 	}
 
+	///ditto
+	///The resource is mutable and can be changed. Will assert an Error if the resource has been stored as immutable
+	///Mutability breaks thread safety
 	auto ref T getMut(T)(in string name){
 		auto r = getResource!T(name);
 		if(!(r.flags & Flags.IMMUTABLE)){
@@ -69,9 +90,90 @@ __gshared static:
 				return *cast(T*)(getResource!T(name).data.ptr);
 			}
 		}
-		assert(0, "Resource name '"~name~"' of type '"~T.stringof~"' has been saved as immutable");
-
+		assert(0, "Resource name '"~name~"' of type '"~T.stringof~"' has been stored as immutable");
 	}
+
+
+
+	// FILE RELATED
+
+
+	///Retrieve a resource or construct it if it doesn't exists using a file matching fileName and found in ResourceManager.path
+	/// If needed, the resource will be constructed with the file path as parameter, folowed by additionalCtorArgs
+	/// TODO: not thread-safe
+	auto ref immutable(T) fetchFile(T, VT...)(in string fileName, lazy VT additionalCtorArgs){
+		try return get!T(fileName);
+		catch(ResourceException){}
+
+		auto filePath = path.searchFile(fileName);
+		//may throw ResourceException if file not found
+
+		return cast(immutable)construct!T(fileName, filePath.name, additionalCtorArgs);
+	}
+
+
+
+	///Path where resources will be searched
+	Path path = new Path;
+
+	class Path{
+
+		void add(in string path, bool cached=true){
+			immutable normPath = buildNormalizedPath(path);
+
+			DirEntry[string] cache;
+
+			if(cached){
+				if(normPath.exists && normPath.isDir){
+					populateCache(DirEntry(normPath), cache);
+				}
+				else
+					writeln(__MODULE__~" - Warning: Path ",normPath," does not exists / is not a directory. Path ignored");
+			}
+
+			paths[normPath] = PathCache(cached, cache);
+		}
+
+		void remove(in string path){
+			immutable normPath = buildNormalizedPath(path);
+			paths.remove(normPath);
+		}
+
+		void updateCache(in string[] baseDirsToUpdate=[]){
+			//TODO
+		}
+
+		DirEntry searchFile(in string name){
+			foreach(path, ref pcache ; paths){
+				if(pcache.cached){
+					if(auto file = name in pcache.cache)
+						return *file;
+				}
+			}
+			foreach(path, ref pcache ; paths){
+				if(!pcache.cached){
+					if(auto file = name in pcache.cache)
+						return *file;
+				}
+			}
+			throw new ResourceException("Resource file '"~name~"' not found in path");
+		}
+
+	private:
+		alias PathCache = Tuple!(bool,"cached",DirEntry[string],"cache");
+		PathCache[string] paths;
+
+		void populateCache(DirEntry baseDir, ref DirEntry[string] cache){
+			foreach(file ; dirEntries(baseDir, SpanMode.depth)){
+				//TODO: check duplicate file names? (may be expensive)
+				if(file.isFile){
+					cache[file.baseName] = file;
+				}
+			}
+		}
+	}
+
+
 
 
 
@@ -101,16 +203,16 @@ private:
 		throw new ResourceException("Resource type '"~T.stringof~"' not found in registry");
 	}
 
-	void saveResource(T)(in string name, auto ref T res, Flags flags){
+	void storeResource(T)(in string name, auto ref T res, Flags flags){
 		if(typeid(T) in resources && name in resources[typeid(T)])
 			throw new ResourceException("A resource '"~name~"' of type '"~T.stringof~"' already exists in registry");
 
 		static if(is(T==class)){
-			//Save object directly
+			//Store object directly
 			objectResources[typeid(T)][name] = ObjectResource(res, flags);
 		}
 		else{
-			//copy value and save it to
+			//copy value then store
 			auto r = Resource(new void[T.sizeof], flags);
 			*cast(T*)r.data.ptr = res;
 
@@ -131,6 +233,26 @@ private:
 		}
 	}
 
+
+
+	//===========================================================
+	version(unittest){
+		class TestClass{
+			this(){}
+			this(string t){text = t;}
+			string text = "TestClassDefaultText";
+			const string formatText(){return "Parent:"~text;}//for polymorphism tests
+		}
+		struct TestStruct{
+			string text = "TestStructDefaultText";
+		}
+		class Text{
+			this(in string file){
+				text = file.readText();
+			}
+			string text;
+		}
+	}
 	unittest{
 		import etc.linux.memoryerror;
 		static if (is(typeof(registerMemoryErrorHandler)))
@@ -140,28 +262,22 @@ private:
 
 
 		//Class
-		class TestClass{
-			this(){}
-			this(string t){text = t;}
-			string text = "TestClassDefaultText";
-			const string formatText(){return "Parent:"~text;}//for polymorphism tests
-		}
 		{
 			auto testClass = new TestClass;
-			save("lvalue", testClass);
+			store("lvalue", testClass);
 			testClass.text = "HelloLValue";
 
-			save("rvalue", new TestClass);
+			store("rvalue", new TestClass);
 			getMut!TestClass("rvalue").text = "HelloRValue";
 
 			immutable testClassI = cast(immutable)(new TestClass("HelloLValueImmut"));
-			save("lvaluei", testClassI);
+			store("lvaluei", testClassI);
 
-			save("rvaluei", cast(immutable)(new TestClass("HelloRValueImmut")));
+			store("rvaluei", cast(immutable)(new TestClass("HelloRValueImmut")));
 
 			//mutable but stored as immutable
 			auto testClass2 = new TestClass;
-			save("test2", cast(immutable)(testClass2));
+			store("test2", cast(immutable)(testClass2));
 			testClass2.text = "HelloTest2";
 		}
 		GC.collect(); GC.minimize();
@@ -186,21 +302,18 @@ private:
 
 
 		//Struct
-		struct TestStruct{
-			string text = "TestStructDefaultText";
-		}
 		{
 			TestStruct testStruct;
 			testStruct.text = "HelloLValue";
-			save("lvalue", testStruct);
+			store("lvalue", testStruct);
 
-			save("rvalue", TestStruct());
+			store("rvalue", TestStruct());
 			getMut!TestStruct("rvalue").text = "HelloRValue";
 
 			immutable testStructI = cast(immutable)(TestStruct("HelloLValueImmut"));
-			save("lvaluei", testStructI);
+			store("lvaluei", testStructI);
 
-			save("rvaluei", cast(immutable)(TestStruct("HelloRValueImmut")));
+			store("rvaluei", cast(immutable)(TestStruct("HelloRValueImmut")));
 		}
 		GC.collect(); GC.minimize();
 
@@ -225,15 +338,15 @@ private:
 		{
 			string str;
 			str = "HelloLValue";
-			save("lvalue", str);
+			store("lvalue", str);
 
-			save("rvalue", cast(string)"default");//explicit cast for mutable rvalue
+			store("rvalue", cast(string)"default");//explicit cast for mutable rvalue
 			getMut!string("rvalue") = "HelloRValue";
 
 			immutable strI = cast(immutable)("HelloLValueImmut");
-			save("lvaluei", strI);
+			store("lvaluei", strI);
 
-			save("rvaluei", cast(immutable)("HelloRValueImmut"));
+			store("rvaluei", cast(immutable)("HelloRValueImmut"));
 		}
 		GC.collect(); GC.minimize();
 
@@ -261,7 +374,7 @@ private:
 		}
 		{
 			auto child = new TestClassChild("HelloChild");
-			save("poly", cast(TestClass)child);
+			store("poly", cast(TestClass)child);
 		}
 		GC.collect(); GC.minimize();
 		assertThrown!ResourceException(get!TestClassChild("poly"));
@@ -274,6 +387,22 @@ private:
 		assertNotThrown(get!TestClass("poly"));
 		remove!TestClass("poly");
 		assertThrown!ResourceException(get!TestClass("poly"));
+
+
+		//File handling
+		alias writefile = std.file.write;
+		auto tmp = buildPath(tempDir(), __MODULE__~"_unittest");
+		if(tmp.exists)
+			rmdirRecurse(tmp);
+		mkdir(tmp);
+		writefile(buildPath(tmp, "lorem.txt"), "Lorem ipsum");
+		writefile(buildPath(tmp, "hello.txt"), "Hello World !");
+
+		path.add(tmp);
+
+		assert(fetchFile!Text("lorem.txt").text == "Lorem ipsum");
+		assert(fetchFile!Text("hello.txt").text == "Hello World !");
+		rmdirRecurse(tmp);
 	}
 
 }
