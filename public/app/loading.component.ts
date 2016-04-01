@@ -40,7 +40,7 @@ export class LoadingStatus {
             </div>
             <div *ngIf="status.isLoaded() && !status.isOk()" class="z-depth-1">
                 <div class="red z-depth-1 white-text small-padding">
-                    <i class="medium material-icons">report_problem</i>
+                    <i class="medium material-icons">error</i>
                     <h4>{{status.error.split('\n')[0]}}</h4>
                 </div>
                 <div class="small-padding left-align">

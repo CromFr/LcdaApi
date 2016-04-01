@@ -1,5 +1,5 @@
 import {Component, OnInit, AfterViewInit} from "angular2/core";
-import {RouteConfig, ROUTER_DIRECTIVES, ROUTER_PROVIDERS} from "angular2/router";
+import {Router, RouteConfig, ROUTER_DIRECTIVES, ROUTER_PROVIDERS} from "angular2/router";
 import {HTTP_PROVIDERS}    from "angular2/http";
 
 import {CredentialsService, Session} from "./credentials.service";
@@ -23,7 +23,7 @@ declare var $: any;
   {path: "/:account/characters/deleted/:char", name: "DeletedCharDetails", component: CharDetailsComponent, data: {deleted: true}},
 ])
 export class AppComponent implements OnInit, AfterViewInit {
-    constructor(private _credService: CredentialsService) {}
+    constructor(private _credService: CredentialsService, private _router: Router) {}
 
     ngOnInit() {
         this._credService.getSession()
@@ -64,10 +64,11 @@ export class AppComponent implements OnInit, AfterViewInit {
     }
 
 
-    public loginForm = {
+    private loginForm = {
         login: "",
         password: ""
     };
+    private loginErrorMsg: string;
     submitLoginForm() {
         let login = this.loginForm.login;
         let password = this.loginForm.password;
@@ -76,8 +77,17 @@ export class AppComponent implements OnInit, AfterViewInit {
                 session  => {
                     this.session = session;
                     $("#modal-login").closeModal();
+                    this.loginErrorMsg = "";
+                    this._router.navigateByUrl(".");
                 },
-                error => console.error("submitLoginForm() error: ", <any>error));
+                error => {
+                    console.error("submitLoginForm() error: ", <any>error);
+                    if (error.status === 401)
+                        this.loginErrorMsg = "Compte inconnu / Mauvais mot de passe";
+                    else
+                        this.loginErrorMsg = "Erreur inconnue";
+
+                });
     }
 
 

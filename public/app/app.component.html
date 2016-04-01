@@ -8,7 +8,7 @@
 				<li>
 					<a href="/" class="flow-text">
 						<img src="/img/logo.png" style="vertical-align: middle;" alt="">
-						La Colère d'Aurile
+						<span class="hide-on-med-and-down">La Colère d'Aurile</span>
 					</a>
 				</li>
 			</ul>
@@ -18,8 +18,8 @@
 					<a *ngIf="!session.authenticated" href="#modal-login" id="modal-login-button" class="btn waves-effect waves-light modal-trigger" data-target="modal-login" materialize="leanModal">
 						Connexion
 					</a>
-					<a *ngIf="session.authenticated" href="#" (click)="logout()" class="btn waves-effect waves-light modal-trigger">
-						Déconnexion
+					<a *ngIf="session.authenticated" href="#" (click)="logout()">
+						<i class="material-icons right">exit_to_app</i> Déconnexion
 					</a>
 				</li>
 			</ul>
@@ -64,6 +64,7 @@
 			</div>
 			<div class="input-field">
 				<input type="submit" class="btn waves-effect waves-light" value="Connexion">
+				<span class="red-text right">{{loginErrorMsg}}</span>
 			</div>
 		</form>
 	</div>
