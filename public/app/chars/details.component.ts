@@ -19,8 +19,6 @@ export class CharDetailsComponent implements OnInit {
             this.isDeletedChar = true;
     }
 
-    private isDeletedChar: boolean = false;
-
 
     ngOnInit() {
         this._charsService.getChar(this._routeParams.get("account"), this._routeParams.get("char"), this.isDeletedChar)
@@ -36,10 +34,22 @@ export class CharDetailsComponent implements OnInit {
     }
 
     public loadingStatus: LoadingStatus = new LoadingStatus();
+
+    private isDeletedChar: boolean = false;
     public character: any;
 
-    abilityModifier(value: number) {
-        return Math.floor(value / 2) - 5;
+
+    private downloadLink(): string{
+        return "/" + this._routeParams.get("account")
+            + "/characters/"
+            + (this.isDeletedChar ? "deleted/" : "")
+            + this._routeParams.get("char")
+            + "/download";
+    }
+
+    private abilityModifier(value: number): string {
+        let mod = Math.floor(value / 2) - 5;
+        return (mod >= 0 ? "+" : "") + String(mod);
     }
 
 }

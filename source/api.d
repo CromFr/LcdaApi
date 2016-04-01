@@ -68,13 +68,34 @@ private string implementJsonIface(API)(){
 ///    /api/:account/characters/list
 ///    /api/:account/characters/:char/
 ///    /api/:account/characters/:char/delete
+///    /api/:account/characters/:char/download
 ///    /api/:account/characters/deleted/:char/
-///  - /api/:account/characters/deleted/:char/undelete
+///    /api/:account/characters/deleted/:char/activate
+///    /api/:account/characters/deleted/:char/download
 ///
 @path("/api")
 class Api{
 
 	mixin(implementJsonIface!Api);
+
+	@path("/:account/characters/:char/download")
+	auto getCharacterDownload(string _account, string _char, HTTPServerRequest req, HTTPServerResponse res){
+		enforceHTTP(authenticated, HTTPStatus.unauthorized);
+		enforceHTTP(admin || _account==account, HTTPStatus.forbidden);
+
+		import std.path;
+		import std.file;
+
+		immutable charFile = buildNormalizedPath(
+			"/home/crom/Documents/Neverwinter Nights 2/servervault/",
+			_account,
+			_char~".bic");
+
+		enforceHTTP(charFile.exists, HTTPStatus.notFound, "Character not found");
+
+		return serveStaticFile(charFile)(req, res);
+
+	}
 
 
 package:
@@ -139,7 +160,7 @@ package:
 			"/home/crom/Documents/Neverwinter Nights 2/servervault/",
 			_account);
 
-		auto charToDelete = buildNormalizedPath(accountVault, _char);
+		auto charToDelete = buildNormalizedPath(accountVault, _char~".bic");
 		enforceHTTP(charToDelete.exists, HTTPStatus.notFound, "Character not found");
 
 		auto destinationFolder = buildNormalizedPath(accountVault, "deleted");
@@ -214,7 +235,6 @@ private:
 		SessionVar!(bool, "admin") admin;
 		SessionVar!(string, "account") account;
 	}
-
 
 	Character getCharInfo(in string account, in string bicName, bool deleted=false){
 		import std.file : DirEntry;
