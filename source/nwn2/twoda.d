@@ -35,7 +35,7 @@ class TwoDA{
 
 	}
 
-	ref auto get(T)(in string colName, in int line){
+	const auto ref get(T)(in string colName, in int line){
 		ulong index = ulong.max;
 		foreach(i, cn ; header){
 			if(cn==colName){

@@ -170,13 +170,14 @@ package:
 	}
 
 	Json _postLogin(string login, string password){
-		import mysql;
-		import resman;
-		import app : ConnectionWrap;
-		auto conn = ResMan.get!ConnectionWrap("sql");
+		import mysql : MySQLClient, MySQLRow;
+		import resourcemanager;
+		auto conn = ResourceManager.getMut!MySQLClient("sql").lockConnection();
+		//TODO: will lockConnection retrieve an already locked connection instead of creating a new one?
 
 		//TODO: move query to settings?
 		//TODO: Check if fields are correctly escaped
+		//TODO: salt this hash
 		bool credsOK;
 		conn.execute("SELECT (`password`=SHA(?)) FROM `account` WHERE `name`=?", password, login, (MySQLRow row){
 			credsOK = row[0].get!int == 1;

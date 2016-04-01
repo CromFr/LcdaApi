@@ -1,30 +1,27 @@
 import vibe.d;
 import mysql;
 import std.stdio;
-import resman;
+import resourcemanager;
 import nwn2.tlk;
 import api;
-
-//TODO: exploit this trick internally in resman
-class ConnectionWrap{
-	alias data this;
-	MySQLClient.LockedConnection data;
-}
 
 int main(string[] args){
 
 	//TODO: get from config
-	ResMan.path ~= "/home/crom/Documents/Neverwinter Nights 2/override/LcdaClientSrc/lcda2da.hak/";
+	ResourceManager.path.add("/home/crom/Documents/Neverwinter Nights 2/override/LcdaClientSrc/lcda2da.hak/");
 	auto strresolv = new StrRefResolver(
 		new Tlk("/home/crom/.wine-nwn2/drive_c/Neverwinter Nights 2/dialog.TLK"),
 		new Tlk("/home/crom/Documents/Neverwinter Nights 2/tlk/Lcda.tlk"));
-	ResMan.register("resolver", strresolv);
+	ResourceManager.store("resolver", strresolv);
 
+	try{
+		auto client = new MySQLClient("host=localhost;user=root;pwd=123;db=nwnx");
+		ResourceManager.store("sql", client);
+	}
+	catch(Exception e){
+		throw new Exception("MySQL database appears to be offline", e);
+	}
 
-	auto client = new MySQLClient("host=localhost;user=root;pwd=123;db=nwnx");
-	auto conn = new ConnectionWrap;
-	conn.data = client.lockConnection();
-	ResMan.register("sql", conn);
 	//TODO handle if mysql disconnected
 
 
@@ -35,7 +32,6 @@ int main(string[] args){
 	//TODO check is redis started
 
 	auto router = new URLRouter;
-	//router.get("*", serveStaticFiles("./public/"));
 	router.get("/node_modules/*", serveStaticFiles(
 		"node_modules/",
 		new HTTPFileServerSettings("/node_modules"))//Strips "/node_modules" from path
