@@ -78,7 +78,9 @@ export class AppComponent implements OnInit, AfterViewInit {
                     this.session = session;
                     $("#modal-login").closeModal();
                     this.loginErrorMsg = "";
-                    this._router.navigateByUrl(".");
+
+                    //Refresh
+                    window.location.replace(window.location.href);
                 },
                 error => {
                     console.error("submitLoginForm() error: ", <any>error);
