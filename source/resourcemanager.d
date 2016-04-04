@@ -3,7 +3,6 @@ module resourcemanager;
 import std.stdio;
 import std.typecons;
 import std.traits;
-import std.algorithm;
 import std.file;
 import std.path;
 
@@ -254,11 +253,10 @@ private:
 		}
 	}
 	unittest{
-		import etc.linux.memoryerror;
-		static if (is(typeof(registerMemoryErrorHandler)))
-			registerMemoryErrorHandler();
+		import std.stdio : writeln;
 		import core.memory;
 		import std.exception;
+		writeln(__MODULE__);
 
 
 		//Class
