@@ -3,6 +3,7 @@ import std.typecons;
 debug import std.stdio : writeln;
 
 import nwn2.character;
+import config;
 
 
 private string implementJsonIface(API)(){
@@ -75,6 +76,10 @@ private string implementJsonIface(API)(){
 ///
 @path("/api")
 class Api{
+	this(){
+		import resourcemanager : ResourceManager;
+		cfg = ResourceManager.get!Config("cfg");
+	}
 
 	mixin(implementJsonIface!Api);
 
@@ -87,7 +92,7 @@ class Api{
 		import std.file;
 
 		immutable charFile = buildNormalizedPath(
-			"/home/crom/Documents/Neverwinter Nights 2/servervault/",
+			cfg.paths.servervault.to!string,
 			_account,
 			_char~".bic");
 
@@ -113,7 +118,7 @@ package:
 		import std.algorithm : sort;
 
 		auto activeVault = DirEntry(buildNormalizedPath(
-				"/home/crom/Documents/Neverwinter Nights 2/servervault/",//TODO: get from config
+				cfg.paths.servervault.to!string,
 				_account));
 
 		auto activeChars = activeVault
@@ -123,7 +128,10 @@ package:
 				.sort!"a.name<b.name"
 				.array;
 
-		auto deletedVaultPath = buildNormalizedPath(activeVault, "deleted");
+		auto deletedVaultPath = buildNormalizedPath(
+			activeVault,
+			cfg.paths.servervault_deleted.to!string);
+
 		Character[] deletedChars = null;
 		if(deletedVaultPath.exists && deletedVaultPath.isDir){
 			deletedChars = DirEntry(deletedVaultPath)
@@ -157,13 +165,15 @@ package:
 		import std.path : buildNormalizedPath;
 
 		auto accountVault = buildNormalizedPath(
-			"/home/crom/Documents/Neverwinter Nights 2/servervault/",
+			cfg.paths.servervault.to!string,
 			_account);
 
 		auto charToDelete = buildNormalizedPath(accountVault, _char~".bic");
 		enforceHTTP(charToDelete.exists, HTTPStatus.notFound, "Character not found");
 
-		auto destinationFolder = buildNormalizedPath(accountVault, "deleted");
+		auto destinationFolder = buildNormalizedPath(
+				accountVault,
+				cfg.paths.servervault_deleted.to!string);
 
 		if(!destinationFolder.exists){
 			mkdir(destinationFolder);
@@ -241,12 +251,14 @@ private:
 		import std.path : buildNormalizedPath;
 
 		return new Character(DirEntry(buildNormalizedPath(
-			"/home/crom/Documents/Neverwinter Nights 2/servervault/",//TODO: get from config
+			cfg.paths.servervault.to!string,
 			account,
-			deleted? "deleted" : "",
+			deleted? cfg.paths.servervault_deleted.to!string : "",
 			bicName~".bic"
 			)));
 	}
+
+	immutable Config cfg;
 
 
 }

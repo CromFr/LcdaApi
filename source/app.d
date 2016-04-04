@@ -4,41 +4,68 @@ import std.stdio;
 import resourcemanager;
 import nwn2.tlk;
 import api;
+import config;
 
 int main(string[] args){
+	import std.file : readText;
 
-	//TODO: get from config
-	ResourceManager.path.add("/home/crom/Documents/Neverwinter Nights 2/override/LcdaClientSrc/lcda2da.hak/");
+	//TODO get path from command line
+	auto cfg = new Config(parseJsonString(readText("config.json"), "config.json"));
+	ResourceManager.store("cfg", cfg);
+
+	//Register 2da paths
+	foreach(path ; cfg.paths.twoda)
+		ResourceManager.path.add(path.to!string);
+
 	auto strresolv = new StrRefResolver(
-		new Tlk("/home/crom/.wine-nwn2/drive_c/Neverwinter Nights 2/dialog.TLK"),
-		new Tlk("/home/crom/Documents/Neverwinter Nights 2/tlk/Lcda.tlk"));
+		new Tlk(cfg.paths.tlk.to!string),
+		cfg.paths.tlk_custom!=""? new Tlk(cfg.paths.tlk_custom.to!string) : null);
 	ResourceManager.store("resolver", strresolv);
 
 	try{
-		auto client = new MySQLClient("host=localhost;user=root;pwd=123;db=nwnx");
+		auto client = new MySQLClient(
+			cfg.mysql.host.to!string,
+			cfg.mysql.port.to!ushort,
+			cfg.mysql.user.to!string,
+			cfg.mysql.password.to!string,
+			cfg.mysql.database.to!string,
+			);
 		ResourceManager.store("sql", client);
 	}
 	catch(Exception e){
-		throw new Exception("MySQL database appears to be offline", e);
+		throw new Exception("Could not connect to MySQL", e);
 	}
-
-	//TODO handle if mysql disconnected
 
 
 	auto settings = new HTTPServerSettings;
-	settings.port = 8080;
-	//settings.sessionStore = new MemorySessionStore;
-	settings.sessionStore = new RedisSessionStore("127.0.0.1", 1);
-	//TODO check is redis started
+	settings.bindAddresses = cfg.server.addresses[].map!(j => j.to!string).array;
+	settings.hostName = cfg.server.hostname.to!string;
+	settings.port = cfg.server.port.to!ushort;
+	switch(cfg.server.session_store.to!string){
+		case "redis":
+			settings.sessionStore = new RedisSessionStore(
+				cfg.server.redis.host.to!string,
+				cfg.server.redis.database.to!long,
+				cfg.server.redis.port.to!ushort,
+				);
+			//TODO: check if connection OK
+			break;
+		case "memory":
+			settings.sessionStore = new MemorySessionStore;
+			break;
+		default:
+			assert(0, "Unsupported session store: '"~cfg.server.session_store.to!string~"'");
+	}
 
 	auto router = new URLRouter;
+	//TODO: get node_modules & public path from config
 	router.get("/node_modules/*", serveStaticFiles(
 		"node_modules/",
 		new HTTPFileServerSettings("/node_modules"))//Strips "/node_modules" from path
 	);
 	router.registerWebInterface(new Api);
 	router.get("*", function(req, res){
-			//TODO: don't serve index.html if requested file type is css/js/png, etc.
+			//TODO: serve 404 if request has an extension (ie style.css)
 			auto settings = new HTTPFileServerSettings();
 			settings.options = HTTPFileServerOption.failIfNotFound;
 

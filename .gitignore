@@ -16,3 +16,6 @@ public/app/*/*.js.map
 #Project
 LcdaAccountManager.sublime-workspace
 
+#Misc
+config.json
+
