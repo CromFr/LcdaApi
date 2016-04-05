@@ -202,15 +202,19 @@ package:
 
 	Json _postLogin(string login, string password){
 		import mysql : MySQLClient, MySQLRow;
+		import sql;
 		import resourcemanager;
 		auto conn = ResourceManager.getMut!MySQLClient("sql").lockConnection();
 		//TODO: will lockConnection retrieve an already locked connection instead of creating a new one?
 
-		//TODO: move query to settings?
-		//TODO: Check if fields are correctly escaped
-		//TODO: salt this hash
+		immutable query = cfg.sql_queries.login.to!string
+			.replacePlaceholders(
+				Placeholder!string("ACCOUNT", login),
+				Placeholder!string("PASSWORD", password)
+			);
+
 		bool credsOK;
-		conn.execute("SELECT (`password`=SHA(?)) FROM `account` WHERE `name`=?", password, login, (MySQLRow row){
+		conn.execute(query, (MySQLRow row){
 			credsOK = row[0].get!int == 1;
 		});
 
