@@ -5,6 +5,7 @@ import {HTTP_PROVIDERS}    from "angular2/http";
 import {CredentialsService, Session} from "./credentials.service";
 import {CharListComponent} from "./chars/list.component";
 import {CharDetailsComponent} from "./chars/details.component";
+import {HomeComponent} from "./home.component";
 
 declare var $: any;
 
@@ -18,7 +19,8 @@ declare var $: any;
     templateUrl: "app/app.component.html",
 })
 @RouteConfig([
-  {path: "/:account/characters",       name: "CharList",    component: CharListComponent}, // useAsDefault: true
+  {path: "/",                          name: "Home",        component: HomeComponent, useAsDefault: true},
+  {path: "/:account/characters",       name: "CharList",    component: CharListComponent},
   {path: "/:account/characters/:char", name: "CharDetails", component: CharDetailsComponent},
   {path: "/:account/characters/deleted/:char", name: "DeletedCharDetails", component: CharDetailsComponent, data: {deleted: true}},
 ])
@@ -59,6 +61,8 @@ export class AppComponent implements OnInit, AfterViewInit {
                         admin: false,
                         account: "INVALID"
                     };
+
+                    this._router.root.navigate(["Home"]);
                 },
                 error => console.error("logout() error: ", <any>error));
     }
@@ -80,7 +84,8 @@ export class AppComponent implements OnInit, AfterViewInit {
                     this.loginErrorMsg = "";
 
                     //Refresh
-                    window.location.replace(window.location.href);
+                    // window.location.replace(window.location.href);
+                    this._router.root.navigate(["Home"]);
                 },
                 error => {
                     console.error("submitLoginForm() error: ", <any>error);

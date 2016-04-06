@@ -36,10 +36,23 @@
 	"sql_queries":{
 		//Query to check password
 		// Password should be stored salted & hashed
+		//
+		// Must select:
+		//    success (bool):
+		//    admin (bool): wether or not the user can do actions on other accounts
+		//
 		// Placeholders:
 		//  - $ACCOUNT: player account name
 		//  - $PASSWORD: player unhashed password
-		"login": "SELECT password='$PASSWORD' FROM accounts WHERE name='$ACCOUNT'"
+		"login": "SELECT password='$PASSWORD' as success, is_admin as admin FROM accounts WHERE name='$ACCOUNT'",
+
+		//Query executed when the player deletes a character
+		// TODO: add placeholders
+		"on_delete": "",
+
+		//Query executed when the player reactivates a deleted
+		// TODO: add placeholders
+		"on_activate": "",
 	},
 
 

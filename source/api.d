@@ -1,83 +1,30 @@
 import vibe.d;
 debug import std.stdio : writeln;
+import mysql : MySQLClient, MySQLRow;
 
 import nwn2.character;
 import config;
 
 
-private string implementJsonIface(API)(){
-	import std.traits;
-	import std.meta : AliasSeq;
-	import std.string : format;
-	string ret;
 
-	foreach(member ; __traits(allMembers, API)){
-		static if(__traits(getProtection, mixin("API."~member))=="package"
-			&& isCallable!(mixin("API."~member))
-			&& member[0]=='_'){
 
-			enum attributes = __traits(getFunctionAttributes, mixin("API."~member));
-			alias UDAs = AliasSeq!(__traits(getAttributes, mixin("API."~member)));
-			alias ParamNames = ParameterIdentifierTuple!(mixin("API."~member));
-			alias ParamTypes = Parameters!(mixin("API."~member));
-			alias Return = ReturnType!(mixin("API."~member));
-
-			enum paramTypes = ParamTypes.stringof[1..$-1].split(", ");
-
-			//UDAs
-			foreach(uda ; UDAs)
-				ret ~= "@"~uda.stringof~" ";
-			ret ~= "\n";
-			//Return type
-			static if(is(Return==void))
-				ret ~= "void ";
-			else
-				ret ~= "Json ";
-			//Name
-			ret ~= member[1..$];
-			//Parameters
-			ret ~= "(";
-			static if(ParamNames.length>0){
-				foreach(i, name ; ParamNames){
-					static if(i>0) ret ~= ", ";
-					ret ~= paramTypes[i]~" "~name;
-				}
-			}
-			ret ~= ") ";
-			//Function attributes
-			ret ~= [attributes].join(" ")~"{\n";
-			//Body
-			ret ~= "\treturn this."~member~"(";
-			static if(ParamNames.length>0)
-				ret ~= [ParamNames].join(", ");
-			ret ~= ")";
-			//Body - Serialization
-			static if(!is(Return==void) && !is(Return==Json))
-				ret ~= ".serializeToJson()";
-			ret ~= ";\n";
-			//end
-			ret ~= "}\n";
-		}
-
-	}
-	return ret;
-}
 /// Json API
-///    /api/login login password
-///    /api/logout
-///    /api/:account/characters/list
-///    /api/:account/characters/:char/
-///    /api/:account/characters/:char/delete
-///    /api/:account/characters/:char/download
-///    /api/:account/characters/deleted/:char/
-///    /api/:account/characters/deleted/:char/activate
-///    /api/:account/characters/deleted/:char/download
+///    /login login password
+///    /logout
+///    /:account/characters/list
+///    /:account/characters/:char/
+///    /:account/characters/:char/delete
+///    /:account/characters/:char/download
+///    /:account/characters/deleted/:char/
+///    /:account/characters/deleted/:char/activate
+///    /:account/characters/deleted/:char/download
 ///
 @path("/api")
 class Api{
 	this(){
 		import resourcemanager : ResourceManager;
 		cfg = ResourceManager.get!Config("cfg");
+		mysqlConnection = ResourceManager.getMut!MySQLClient("sql").lockConnection();
 	}
 
 	mixin(implementJsonIface!Api);
@@ -150,7 +97,7 @@ package:
 		return getCharInfo(_account, _char, true);
 	}
 
-	//Moves the character to cfg.paths.servervault_deleted.
+	//Moves the character to the deleted vault
 	// The new file name will be oldName~"-"~index~".bic" with index starting from 0
 	//Returns the new bic file name
 	@path("/:account/characters/:char/delete")
@@ -174,6 +121,8 @@ package:
 		do{
 			target = buildPath(deletedVault, _char~"-"~(index++).to!string~".bic");
 		}while(target.exists);
+
+		mysqlConnection.execute(cfg.sql_queries.on_delete.to!string);
 
 		writeln("Renaming '",charFile,"' to '",target,"'");
 		rename(charFile, target);
@@ -199,6 +148,8 @@ package:
 		immutable target = buildPath(accountVault, newName~".bic");
 		enforceHTTP(!target.exists, HTTPStatus.conflict, "An active character has the same name.");
 
+		mysqlConnection.execute(cfg.sql_queries.on_activate.to!string);
+
 		writeln("Renaming '",charFile,"' to '",target,"'");
 		rename(charFile, target);
 
@@ -206,10 +157,8 @@ package:
 	}
 
 	Json _postLogin(string login, string password){
-		import mysql : MySQLClient, MySQLRow;
-		import sql;
-		import resourcemanager;
-		auto conn = ResourceManager.getMut!MySQLClient("sql").lockConnection();
+		import sql : replacePlaceholders, Placeholder;
+		import resourcemanager : ResourceManager;
 		//TODO: will lockConnection retrieve an already locked connection instead of creating a new one?
 
 		immutable query = cfg.sql_queries.login.to!string
@@ -218,15 +167,17 @@ package:
 				Placeholder!string("PASSWORD", password)
 			);
 
-		bool credsOK;
-		conn.execute(query, (MySQLRow row){
-			credsOK = row[0].get!int == 1;
+		bool credsOK = false, isAdmin;
+		mysqlConnection.execute(query, (MySQLRow row){
+			credsOK = row.success.get!int == 1;
+			isAdmin = row.admin.get!int == 1;
 		});
 
 		enforceHTTP(credsOK, HTTPStatus.unauthorized);
 
 		authenticated = true;
 		account = login;
+		admin = isAdmin;
 
 		return _getSession();
 	}
@@ -243,8 +194,6 @@ package:
 	}
 	void _postLogout(){
 		terminateSession();
-
-		//enforceHTTP(false, HTTPStatus.ok);//TODO: There must be a better way
 	}
 
 private:
@@ -254,6 +203,7 @@ private:
 		SessionVar!(bool, "admin") admin;
 		SessionVar!(string, "account") account;
 	}
+	MySQLClient.LockedConnection mysqlConnection;
 
 	Character getCharInfo(in string account, in string bicName, bool deleted=false){
 		import std.file : DirEntry, exists;
@@ -295,4 +245,77 @@ private:
 	}
 
 
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+private string implementJsonIface(API)(){
+	import std.traits;
+	import std.meta : AliasSeq;
+	import std.string : format;
+	string ret;
+
+	foreach(member ; __traits(allMembers, API)){
+		static if(__traits(getProtection, mixin("API."~member))=="package"
+			&& isCallable!(mixin("API."~member))
+			&& member[0]=='_'){
+
+			enum attributes = __traits(getFunctionAttributes, mixin("API."~member));
+			alias UDAs = AliasSeq!(__traits(getAttributes, mixin("API."~member)));
+			alias ParamNames = ParameterIdentifierTuple!(mixin("API."~member));
+			alias ParamTypes = Parameters!(mixin("API."~member));
+			alias Return = ReturnType!(mixin("API."~member));
+
+			enum paramTypes = ParamTypes.stringof[1..$-1].split(", ");
+
+			//UDAs
+			foreach(uda ; UDAs)
+				ret ~= "@"~uda.stringof~" ";
+			ret ~= "\n";
+			//Return type
+			static if(is(Return==void))
+				ret ~= "void ";
+			else
+				ret ~= "Json ";
+			//Name
+			ret ~= member[1..$];
+			//Parameters
+			ret ~= "(";
+			static if(ParamNames.length>0){
+				foreach(i, name ; ParamNames){
+					static if(i>0) ret ~= ", ";
+					ret ~= paramTypes[i]~" "~name;
+				}
+			}
+			ret ~= ") ";
+			//Function attributes
+			ret ~= [attributes].join(" ")~"{\n";
+			//Body
+			ret ~= "\treturn this."~member~"(";
+			static if(ParamNames.length>0)
+				ret ~= [ParamNames].join(", ");
+			ret ~= ")";
+			//Body - Serialization
+			static if(!is(Return==void) && !is(Return==Json))
+				ret ~= ".serializeToJson()";
+			ret ~= ";\n";
+			static if(!is(Return==void))
+				ret ~= "\tenforceHTTP(false, HTTPStatus.ok);\n";//TODO: There must be a better way
+			//end
+			ret ~= "}\n";
+		}
+
+	}
+	return ret;
 }

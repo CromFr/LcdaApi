@@ -18,7 +18,7 @@
 					<a *ngIf="!session.authenticated" href="#modal-login" id="modal-login-button" class="btn waves-effect waves-light modal-trigger" data-target="modal-login" materialize="leanModal">
 						Connexion
 					</a>
-					<a *ngIf="session.authenticated" href="#" (click)="logout()">
+					<a *ngIf="session.authenticated" (click)="logout()">
 						<i class="material-icons right">exit_to_app</i> Déconnexion
 					</a>
 				</li>
