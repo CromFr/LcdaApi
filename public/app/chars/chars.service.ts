@@ -21,6 +21,19 @@ export class CharsService {
                    .catch(this.handleError);
     }
 
+    activateChar(account: string, bicFileName: string) {
+        let path = "/api/" + account + "/characters/deleted/" + bicFileName + "/activate";
+        return this.http.post(path, null, null)
+                   .map(res => <any>res.json())
+                   .catch(this.handleError);
+    }
+
+    deleteChar(account: string, bicFileName: string) {
+        let path = "/api/" + account + "/characters/" + bicFileName + "/delete";
+        return this.http.post(path, null, null)
+                   .map(res => <any>res.json())
+                   .catch(this.handleError);
+    }
 
     private handleError (error: Response) {
         return Observable.throw(error || "Server error");

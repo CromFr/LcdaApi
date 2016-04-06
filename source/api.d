@@ -1,5 +1,4 @@
 import vibe.d;
-import std.typecons;
 debug import std.stdio : writeln;
 
 import nwn2.character;
@@ -88,18 +87,12 @@ class Api{
 		enforceHTTP(authenticated, HTTPStatus.unauthorized);
 		enforceHTTP(admin || _account==account, HTTPStatus.forbidden);
 
-		import std.path;
-		import std.file;
-
-		immutable charFile = buildNormalizedPath(
-			cfg.paths.servervault.to!string,
-			_account,
-			_char~".bic");
+		import std.file: exists;
+		immutable charFile = getCharFile(_account, _char);
 
 		enforceHTTP(charFile.exists, HTTPStatus.notFound, "Character not found");
 
 		return serveStaticFile(charFile)(req, res);
-
 	}
 
 
@@ -156,48 +149,60 @@ package:
 		enforceHTTP(admin || _account==account, HTTPStatus.forbidden);
 		return getCharInfo(_account, _char, true);
 	}
+
+	//Moves the character to cfg.paths.servervault_deleted.
+	// The new file name will be oldName~"-"~index~".bic" with index starting from 0
+	//Returns the new bic file name
 	@path("/:account/characters/:char/delete")
-	void _postDeleteChar(string _account, string _char){
+	Json _postDeleteChar(string _account, string _char){
 		enforceHTTP(authenticated, HTTPStatus.unauthorized);
 		enforceHTTP(admin || _account==account, HTTPStatus.forbidden);
 
-		import std.file : exists, isDir, rename, mkdir;
-		import std.path : buildNormalizedPath;
+		import std.file : exists, rename, mkdirRecurse;
+		import std.path : buildPath, baseName;
 
-		auto accountVault = buildNormalizedPath(
-			cfg.paths.servervault.to!string,
-			_account);
+		immutable charFile = getCharFile(_account, _char, false);
+		enforceHTTP(charFile.exists, HTTPStatus.notFound, "Character not found");
 
-		auto charToDelete = buildNormalizedPath(accountVault, _char~".bic");
-		enforceHTTP(charToDelete.exists, HTTPStatus.notFound, "Character not found");
-
-		auto destinationFolder = buildNormalizedPath(
-				accountVault,
-				cfg.paths.servervault_deleted.to!string);
-
-		if(!destinationFolder.exists){
-			mkdir(destinationFolder);
+		immutable deletedVault = getDeletedVaultPath(_account);
+		if(!deletedVault.exists){
+			mkdirRecurse(deletedVault);
 		}
 
+		string target;
+		int index = 0;
+		do{
+			target = buildPath(deletedVault, _char~"-"~(index++).to!string~".bic");
+		}while(target.exists);
 
-		auto target = buildNormalizedPath(destinationFolder, _char~".bic");
-		if(target.exists){
-			import std.regex : ctRegex, matchFirst;
-			enum rgx = ctRegex!r"^(.+?)(\d*)$";
-			auto match = _char.matchFirst(rgx);
-			if(match.empty)throw new Exception("Unable to parse character name: "~_char);
+		writeln("Renaming '",charFile,"' to '",target,"'");
+		rename(charFile, target);
 
-			string newName = match[1];
-			int index = match[2].to!int;
+		return Json(["newBicFile": Json(baseName(target, ".bic"))]);
+	}
 
-			while(target.exists){
-				target = buildNormalizedPath(destinationFolder, newName~(++index).to!string~".bic");
-			}
-		}
+	@path("/:account/characters/deleted/:char/activate")
+	Json _postActivateChar(string _account, string _char){
+		enforceHTTP(authenticated, HTTPStatus.unauthorized);
+		enforceHTTP(admin || _account==account, HTTPStatus.forbidden);
 
-		import std.stdio : writeln;
-		writeln("Renaming '",accountVault,"' to '",target,"'");
-		rename(accountVault, target);
+		import std.file : exists, rename, mkdirRecurse;
+		import std.path : buildPath, baseName;
+		import std.regex : matchFirst, ctRegex;
+
+		immutable charFile = getCharFile(_account, _char, true);
+		enforceHTTP(charFile.exists, HTTPStatus.notFound, "Character not found");
+
+		immutable accountVault = getVaultPath(_account);
+		immutable newName = _char.matchFirst(ctRegex!r"^(.+?)-\d+$")[1];
+
+		immutable target = buildPath(accountVault, newName~".bic");
+		enforceHTTP(!target.exists, HTTPStatus.conflict, "An active character has the same name.");
+
+		writeln("Renaming '",charFile,"' to '",target,"'");
+		rename(charFile, target);
+
+		return Json(["newBicFile": Json(baseName(target, ".bic"))]);
 	}
 
 	Json _postLogin(string login, string password){
@@ -251,18 +256,43 @@ private:
 	}
 
 	Character getCharInfo(in string account, in string bicName, bool deleted=false){
-		import std.file : DirEntry;
+		import std.file : DirEntry, exists;
 		import std.path : buildNormalizedPath;
 
-		return new Character(DirEntry(buildNormalizedPath(
+		immutable path = buildNormalizedPath(
 			cfg.paths.servervault.to!string,
 			account,
 			deleted? cfg.paths.servervault_deleted.to!string : "",
-			bicName~".bic"
-			)));
+			bicName~".bic");
+
+		enforceHTTP(path.exists, HTTPStatus.notFound, "Character not found");
+
+		return new Character(DirEntry(path));
 	}
 
 	immutable Config cfg;
+
+	auto ref getVaultPath(in string account){
+		import std.path : buildNormalizedPath;
+		return buildNormalizedPath(cfg.paths.servervault.to!string, account);
+	}
+
+	auto ref getDeletedVaultPath(in string account){
+		import std.path : buildNormalizedPath, isAbsolute;
+
+		immutable deletedVault = cfg.paths.servervault_deleted.to!string;
+		if(deletedVault.isAbsolute)
+			return buildNormalizedPath(deletedVault, account);
+		else
+			return buildNormalizedPath(cfg.paths.servervault.to!string, account, deletedVault);
+	}
+
+	auto ref getCharFile(in string account, in string bicFile, bool deleted=false){
+		import std.path : buildNormalizedPath;
+		if(deleted)
+			return buildNormalizedPath(getDeletedVaultPath(account), bicFile~".bic");
+		return buildNormalizedPath(cfg.paths.servervault.to!string, account, bicFile~".bic");
+	}
 
 
 }

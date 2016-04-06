@@ -100,13 +100,13 @@
 			</a>
 		</div>
 		<div *ngIf="!isDeletedChar" class="row">
-			<a href="" class="btn-large waves-effect waves-light red darken-4 text-white">
+			<a (click)="deleteChar()" class="btn-large waves-effect waves-light red darken-4 text-white">
 				<i class="material-icons left">delete</i>
 				<span><strong>Supprimer</strong> le personnage</span>
 			</a>
 		</div>
 		<div *ngIf="isDeletedChar" class="row">
-			<a href="" class="btn-large waves-effect waves-light yellow darken-4 text-white">
+			<a  (click)="activateChar()" class="btn-large waves-effect waves-light yellow darken-4 text-white">
 				<i class="material-icons left">input</i>
 				<span><strong>Réactiver</strong> le personnage</span>
 			</a>

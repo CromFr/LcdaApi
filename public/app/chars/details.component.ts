@@ -1,6 +1,6 @@
 import {Component, Input, OnInit} from "angular2/core";
 import {HTTP_PROVIDERS}    from "angular2/http";
-import {RouteParams, RouteData} from "angular2/router";
+import {Router, RouteParams, RouteData} from "angular2/router";
 
 import {CharsService}   from "./chars.service";
 import {LoadingComponent, LoadingStatus}   from "../loading.component";
@@ -13,7 +13,7 @@ import {LoadingComponent, LoadingStatus}   from "../loading.component";
     providers:   [HTTP_PROVIDERS, CharsService]
 })
 export class CharDetailsComponent implements OnInit {
-    constructor(private _charsService: CharsService, private _data: RouteData, private _routeParams: RouteParams) {
+    constructor(private _charsService: CharsService, private _router: Router, private _data: RouteData, private _routeParams: RouteParams) {
         let deleted: boolean = _data.get("deleted");
         if (deleted != null && deleted === true)
             this.isDeletedChar = true;
@@ -39,7 +39,45 @@ export class CharDetailsComponent implements OnInit {
     public character: any;
 
 
-    private downloadLink(): string{
+    public deleteChar() {
+        if (this.isDeletedChar === true) throw "Cannot delete a deactivated char";
+
+        this._charsService.deleteChar(this._routeParams.get("account"), this._routeParams.get("char"))
+            .subscribe(
+                c => {
+                    let newName = c.newBicFile;
+                    this._router.root.navigate(["DeletedCharDetails", {
+                        account: this._routeParams.get("account"),
+                        char: newName
+                    }]);
+                },
+                error => {
+                    console.warn(error);
+                }
+            );
+    }
+
+    public activateChar() {
+        if (this.isDeletedChar === false) throw "Cannot activate an active char";
+
+        this._charsService.activateChar(this._routeParams.get("account"), this._routeParams.get("char"))
+            .subscribe(
+                c => {
+                    let newName = c.newBicFile;
+                    this._router.root.navigate(["CharDetails", {
+                        account: this._routeParams.get("account"),
+                        char: newName
+                    }]);
+                },
+                error => {
+                    console.warn(error);
+                }
+            );
+    }
+
+
+
+    private downloadLink(): string {
         return "/" + this._routeParams.get("account")
             + "/characters/"
             + (this.isDeletedChar ? "deleted/" : "")
