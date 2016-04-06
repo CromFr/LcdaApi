@@ -37,34 +37,19 @@ export class AppComponent implements OnInit, AfterViewInit {
                     console.error("getAccount() error:", <any>error);
                 });
     }
-
-    ngAfterViewInit() {
-        if (!this.materializeInit) {
-            this.materializeInit = true;
-            $("#modal-login-button").leanModal();
-            $("#sidebar-button").sideNav();
-        }
-    }
-
     public session: Session = {
         authenticated: false,
         admin: false,
         account: "INVALID"
     };
 
-    logout() {
-        this._credService.logout()
-            .subscribe(
-                res  => {
-                    this.session = {
-                        authenticated: false,
-                        admin: false,
-                        account: "INVALID"
-                    };
-
-                    this._router.root.navigate(["Home"]);
-                },
-                error => console.error("logout() error: ", <any>error));
+    private materializeInit: boolean = false;
+    ngAfterViewInit() {
+        if (!this.materializeInit) {
+            this.materializeInit = true;
+            $("#modal-login-button").leanModal();
+            $("#sidebar-button").sideNav();
+        }
     }
 
 
@@ -84,8 +69,7 @@ export class AppComponent implements OnInit, AfterViewInit {
                     this.loginErrorMsg = "";
 
                     //Refresh
-                    // window.location.replace(window.location.href);
-                    this._router.root.navigate(["Home"]);
+                    window.location.replace(window.location.href);
                 },
                 error => {
                     console.error("submitLoginForm() error: ", <any>error);
@@ -97,6 +81,18 @@ export class AppComponent implements OnInit, AfterViewInit {
                 });
     }
 
+    logout() {
+        this._credService.logout()
+            .subscribe(
+                res  => {
+                    this.session = {
+                        authenticated: false,
+                        admin: false,
+                        account: "INVALID"
+                    };
 
-    private materializeInit: boolean = false;
+                    this._router.root.navigate(["Home"]);
+                },
+                error => console.error("logout() error: ", <any>error));
+    }
 }

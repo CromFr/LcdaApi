@@ -20,22 +20,14 @@ class Config {
 		import std.algorithm : each;
 
 		void ovr(in Json fromNode, ref Json toNode){
-
-			//if(fromNode.type != toNode.type)
-
 			switch(fromNode.type){
 				case Json.Type.object:
 					if(toNode.type != Json.Type.object)
 						toNode = Json.emptyObject;
 
-					//foreach()
-
 					foreach(key, ref from ; fromNode.get!(Json[string])){
 						ovr(from, toNode[key]);
 					}
-					//fromNode.each!((string key, ref from){
-					//		ovr(from, toNode[key]);
-					//	});
 					return;
 
 				case Json.Type.null_, Json.Type.undefined:

@@ -2,7 +2,10 @@
 <div *ngIf="loadingStatus.isOk()">
 
 	<div class="row">
-		<h1 class="col s12 center">{{character?.name}}</h1>
+		<h1 class="col s12 center" [class.grey-text]="isDeletedChar" [class.text-darken-1]="isDeletedChar">
+			{{character?.name}}
+			<span class="flow-text" style="vertical-align: middle">{{isDeletedChar? "(Supprimé)" : ""}}</span>
+		</h1>
 	</div>
 
 	<hr class="row">
@@ -110,6 +113,7 @@
 				<i class="material-icons left">input</i>
 				<span><strong>Réactiver</strong> le personnage</span>
 			</a>
+			<span class="red-text">{{activateErrorMsg}}</span>
 		</div>
 
 	</div>

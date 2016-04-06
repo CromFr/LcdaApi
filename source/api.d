@@ -302,7 +302,11 @@ private string implementJsonIface(API)(){
 			//Function attributes
 			ret ~= [attributes].join(" ")~"{\n";
 			//Body
-			ret ~= "\treturn this."~member~"(";
+			ret ~= "\t";
+			static if(!is(Return==void))
+				ret ~= "return ";
+			ret ~= "this."~member~"(";
+
 			static if(ParamNames.length>0)
 				ret ~= [ParamNames].join(", ");
 			ret ~= ")";
@@ -310,7 +314,7 @@ private string implementJsonIface(API)(){
 			static if(!is(Return==void) && !is(Return==Json))
 				ret ~= ".serializeToJson()";
 			ret ~= ";\n";
-			static if(!is(Return==void))
+			static if(is(Return==void))
 				ret ~= "\tenforceHTTP(false, HTTPStatus.ok);\n";//TODO: There must be a better way
 			//end
 			ret ~= "}\n";

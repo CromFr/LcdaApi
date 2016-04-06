@@ -39,12 +39,14 @@ export class CharDetailsComponent implements OnInit {
     public character: any;
 
 
+    private deleteErrorMsg: string;
     public deleteChar() {
         if (this.isDeletedChar === true) throw "Cannot delete a deactivated char";
 
         this._charsService.deleteChar(this._routeParams.get("account"), this._routeParams.get("char"))
             .subscribe(
                 c => {
+                    this.deleteErrorMsg = "";
                     let newName = c.newBicFile;
                     this._router.root.navigate(["DeletedCharDetails", {
                         account: this._routeParams.get("account"),
@@ -52,17 +54,20 @@ export class CharDetailsComponent implements OnInit {
                     }]);
                 },
                 error => {
-                    console.warn(error);
+                    this.deleteErrorMsg = "Erreur inconnue (" + error.status + ")";
+                    console.error(error);
                 }
             );
     }
 
+    private activateErrorMsg: string;
     public activateChar() {
         if (this.isDeletedChar === false) throw "Cannot activate an active char";
 
         this._charsService.activateChar(this._routeParams.get("account"), this._routeParams.get("char"))
             .subscribe(
                 c => {
+                    this.activateErrorMsg = "";
                     let newName = c.newBicFile;
                     this._router.root.navigate(["CharDetails", {
                         account: this._routeParams.get("account"),
@@ -70,7 +75,12 @@ export class CharDetailsComponent implements OnInit {
                     }]);
                 },
                 error => {
-                    console.warn(error);
+                    if (error.status === 409) // conflict
+                        this.activateErrorMsg = "Un personnage actif du même nom existe déja";
+                    else {
+                        this.activateErrorMsg = "Erreur inconnue (" + error.status + ")";
+                        console.error(error);
+                    }
                 }
             );
     }
