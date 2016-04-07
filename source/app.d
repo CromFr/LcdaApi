@@ -10,7 +10,7 @@ int main(string[] args){
 	import std.file : readText;
 
 	//TODO get path from command line
-	auto cfg = new Config(parseJsonString(readText("config.json"), "config.json"));
+	auto cfg = new Config(readText("config.json"));
 	ResourceManager.store("cfg", cfg);
 
 	//Register 2da paths

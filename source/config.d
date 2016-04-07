@@ -9,7 +9,10 @@ class Config {
 		table = config;
 	}
 	this(in string config){
-		table = parseJsonString(config);
+		import std.regex : replaceAll, ctRegex;
+		table = config
+			.replaceAll(ctRegex!(r"^\s*//.*?$","m"), "")
+			.parseJsonString;
 	}
 
 	///Overrides one config with another.
