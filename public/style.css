@@ -6,10 +6,13 @@ header, main, footer {
 		padding-left: 0;
 	}
 }
-#slide-out{
+#sidebar{
 	top: 64px;
 	bottom: 0px;
 	height: auto;
+}
+.modal-content{
+    overflow: hidden;
 }
 table.condensed td,
 tr.condensed td{
@@ -26,6 +29,7 @@ tr.condensed td{
 .progress.char-alignment>div{
 	background-color: #00B80E;
 }
+
 
 a{
 	/* Links with Angular have no href property */
