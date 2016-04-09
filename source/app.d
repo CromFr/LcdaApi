@@ -7,10 +7,22 @@ import api;
 import config;
 
 int main(string[] args){
+	import std.getopt : getopt, defaultGetoptPrinter;
 	import std.file : readText;
 
-	//TODO get path from command line
-	auto cfg = new Config(readText("config.json"));
+	string cfgFile = "config.json";
+	auto res = getopt(args,
+		"config", "Configuration file to use", &cfgFile
+		);
+
+	if(res.helpWanted){
+	    defaultGetoptPrinter("Some information about the program.",
+	        res.options);
+	    return 0;
+	}
+
+
+	auto cfg = new Config(readText(cfgFile));
 	ResourceManager.store("cfg", cfg);
 
 	//Register 2da paths
@@ -22,18 +34,23 @@ int main(string[] args){
 		cfg.paths.tlk_custom!=""? new Tlk(cfg.paths.tlk_custom.to!string) : null);
 	ResourceManager.store("resolver", strresolv);
 
-	try{
-		auto client = new MySQLClient(
-			cfg.mysql.host.to!string,
-			cfg.mysql.port.to!ushort,
-			cfg.mysql.user.to!string,
-			cfg.mysql.password.to!string,
-			cfg.mysql.database.to!string,
-			);
-		ResourceManager.store("sql", client);
+	if(cfg.database == "mysql"){
+		try{
+			auto client = new MySQLClient(
+				cfg.mysql.host.to!string,
+				cfg.mysql.port.to!ushort,
+				cfg.mysql.user.to!string,
+				cfg.mysql.password.to!string,
+				cfg.mysql.database.to!string,
+				);
+			ResourceManager.store("sql", client);
+		}
+		catch(Exception e){
+			throw new Exception("Could not connect to MySQL", e);
+		}
 	}
-	catch(Exception e){
-		throw new Exception("Could not connect to MySQL", e);
+	else{
+		assert(0, "Unsupported database type: '"~cfg.database.to!string~"'");
 	}
 
 

@@ -159,7 +159,6 @@ package:
 	Json _postLogin(string login, string password){
 		import sql : replacePlaceholders, Placeholder;
 		import resourcemanager : ResourceManager;
-		//TODO: will lockConnection retrieve an already locked connection instead of creating a new one?
 
 		immutable query = cfg.sql_queries.login.to!string
 			.replacePlaceholders(
