@@ -65,7 +65,9 @@ int main(string[] args){
 				cfg.server.redis.database.to!long,
 				cfg.server.redis.port.to!ushort,
 				);
-			//TODO: check if connection OK
+
+			auto sessionTest = settings.sessionStore.create();
+			settings.sessionStore.destroy(sessionTest.id);
 			break;
 		case "memory":
 			settings.sessionStore = new MemorySessionStore;
