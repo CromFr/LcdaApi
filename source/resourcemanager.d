@@ -140,6 +140,7 @@ __gshared static:
 
 		void updateCache(in string[] baseDirsToUpdate=[]){
 			//TODO
+			assert(0, "Not implemented");
 		}
 
 		DirEntry searchFile(in string name){
@@ -364,7 +365,7 @@ private:
 		assertThrown!Error(getMut!string("lvaluei"));
 		assertThrown!Error(getMut!string("rvaluei"));
 
-		//TODO: Polymorphism
+		//Polymorphism
 		class TestClassChild : TestClass{
 			this(){super();}
 			this(string t){super(t);}
