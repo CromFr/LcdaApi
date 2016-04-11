@@ -83,14 +83,12 @@ int main(string[] args){
 		new HTTPFileServerSettings("/node_modules"))//Strips "/node_modules" from path
 	);
 	router.registerWebInterface(new Api);
-	router.get("*", function(req, res){
-			//TODO: serve 404 if request has an extension (ie style.css)
-			auto settings = new HTTPFileServerSettings();
-			settings.options = HTTPFileServerOption.failIfNotFound;
-
-			try return serveStaticFiles("./public/", settings)(req, res);
-			catch(HTTPStatusException e){}
-			return serveStaticFile("./public/index.html")(req, res);
+	router.get("*", function(HTTPServerRequest req, HTTPServerResponse res){
+			import std.path : baseName, extension;
+			auto ext = req.path[$-1]!='/'? req.path.baseName.extension : null;
+			if(ext is null)
+				return serveStaticFile("./public/index.html")(req, res);
+			return serveStaticFiles("./public/")(req, res);
 		});
 
 	listenHTTP(settings, router);
