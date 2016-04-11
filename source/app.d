@@ -9,6 +9,7 @@ import config;
 int main(string[] args){
 	import std.getopt : getopt, defaultGetoptPrinter;
 	import std.file : readText;
+	import std.path : buildNormalizedPath;
 
 	string cfgFile = "config.json";
 	auto res = getopt(args,
@@ -76,19 +77,17 @@ int main(string[] args){
 			assert(0, "Unsupported session store: '"~cfg.server.session_store.to!string~"'");
 	}
 
+	immutable publicPath = cfg.server.public_path.to!string;
+	immutable indexPath = buildNormalizedPath(publicPath, "index.html");
+
 	auto router = new URLRouter;
-	//TODO: get node_modules & public path from config
-	router.get("/node_modules/*", serveStaticFiles(
-		"node_modules/",
-		new HTTPFileServerSettings("/node_modules"))//Strips "/node_modules" from path
-	);
 	router.registerWebInterface(new Api);
-	router.get("*", function(HTTPServerRequest req, HTTPServerResponse res){
+	router.get("*", (HTTPServerRequest req, HTTPServerResponse res){
 			import std.path : baseName, extension;
 			auto ext = req.path[$-1]!='/'? req.path.baseName.extension : null;
 			if(ext is null)
-				return serveStaticFile("./public/index.html")(req, res);
-			return serveStaticFiles("./public/")(req, res);
+				return serveStaticFile(indexPath)(req, res);
+			return serveStaticFiles(publicPath)(req, res);
 		});
 
 	listenHTTP(settings, router);

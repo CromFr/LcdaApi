@@ -71,7 +71,9 @@
 			"host": "localhost",
 			"database": 1,
 			"port": 6379,
-		}
+		},
+		//Path to the public directory containing frontend files
+		"public_path": "./public"
 	}
 
 
