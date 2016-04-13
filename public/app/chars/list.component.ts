@@ -17,21 +17,29 @@ export class CharListComponent implements OnInit {
     constructor(private _charsService: CharsService, private _router: Router, private _routeParams: RouteParams) { }
 
     ngOnInit() {
-        this._charsService.getLists(this._routeParams.get("account"))
+        this._charsService.getActiveList(this._routeParams.get("account"))
             .subscribe(
                 list => {
-                    this.activeChars = list[0];
-                    this.deletedChars = list[1];
+                    this.activeChars = list;
                     this.loadingStatus.setSuccess();
                 },
                 error => {
                     this.loadingStatus.setError(error.text());
                 });
+        this._charsService.getDeletedList(this._routeParams.get("account"))
+            .subscribe(
+                list => {
+                    this.deletedChars = list;
+                    this.loadingStatusDeleted.setSuccess();
+                },
+                error => {
+                    this.loadingStatusDeleted.setError(error.text());
+                });
 
     }
 
-    gotoHeroDetails(character) {
-        if (!character.deleted) {
+    gotoHeroDetails(character, deleted: boolean) {
+        if (!deleted) {
             this._router.navigate(["CharDetails", {
                 account: this._routeParams.get("account"),
                 char: character.bicFileName
@@ -46,6 +54,7 @@ export class CharListComponent implements OnInit {
     }
 
     public loadingStatus: LoadingStatus = new LoadingStatus();
+    public loadingStatusDeleted: LoadingStatus = new LoadingStatus();
     public activeChars: any[];
     public deletedChars: any[];
 }

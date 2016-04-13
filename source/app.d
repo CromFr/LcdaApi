@@ -3,7 +3,7 @@ import mysql;
 import std.stdio;
 import resourcemanager;
 import nwn2.tlk;
-import api;
+import api.api;
 import config;
 
 int main(string[] args){

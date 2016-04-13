@@ -7,8 +7,13 @@ import {Observable}     from "rxjs/Observable";
 export class CharsService {
     constructor (private http: Http) {}
 
-    getLists(account: string) {
-        return this.http.get("/api/" + account + "/characters/list")
+    getActiveList(account: string) {
+        return this.http.get("/api/" + account + "/characters/")
+                   .map(res => <any> res.json())
+                   .catch(this.handleError);
+    }
+    getDeletedList(account: string) {
+        return this.http.get("/api/" + account + "/characters/deleted/")
                    .map(res => <any> res.json())
                    .catch(this.handleError);
     }
