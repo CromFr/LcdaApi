@@ -15,7 +15,7 @@
 			<ul class="right">
 				<li *ngIf="session.authenticated" class="flow-text">{{session.account}}</li>
 				<li>
-					<a *ngIf="!session.authenticated" id="modal-login-button" class="btn waves-effect waves-light modal-trigger" data-target="modal-login" materialize="leanModal">
+					<a *ngIf="!session.authenticated" id="modal-login-button" class="btn waves-effect waves-light modal-trigger" data-target="modal-login">
 						Connexion
 					</a>
 					<a *ngIf="session.authenticated" (click)="logout()">

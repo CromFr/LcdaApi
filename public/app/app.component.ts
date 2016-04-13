@@ -1,4 +1,4 @@
-import {Component, OnInit, AfterViewInit} from "angular2/core";
+import {Component, OnInit, AfterViewChecked} from "angular2/core";
 import {Router, RouteConfig, ROUTER_DIRECTIVES, ROUTER_PROVIDERS} from "angular2/router";
 import {HTTP_PROVIDERS}    from "angular2/http";
 
@@ -9,6 +9,13 @@ import {HomeComponent} from "./home.component";
 import {NewAccountComponent} from "./newaccount.component";
 
 declare var $: any;
+function materializeInit(selector: string, callback) {
+    let elmt = $(selector);
+    if (elmt.attr("materialize-init") === undefined) {
+        elmt.attr("materialize-init", "");
+        callback(elmt);
+    }
+}
 
 @Component({
     selector:    "app",
@@ -26,7 +33,7 @@ declare var $: any;
   {path: "/:account/characters/:char", name: "CharDetails", component: CharDetailsComponent},
   {path: "/:account/characters/deleted/:char", name: "DeletedCharDetails", component: CharDetailsComponent, data: {deleted: true}},
 ])
-export class AppComponent implements OnInit, AfterViewInit {
+export class AppComponent implements OnInit, AfterViewChecked {
     constructor(private _credService: CredentialsService, private _router: Router) {}
 
     ngOnInit() {
@@ -45,15 +52,10 @@ export class AppComponent implements OnInit, AfterViewInit {
         account: "INVALID"
     };
 
-    private materializeInit: boolean = false;
-    ngAfterViewInit() {
-        if (!this.materializeInit) {
-            this.materializeInit = true;
-            $("#modal-login-button").leanModal();
-            $("#sidebar-button").sideNav();
-        }
+    ngAfterViewChecked() {
+        materializeInit("#modal-login-button", elmt => elmt.leanModal());
+        materializeInit("#sidebar-button", elmt => elmt.sideNav());
     }
-
 
     private loginForm = {
         login: "",
@@ -70,8 +72,7 @@ export class AppComponent implements OnInit, AfterViewInit {
                     $("#modal-login").closeModal();
                     this.loginErrorMsg = "";
 
-                    //Refresh
-                    window.location.replace(window.location.href);
+                    this._router.commit(this._router.currentInstruction, true);
                 },
                 error => {
                     console.error("submitLoginForm() error: ", <any>error);
