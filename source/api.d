@@ -192,6 +192,7 @@ class Api{
 	}
 	void postLogout(){
 		terminateSession();
+		enforceHTTP(false, HTTPStatus.ok);
 	}
 
 
