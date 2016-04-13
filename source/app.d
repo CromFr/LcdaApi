@@ -10,6 +10,8 @@ int main(string[] args){
 	import std.getopt : getopt, defaultGetoptPrinter;
 	import std.file : readText;
 	import std.path : buildNormalizedPath;
+	import std.algorithm : map;
+	import std.array : array;
 
 	string cfgFile = "config.json";
 	auto res = getopt(args,

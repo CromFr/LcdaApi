@@ -1,10 +1,10 @@
 import vibe.d;
 debug import std.stdio : writeln;
 import mysql : MySQLClient, MySQLRow;
+import std.typecons : Tuple;
 
 import nwn2.character;
 import config;
-
 
 
 
@@ -21,13 +21,13 @@ import config;
 ///
 @path("/api")
 class Api{
+	import vibe.web.common : PathAttribute;
+
 	this(){
 		import resourcemanager : ResourceManager;
 		cfg = ResourceManager.get!Config("cfg");
 		mysqlConnection = ResourceManager.getMut!MySQLClient("sql").lockConnection();
 	}
-
-	mixin(implementJsonIface!Api);
 
 	@path("/:account/characters/:char/download")
 	auto getCharacterDownload(string _account, string _char, HTTPServerRequest req, HTTPServerResponse res){
@@ -42,12 +42,8 @@ class Api{
 		return serveStaticFile(charFile)(req, res);
 	}
 
-
-package:
-	alias CharList = Tuple!(Character[],"active",Character[],"deleted");
-
 	@path("/:account/characters/list")
-	CharList _getCharList(string _account){
+	Json getCharList(string _account){
 		enforceHTTP(authenticated, HTTPStatus.unauthorized);
 		enforceHTTP(admin || _account==account, HTTPStatus.forbidden);
 
@@ -55,7 +51,10 @@ package:
 
 		import std.file : DirEntry, dirEntries, SpanMode, exists, isDir;
 		import std.path : buildNormalizedPath;
-		import std.algorithm : sort;
+		import std.algorithm : sort, map;
+		import std.array : array;
+
+		alias CharList = Tuple!(Character[],"active",Character[],"deleted");
 
 		auto activeVault = DirEntry(buildNormalizedPath(
 				cfg.paths.servervault.to!string,
@@ -82,26 +81,26 @@ package:
 					.array;
 		}
 
-		return CharList(activeChars, deletedChars);
+		return CharList(activeChars, deletedChars).serializeToJson;
 	}
 	@path("/:account/characters/:char")
-	Character _getActiveCharInfo(string _account, string _char){
+	Json getActiveCharInfo(string _account, string _char){
 		enforceHTTP(authenticated, HTTPStatus.unauthorized);
 		enforceHTTP(admin || _account==account, HTTPStatus.forbidden);
-		return getCharInfo(_account, _char);
+		return getCharInfo(_account, _char).serializeToJson;
 	}
 	@path("/:account/characters/deleted/:char")
-	Character _getDeletedCharInfo(string _account, string _char){
+	Json getDeletedCharInfo(string _account, string _char){
 		enforceHTTP(authenticated, HTTPStatus.unauthorized);
 		enforceHTTP(admin || _account==account, HTTPStatus.forbidden);
-		return getCharInfo(_account, _char, true);
+		return getCharInfo(_account, _char, true).serializeToJson;
 	}
 
 	//Moves the character to the deleted vault
 	// The new file name will be oldName~"-"~index~".bic" with index starting from 0
 	//Returns the new bic file name
 	@path("/:account/characters/:char/delete")
-	Json _postDeleteChar(string _account, string _char){
+	Json postDeleteChar(string _account, string _char){
 		enforceHTTP(authenticated, HTTPStatus.unauthorized);
 		enforceHTTP(admin || _account==account, HTTPStatus.forbidden);
 
@@ -131,7 +130,7 @@ package:
 	}
 
 	@path("/:account/characters/deleted/:char/activate")
-	Json _postActivateChar(string _account, string _char){
+	Json postActivateChar(string _account, string _char){
 		enforceHTTP(authenticated, HTTPStatus.unauthorized);
 		enforceHTTP(admin || _account==account, HTTPStatus.forbidden);
 
@@ -156,7 +155,7 @@ package:
 		return Json(["newBicFile": Json(baseName(target, ".bic"))]);
 	}
 
-	Json _postLogin(string login, string password){
+	Json postLogin(string login, string password){
 		import sql : replacePlaceholders, Placeholder;
 		import resourcemanager : ResourceManager;
 
@@ -178,26 +177,26 @@ package:
 		account = login;
 		admin = isAdmin;
 
-		return _getSession();
+		return getSession();
 	}
-	Json _getSession(){
+	Json getSession(){
 		import std.traits : hasUDA;
 
 		auto ret = Json.emptyObject;
 		foreach(member ; __traits(allMembers, Api)){
-			static if(hasUDA!(mixin("Api."~member), session)){
+			static if(hasUDA!(mixin("Api."~member), "session")){
 				ret[member] = mixin(member~".value");
 			}
 		}
 		return ret;
 	}
-	void _postLogout(){
+	void postLogout(){
 		terminateSession();
 	}
 
+
 private:
-	enum session;
-	@session{
+	@("session"){
 		SessionVar!(bool, "authenticated") authenticated;
 		SessionVar!(bool, "admin") admin;
 		SessionVar!(string, "account") account;
@@ -244,81 +243,4 @@ private:
 	}
 
 
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-private string implementJsonIface(API)(){
-	import std.traits;
-	import std.meta : AliasSeq;
-	import std.string : format;
-	string ret;
-
-	foreach(member ; __traits(allMembers, API)){
-		static if(__traits(getProtection, mixin("API."~member))=="package"
-			&& isCallable!(mixin("API."~member))
-			&& member[0]=='_'){
-
-			enum attributes = __traits(getFunctionAttributes, mixin("API."~member));
-			alias UDAs = AliasSeq!(__traits(getAttributes, mixin("API."~member)));
-			alias ParamNames = ParameterIdentifierTuple!(mixin("API."~member));
-			alias ParamTypes = Parameters!(mixin("API."~member));
-			alias Return = ReturnType!(mixin("API."~member));
-
-			enum paramTypes = ParamTypes.stringof[1..$-1].split(", ");
-
-			//UDAs
-			foreach(uda ; UDAs)
-				ret ~= "@"~uda.stringof~" ";
-			ret ~= "\n";
-			//Return type
-			static if(is(Return==void))
-				ret ~= "void ";
-			else
-				ret ~= "Json ";
-			//Name
-			ret ~= member[1..$];
-			//Parameters
-			ret ~= "(";
-			static if(ParamNames.length>0){
-				foreach(i, name ; ParamNames){
-					static if(i>0) ret ~= ", ";
-					ret ~= paramTypes[i]~" "~name;
-				}
-			}
-			ret ~= ") ";
-			//Function attributes
-			ret ~= [attributes].join(" ")~"{\n";
-			//Body
-			ret ~= "\t";
-			static if(!is(Return==void))
-				ret ~= "return ";
-			ret ~= "this."~member~"(";
-
-			static if(ParamNames.length>0)
-				ret ~= [ParamNames].join(", ");
-			ret ~= ")";
-			//Body - Serialization
-			static if(!is(Return==void) && !is(Return==Json))
-				ret ~= ".serializeToJson()";
-			ret ~= ";\n";
-			static if(is(Return==void))
-				ret ~= "\tenforceHTTP(false, HTTPStatus.ok);\n";//TODO: There must be a better way
-			//end
-			ret ~= "}\n";
-		}
-
-	}
-	return ret;
 }
