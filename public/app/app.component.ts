@@ -6,6 +6,7 @@ import {CredentialsService, Session} from "./credentials.service";
 import {CharListComponent} from "./chars/list.component";
 import {CharDetailsComponent} from "./chars/details.component";
 import {HomeComponent} from "./home.component";
+import {NewAccountComponent} from "./newaccount.component";
 
 declare var $: any;
 
@@ -20,6 +21,7 @@ declare var $: any;
 })
 @RouteConfig([
   {path: "/",                          name: "Home",        component: HomeComponent, useAsDefault: true},
+  {path: "/newaccount",                name: "NewAccount",  component: NewAccountComponent},
   {path: "/:account/characters",       name: "CharList",    component: CharListComponent},
   {path: "/:account/characters/:char", name: "CharDetails", component: CharDetailsComponent},
   {path: "/:account/characters/deleted/:char", name: "DeletedCharDetails", component: CharDetailsComponent, data: {deleted: true}},

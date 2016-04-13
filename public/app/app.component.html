@@ -36,13 +36,13 @@
 	</li>
 	<li *ngIf="session.authenticated"><hr></li>
 	<li>
-		<a href="#" class="activable">
+		<a [routerLink]="['NewAccount']" class="activable">
 			<i class="material-icons left" style="line-height: 64px;">add_circle_outline</i>
 			Nouveau compte
 		</a>
 	</li>
 	<li>
-		<a href="#" class="activable">
+		<a href="http://lacoleredaurile.xooit.fr/" class="activable">
 			<i class="material-icons left" style="line-height: 64px;">forum</i>
 			Forum
 		</a>

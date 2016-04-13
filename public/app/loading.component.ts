@@ -48,9 +48,7 @@ export class LoadingStatus {
                 </div>
             </div>
         </div>
-    `,
-    directives:  [],
-    providers:   []
+    `
 })
 export class LoadingComponent {
     @Input() public status: LoadingStatus;
