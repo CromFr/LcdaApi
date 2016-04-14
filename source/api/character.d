@@ -17,12 +17,9 @@ class CharApi{
 		enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
 		enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
 
-		//TODO: what if _account="../../secureThing" ?
-
 		//TODO cache list in a session var, invalidate cache on new file
 
-		import std.file : DirEntry, dirEntries, SpanMode;
-		import std.path : buildNormalizedPath;
+		import std.file : dirEntries, SpanMode;
 		import std.algorithm : sort, map;
 		import std.array : array;
 
@@ -40,8 +37,7 @@ class CharApi{
 		enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
 		enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
 
-		import std.file : DirEntry, dirEntries, SpanMode, exists, isDir;
-		import std.path : buildNormalizedPath;
+		import std.file : dirEntries, SpanMode, exists, isDir;
 		import std.algorithm : sort, map;
 		import std.array : array;
 
@@ -171,26 +167,21 @@ private:
 
 	Character getChar(in string account, in string bicName, bool deleted=false){
 		import std.file : DirEntry, exists, isFile;
-		import std.path : buildNormalizedPath;
 
-		immutable path = buildNormalizedPath(
-			api.cfg.paths.servervault.to!string,
-			account,
-			deleted? api.cfg.paths.servervault_deleted.to!string : "",
-			bicName~".bic");
-
+		immutable path = getCharFile(account, bicName, deleted);
 		enforceHTTP(path.exists && path.isFile, HTTPStatus.notFound, "Character '"~bicName~"' not found");
-
 		return new Character(DirEntry(path));
 	}
 
 	auto ref getVaultPath(in string accountName){
-		import std.path : buildNormalizedPath;
+		import std.path : buildNormalizedPath, baseName;
+		assert(accountName.baseName == accountName, "account name should not be a path");
 		return buildNormalizedPath(api.cfg.paths.servervault.to!string, accountName);
 	}
 
 	auto ref getDeletedVaultPath(in string accountName){
-		import std.path : buildNormalizedPath, isAbsolute;
+		import std.path : buildNormalizedPath, baseName, isAbsolute;
+		assert(accountName.baseName == accountName, "account name should not be a path");
 
 		immutable deletedVault = api.cfg.paths.servervault_deleted.to!string;
 		if(deletedVault.isAbsolute)
@@ -200,7 +191,10 @@ private:
 	}
 
 	auto ref getCharFile(in string accountName, in string bicFile, bool deleted=false){
-		import std.path : buildNormalizedPath;
+		import std.path : buildNormalizedPath, baseName;
+		assert(accountName.baseName == accountName, "account name should not be a path");
+		assert(bicFile.baseName == bicFile, "bic file name should not be a path");
+
 		if(deleted)
 			return buildNormalizedPath(getDeletedVaultPath(accountName), bicFile~".bic");
 		return buildNormalizedPath(api.cfg.paths.servervault.to!string, accountName, bicFile~".bic");

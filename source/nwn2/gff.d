@@ -251,7 +251,6 @@ private:
 
 					ret.exoLocStringContainer[*id] = str[0..*length].to!string;
 
-					//TODO: Does it really works like this?
 					sub_str += 2*uint32_t.sizeof + char.sizeof*(*length);
 				}
 				break;
