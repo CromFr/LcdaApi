@@ -7,6 +7,7 @@ import {CharListComponent} from "./chars/list.component";
 import {CharDetailsComponent} from "./chars/details.component";
 import {HomeComponent} from "./home.component";
 import {NewAccountComponent} from "./newaccount.component";
+import {AccountComponent} from "./account/account.component";
 
 declare var $: any;
 function materializeInit(selector: string, callback) {
@@ -29,6 +30,7 @@ function materializeInit(selector: string, callback) {
 @RouteConfig([
   {path: "/",                          name: "Home",        component: HomeComponent, useAsDefault: true},
   {path: "/newaccount",                name: "NewAccount",  component: NewAccountComponent},
+  {path: "/:account/account",          name: "Account",     component: AccountComponent},
   {path: "/:account/characters",       name: "CharList",    component: CharListComponent},
   {path: "/:account/characters/:char", name: "CharDetails", component: CharDetailsComponent},
   {path: "/:account/characters/deleted/:char", name: "DeletedCharDetails", component: CharDetailsComponent, data: {deleted: true}},

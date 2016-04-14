@@ -53,6 +53,11 @@
 		//Query executed when the player reactivates a deleted
 		// TODO: add placeholders
 		"on_activate": "",
+
+		// Placeholders:
+		//  - $ACCOUNT: player account name
+		//  - $NEW_PASSWORD: player new unhashed password
+		"set_password": "UPDATE accounts SET password='$NEW_PASSWORD' WHERE name='$ACCOUNT'",
 	},
 
 

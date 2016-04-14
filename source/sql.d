@@ -1,6 +1,7 @@
 module sql;
 
 import std.typecons;
+public import mysql: MySQLRow;
 
 //TODO: T is not infered
 alias Placeholder(T) = Tuple!(string, T);

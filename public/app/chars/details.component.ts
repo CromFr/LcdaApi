@@ -7,7 +7,6 @@ import {LoadingComponent, LoadingStatus}   from "../loading.component";
 
 
 @Component({
-    selector:    "chardetails",
     templateUrl: "app/chars/details.component.html",
     directives:  [LoadingComponent],
     providers:   [HTTP_PROVIDERS, CharsService]

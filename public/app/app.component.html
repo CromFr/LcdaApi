@@ -34,6 +34,12 @@
 			Personnages
 		</a>
 	</li>
+	<li *ngIf="session.authenticated">
+		<a [routerLink]="['Account',{account: session.account}]" class="activable">
+			<i class="material-icons left" style="line-height: 64px;">settings</i>
+			Mon compte
+		</a>
+	</li>
 	<li *ngIf="session.authenticated"><hr></li>
 	<li>
 		<a [routerLink]="['NewAccount']" class="activable">
@@ -55,7 +61,7 @@
 			<div class="input-field">
 				<div class="material-icons prefix">account_circle</div>
 				<input type="text" class="validate" id="login" name="login" [(ngModel)]="loginForm.login">
-				<label for="login">Compte {{loginForm.name}}</label>
+				<label for="login">Compte LCDA</label>
 			</div>
 			<div class="input-field">
 				<div class="material-icons prefix">lock</div>

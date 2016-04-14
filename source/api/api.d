@@ -2,45 +2,39 @@ module api.api;
 
 import vibe.d;
 debug import std.stdio : writeln;
-import mysql : MySQLClient, MySQLRow;
+import mysql : MySQLClient;
 
 import nwn2.character;
 import config;
 
 
-
-
-/// Json API
-///    /login login password
-///    /logout
-///    /:account/characters/list
-///    /:account/characters/:char/
-///    /:account/characters/:char/delete
-///    /:account/characters/:char/download
-///    /:account/characters/deleted/:char/
-///    /:account/characters/deleted/:char/activate
-///    /:account/characters/deleted/:char/download
-///
 @path("/api")
 class Api{
 	import vibe.web.common : PathAttribute;
+	import api.character : CharApi;
+	import api.account : AccountApi;
 
 	this(){
 		import resourcemanager : ResourceManager;
 		cfg = ResourceManager.get!Config("cfg");
 		mysqlConnection = ResourceManager.getMut!MySQLClient("sql").lockConnection();
+
+		charApi = new CharApi(this);
+		accountApi = new AccountApi(this);
 	}
 
-	import api.character : CharApi;
 	@path("/:account/characters/")
-	CharApi getCharApi(){
-		return new CharApi(this);
+	auto forwardCharApi(){
+		return charApi;
 	}
 
+	@path("/:account/account/")
+	auto forwardAccountApi(){
+		return accountApi;
+	}
 
 	Json postLogin(string login, string password){
-		import sql : replacePlaceholders, Placeholder;
-		import resourcemanager : ResourceManager;
+		import sql: replacePlaceholders, Placeholder, MySQLRow;
 
 		immutable query = cfg.sql_queries.login.to!string
 			.replacePlaceholders(
@@ -89,6 +83,8 @@ package:
 	MySQLClient.LockedConnection mysqlConnection;
 
 private:
+	CharApi charApi;
+	AccountApi accountApi;
 
 
 }

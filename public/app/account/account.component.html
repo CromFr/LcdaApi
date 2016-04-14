@@ -1,0 +1,36 @@
+<loading [status]="loadingStatus"></loading>
+<div *ngIf="loadingStatus.isOk()">
+
+	<h1 class="center">{{_routeParams.get("account").replace("%20"," ")}}</h1>
+
+	<hr>
+
+	<h4>Changer le mot de passe</h4>
+	<form class="container" (ngSubmit)="changePassword()">
+		<div class="input-field">
+			<div class="material-icons prefix">lock_open</div>
+			<input id="password-old" type="password" class="validate" [(ngModel)]="changePasswordForm.oldPassword">
+			<label for="password-old">Ancien mot de passe</label>
+		</div>
+		<div class="input-field">
+			<div class="material-icons prefix">lock</div>
+			<input id="password-new" type="password" class="validate" [(ngModel)]="changePasswordForm.newPassword">
+			<label for="password-new">Nouveau mot de passe</label>
+		</div>
+		<div class="input-field">
+			<div class="material-icons prefix">check</div>
+			<input id="password-check" type="password" [ngClass]="{
+					valid:   (changePasswordForm.newPasswordCheck!='' && changePasswordForm.newPassword===changePasswordForm.newPasswordCheck),
+					invalid: (changePasswordForm.newPasswordCheck!='' && changePasswordForm.newPassword!==changePasswordForm.newPasswordCheck)
+				}" [(ngModel)]="changePasswordForm.newPasswordCheck">
+			<label for="password-check">Nouveau mot de passe (vérification)</label>
+		</div>
+		<div class="input-field">
+			<input type="submit" class="btn waves-effect waves-light" [ngClass]="{
+					disabled:   (changePasswordForm.oldPassword=='' || changePasswordForm.newPasswordCheck=='' || changePasswordForm.newPassword!==changePasswordForm.newPasswordCheck)
+				}" value="Changer">
+			<span class="red-text right">{{changePasswordErrorMsg}}</span>
+			<span class="green-text right">{{changePasswordMsg}}</span>
+		</div>
+	</form>
+</div>

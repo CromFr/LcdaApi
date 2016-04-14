@@ -8,7 +8,6 @@ import {LoadingComponent, LoadingStatus}   from "../loading.component";
 
 
 @Component({
-    selector:    "charlist",
     templateUrl: "app/chars/list.component.html",
     directives:  [LoadingComponent, CharDetailsComponent], // components used by this one
     providers:   [HTTP_PROVIDERS, CharsService]
