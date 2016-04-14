@@ -8,7 +8,6 @@ import nwn2.character;
 import config;
 
 
-@path("/api")
 class Api{
 	import vibe.web.common : PathAttribute;
 	import api.character : CharApi;
