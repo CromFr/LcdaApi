@@ -14,8 +14,8 @@ export class AccountService {
     }
 
     changePassword(account: string, oldPassword: string, newPassword: string) {
-        let body = "oldPassword=" + oldPassword + "&newPassword=" + newPassword; // TODO: escape characters
         let headers = new Headers({ "Content-Type": "application/x-www-form-urlencoded" });
+        let body = "oldPassword=" + encodeURIComponent(oldPassword) + "&newPassword=" + encodeURIComponent(newPassword);
         let options = new RequestOptions({ headers: headers });
 
         return this.http.post("/api/" + account + "/account/password", body, options)

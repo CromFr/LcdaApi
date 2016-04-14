@@ -13,10 +13,8 @@ export class CredentialsService {
     constructor (private http: Http) {}
 
     login(login: string, password: string) {
-        let body = "login=" + login + "&password=" + password; // TODO: escape characters
         let headers = new Headers({ "Content-Type": "application/x-www-form-urlencoded" });
-        // let body = JSON.stringify({ login, password });
-        // let headers = new Headers({ "Content-Type": "application/json" });
+        let body = "login=" + encodeURIComponent(login) + "&password=" + encodeURIComponent(password);
         let options = new RequestOptions({ headers: headers });
 
         return this.http.post("/api/login", body, options)
@@ -37,7 +35,6 @@ export class CredentialsService {
 
 
     private handleError (error: Response) {
-        // console.error("======>", error;
         return Observable.throw(error || "Server error");
     }
 }
