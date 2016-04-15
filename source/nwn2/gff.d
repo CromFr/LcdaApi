@@ -224,15 +224,14 @@ private:
 				auto size = cast(uint32_t*)data;
 				auto chars = cast(char*)(data+uint32_t.sizeof);
 
-				//TODO: is ~'\0' useful since D knows chars length with chars[0..*size]
-				ret.stringContainer = (chars[0..*size]~'\0').to!string;
+				ret.stringContainer = (chars[0..*size]).to!string;
 				break;
 			case ResRef:
 				void* data = getFieldData(rawData, f.data_or_data_offset);
 				auto size = cast(uint8_t*)data;
 				auto chars = cast(char*)(data+uint8_t.sizeof);
 
-				ret.stringContainer = (chars[0..*size]~'\0').to!string;
+				ret.stringContainer = (chars[0..*size]).to!string;
 				break;
 
 			case ExoLocString:
