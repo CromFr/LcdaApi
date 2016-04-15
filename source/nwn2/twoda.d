@@ -36,14 +36,14 @@ class TwoDA{
 	}
 
 	const auto ref get(T)(in string colName, in int line){
-		ulong index = ulong.max;
+		size_t index = size_t.max;
 		foreach(i, cn ; header){
 			if(cn==colName){
 				index = i;
 				break;
 			}
 		}
-		if(index!=ulong.max)
+		if(index!=size_t.max)
 			return values[line][index].to!T;
 		else
 			throw new Exception("Column '"~colName~"' not found");
