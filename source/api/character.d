@@ -113,7 +113,8 @@ class CharApi{
 			target = buildPath(deletedVault, _char~"-"~(index++).to!string~".bic");
 		}while(target.exists);
 
-		api.mysqlConnection.execute(api.cfg.sql_queries.on_delete.to!string);
+		if(auto query = api.cfg.sql_queries.on_delete.to!string)
+			api.mysqlConnection.execute(query);
 
 		debug{
 			import std.stdio : writeln;
@@ -142,7 +143,8 @@ class CharApi{
 		immutable target = buildPath(accountVault, newName~".bic");
 		enforceHTTP(!target.exists, HTTPStatus.conflict, "An active character has the same name.");
 
-		api.mysqlConnection.execute(api.cfg.sql_queries.on_activate.to!string);
+		if(auto query = api.cfg.sql_queries.on_activate.to!string)
+			api.mysqlConnection.execute(query);
 
 		debug{
 			import std.stdio : writeln;
