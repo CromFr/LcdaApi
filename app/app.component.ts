@@ -1,14 +1,12 @@
 import {Component, OnInit, AfterViewChecked} from "angular2/core";
 import {Router, RouteConfig, ROUTER_DIRECTIVES, ROUTER_PROVIDERS} from "angular2/router";
 import {HTTP_PROVIDERS}    from "angular2/http";
-
 import {CredentialsService, Session} from "./credentials.service";
 import {CharListComponent} from "./chars/list.component";
 import {CharDetailsComponent} from "./chars/details.component";
 import {HomeComponent} from "./home.component";
 import {NewAccountComponent} from "./newaccount.component";
 import {AccountComponent} from "./account/account.component";
-
 declare var $: any;
 function materializeInit(selector: string, callback) {
     let elmt = $(selector);
@@ -17,7 +15,6 @@ function materializeInit(selector: string, callback) {
         callback(elmt);
     }
 }
-
 @Component({
     selector:    "app",
     directives:  [ROUTER_DIRECTIVES],
@@ -37,7 +34,6 @@ function materializeInit(selector: string, callback) {
 ])
 export class AppComponent implements OnInit, AfterViewChecked {
     constructor(private _credService: CredentialsService, private _router: Router) {}
-
     ngOnInit() {
         this._credService.getSession()
             .subscribe(
@@ -53,12 +49,10 @@ export class AppComponent implements OnInit, AfterViewChecked {
         admin: false,
         account: "INVALID"
     };
-
     ngAfterViewChecked() {
         materializeInit("#modal-login-button", elmt => elmt.leanModal());
         materializeInit("#sidebar-button", elmt => elmt.sideNav());
     }
-
     private loginForm = {
         login: "",
         password: ""
@@ -73,7 +67,6 @@ export class AppComponent implements OnInit, AfterViewChecked {
                     this.session = session;
                     $("#modal-login").closeModal();
                     this.loginErrorMsg = "";
-
                     this._router.commit(this._router.currentInstruction, true);
                 },
                 error => {
@@ -82,10 +75,8 @@ export class AppComponent implements OnInit, AfterViewChecked {
                         this.loginErrorMsg = "Compte inconnu / Mauvais mot de passe";
                     else
                         this.loginErrorMsg = "Erreur inconnue";
-
                 });
     }
-
     logout() {
         this._credService.logout()
             .subscribe(
@@ -95,7 +86,6 @@ export class AppComponent implements OnInit, AfterViewChecked {
                         admin: false,
                         account: "INVALID"
                     };
-
                     this._router.root.navigate(["Home"]);
                 },
                 error => console.error("logout() error: ", <any>error));
