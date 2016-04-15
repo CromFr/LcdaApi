@@ -12,6 +12,7 @@
 	"exclude": [
 		"node_modules",
 		"public/node_modules",
+		"dist/",
 		"typings/main",
 		"typings/main.d.ts"
 	]

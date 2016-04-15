@@ -18,4 +18,5 @@ LcdaAccountManager.sublime-workspace
 
 #Misc
 config.json
+dist/
 
