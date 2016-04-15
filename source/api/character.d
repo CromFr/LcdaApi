@@ -2,6 +2,7 @@ module api.character;
 
 import vibe.d;
 import mysql : MySQLClient, MySQLRow;
+debug import std.stdio: writeln;
 
 import nwn2.character;
 import api.api;
@@ -12,18 +13,50 @@ class CharApi{
 
 	}
 
+	//Should be private
+	class CharListCache{
+		ulong hash;
+		Json data;
+	}
+
 	@path("/")
 	Json getCharList(string _account){
 		enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
 		enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
 
-		//TODO cache list in a session var, invalidate cache on new file
+		import std.file: dirEntries, SpanMode, getTimes;
+		import std.algorithm: sort, map;
+		import std.array: array;
+		import resourcemanager: ResourceManager, ResourceException;
 
-		import std.file : dirEntries, SpanMode;
-		import std.algorithm : sort, map;
-		import std.array : array;
+		immutable vaultPath = getVaultPath(_account);
 
-		return getVaultPath(_account)
+		//TODO: implement a class for resource caching
+		CharListCache cache;
+		auto hash = vaultPath
+			.dirEntries("*.bic", SpanMode.shallow)
+			.map!((file){
+				import std.conv: to;
+				SysTime acc, mod;
+				file.getTimes(acc, mod);
+				return file.name~"="~acc.to!string;
+			})
+			.join(":")
+			.hashOf;
+
+		try{
+			cache = ResourceManager.getMut!CharListCache("cache/"~_account);
+			if(hash == cache.hash){
+				return cache.data;
+			}
+		}
+		catch(ResourceException){
+			cache = new CharListCache;
+			ResourceManager.store("cache/"~_account, cache);
+		}
+
+		cache.hash = hash;
+		cache.data = vaultPath
 			.dirEntries("*.bic", SpanMode.shallow)
 			.map!(a => new Character(a))
 			.map!(a => LightCharacter(a.name,a.race,a.lvl,a.classes,a.bicFileName))
@@ -31,20 +64,48 @@ class CharApi{
 			.sort!"a.name<b.name"
 			.array
 			.serializeToJson;
+
+		return cache.data;
 	}
 	@path("/deleted/")
 	Json getDeletedCharList(string _account){
 		enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
 		enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
 
-		import std.file : dirEntries, SpanMode, exists, isDir;
+		import std.file : dirEntries, SpanMode, exists, isDir, getTimes;
 		import std.algorithm : sort, map;
 		import std.array : array;
+		import resourcemanager : ResourceManager, ResourceException;
 
-		auto deletedVaultPath = getDeletedVaultPath(_account);
+		immutable deletedVaultPath = getDeletedVaultPath(_account);
+
+		CharListCache cache;
+		auto hash = deletedVaultPath
+			.dirEntries("*.bic", SpanMode.shallow)
+			.map!((file){
+				import std.conv: to;
+				SysTime acc, mod;
+				file.getTimes(acc, mod);
+				return file.name~"="~acc.to!string;
+			})
+			.join(":")
+			.hashOf;
+
+		try{
+			cache = ResourceManager.getMut!CharListCache("cache/"~_account~"/deleted");
+			if(hash == cache.hash){
+				return cache.data;
+			}
+		}
+		catch(ResourceException){
+			cache = new CharListCache;
+			ResourceManager.store("cache/"~_account~"/deleted", cache);
+		}
+
 
 		if(deletedVaultPath.exists && deletedVaultPath.isDir){
-			return deletedVaultPath
+			cache.hash = hash;
+			cache.data = deletedVaultPath
 				.dirEntries("*.bic", SpanMode.shallow)
 				.map!(a => new Character(a))
 				.map!(a => LightCharacter(a.name,a.race,a.lvl,a.classes,a.bicFileName))
@@ -52,6 +113,8 @@ class CharApi{
 				.sort!"a.name<b.name"
 				.array
 				.serializeToJson;
+
+			return cache.data;
 		}
 		return Json.emptyArray;
 	}
@@ -155,7 +218,7 @@ class CharApi{
 		return Json(["newBicFile": Json(baseName(target, ".bic"))]);
 	}
 
-
+	//Should be private
 	struct LightCharacter{
 		string name;
 		string race;
@@ -163,6 +226,7 @@ class CharApi{
 		Character.Class[] classes;
 		string bicFileName;
 	}
+
 
 private:
 	Api api;
