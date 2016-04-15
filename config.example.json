@@ -47,11 +47,15 @@
 		"login": "SELECT password='$PASSWORD' as success, is_admin as admin FROM accounts WHERE name='$ACCOUNT'",
 
 		//Query executed when the player deletes a character
-		// TODO: add placeholders
+		//Keep empty for no sql execution
+		//  - $ACCOUNT: player account name
+		//  - $CHAR: character name
 		"on_delete": "",
 
 		//Query executed when the player reactivates a deleted
-		// TODO: add placeholders
+		//Keep empty for no sql execution
+		//  - $ACCOUNT: player account name
+		//  - $CHAR: character name
 		"on_activate": "",
 
 		// Placeholders:
