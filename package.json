@@ -5,7 +5,7 @@
     "tsc": "tsc",
     "tsc:w": "tsc -w",
     "typings": "typings",
-    "postinstall": "typings install"
+    "typingsinstall": "typings install"
   },
   "license": "ISC",
   "dependencies": {

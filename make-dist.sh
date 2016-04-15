@@ -2,8 +2,8 @@
 
 set -e
 
-if [ -e dist/ ]; then
-	rm -rf dist
+if [ -d dist/ ]; then
+	rm -rf dist/*
 fi
 install -d dist/ dist/public/
 
@@ -16,7 +16,7 @@ npm run tsc
 FILES=`find public/ -regextype posix-extended -regex ".*\.(js|css|html)"`
 for FILE in $FILES; do
 	install -d dist/`dirname $FILE`
-	install $FILE dist/$FILE
+	install -m 644 $FILE dist/$FILE
 done
 npm install --prefix dist/public/ --no-optional --only=prod .
 
@@ -30,4 +30,4 @@ else
 fi
 
 #CONFIG
-install config.example.json dist/
+install -m 644 config.example.json dist/
