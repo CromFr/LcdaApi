@@ -7,7 +7,7 @@
 
 	<h4>Changer le mot de passe</h4>
 	<form class="container" (ngSubmit)="changePassword()">
-		<div class="input-field">
+		<div ngIf="!_router.root.hostComponent.session.admin" class="input-field">
 			<div class="material-icons prefix">lock_open</div>
 			<input id="password-old" type="password" class="validate" [(ngModel)]="changePasswordForm.oldPassword">
 			<label for="password-old">Ancien mot de passe</label>
@@ -27,7 +27,7 @@
 		</div>
 		<div class="input-field">
 			<input type="submit" class="btn waves-effect waves-light" [ngClass]="{
-					disabled:   (changePasswordForm.oldPassword=='' || changePasswordForm.newPasswordCheck=='' || changePasswordForm.newPassword!==changePasswordForm.newPasswordCheck)
+					disabled:   ((changePasswordForm.oldPassword=='' && !_router.root.hostComponent.session.admin) || changePasswordForm.newPasswordCheck=='' || changePasswordForm.newPassword!==changePasswordForm.newPasswordCheck)
 				}" value="Changer">
 			<span class="red-text right">{{changePasswordErrorMsg}}</span>
 			<span class="green-text right">{{changePasswordMsg}}</span>
