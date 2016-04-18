@@ -3,6 +3,9 @@ exports.config =
     enabled: true
     styles:
       'materialize-css': ['bin/materialize.css']
+    globals:
+      jQuery: "jquery"
+      Hammer: "hammerjs/hammer"
   files:
     javascripts:
       joinTo:
@@ -18,5 +21,4 @@ exports.config =
 
   plugins:
     copyfilemon:
-      font: ["node_modules/materialize-css/dist/font"]
       fonts: ["node_modules/materialize-css/dist/fonts"]

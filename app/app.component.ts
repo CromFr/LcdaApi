@@ -1,4 +1,4 @@
-import {Component, OnInit, AfterViewChecked} from "angular2/core";
+import {Component, OnInit} from "angular2/core";
 import {Router, RouteConfig, ROUTER_DIRECTIVES, ROUTER_PROVIDERS} from "angular2/router";
 import {HTTP_PROVIDERS}    from "angular2/http";
 import {CredentialsService, Session} from "./credentials.service";
@@ -8,17 +8,11 @@ import {HomeComponent} from "./home.component";
 import {NewAccountComponent} from "./newaccount.component";
 import {AccountComponent} from "./account/account.component";
 
-// declare var $: any;
-function materializeInit(selector: string, callback) {
-    // let elmt = $(selector);
-    // if (elmt.attr("materialize-init") === undefined) {
-    //     elmt.attr("materialize-init", "");
-    //     callback(elmt);
-    // }
-}
+import {MaterializeDirective} from "angular2-materialize";
+
 @Component({
     selector:    "app",
-    directives:  [ROUTER_DIRECTIVES],
+    directives:  [ROUTER_DIRECTIVES, MaterializeDirective],
     providers: [
         ROUTER_PROVIDERS,
         HTTP_PROVIDERS, CredentialsService
@@ -34,7 +28,7 @@ function materializeInit(selector: string, callback) {
   {path: "/:account/characters/:char", name: "CharDetails", component: CharDetailsComponent},
   {path: "/:account/characters/deleted/:char", name: "DeletedCharDetails", component: CharDetailsComponent, data: {deleted: true}},
 ])
-export class AppComponent implements OnInit, AfterViewChecked {
+export class AppComponent implements OnInit {
     constructor(private _credService: CredentialsService, private _router: Router) {}
     ngOnInit() {
         this._credService.getSession()
@@ -51,10 +45,8 @@ export class AppComponent implements OnInit, AfterViewChecked {
         admin: false,
         account: "INVALID"
     };
-    ngAfterViewChecked() {
-        materializeInit("#modal-login-button", elmt => elmt.leanModal());
-        materializeInit("#sidebar-button", elmt => elmt.sideNav());
-    }
+
+
     private loginForm = {
         login: "",
         password: ""

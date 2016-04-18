@@ -22,3 +22,4 @@ import "rxjs";
 import "jquery";
 import "hammerjs";
 import "materialize-css";
+import "angular2-materialize";
