@@ -27,19 +27,24 @@ class AccountApi{
 
 		import sql: replacePlaceholders, Placeholder, MySQLRow;
 
-		if(!api.admin){
-			immutable loginQuery = api.cfg.sql_queries.login.to!string
-				.replacePlaceholders(
-					Placeholder!string("ACCOUNT", _account),
-					Placeholder!string("PASSWORD", oldPassword)
-				);
+		string accountToCheck;
+		if(api.admin)
+			accountToCheck = api.account;
+		else
+			accountToCheck = _account;
 
-			bool credsOK = false;
-			api.mysqlConnection.execute(loginQuery, (MySQLRow row){
-				credsOK = row.success.get!int == 1;
-			});
-			enforceHTTP(credsOK, HTTPStatus.conflict, "Old password is incorrect");
-		}
+		immutable loginQuery = api.cfg.sql_queries.login.to!string
+			.replacePlaceholders(
+				Placeholder!string("ACCOUNT", accountToCheck),
+				Placeholder!string("PASSWORD", oldPassword)
+			);
+
+		bool credsOK = false;
+		api.mysqlConnection.execute(loginQuery, (MySQLRow row){
+			credsOK = row.success.get!int == 1;
+		});
+		enforceHTTP(credsOK, HTTPStatus.conflict, "Old password is incorrect");
+
 
 		immutable setPasswdQuery = api.cfg.sql_queries.set_password.to!string
 			.replacePlaceholders(
