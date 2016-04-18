@@ -15,3 +15,8 @@ exports.config =
 
     templates:
       joinTo: 'main.js'
+
+  plugins:
+    copyfilemon:
+      font: ["node_modules/materialize-css/dist/font"]
+      fonts: ["node_modules/materialize-css/dist/fonts"]
