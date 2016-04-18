@@ -1,5 +1,4 @@
 import {Component, Input, OnInit} from "angular2/core";
-import {HTTP_PROVIDERS}    from "angular2/http";
 import {Router, RouteParams, RouteData} from "angular2/router";
 
 import {CharsService}   from "./chars.service";
@@ -9,7 +8,7 @@ import {LoadingComponent, LoadingStatus}   from "../loading.component";
 @Component({
     template:    require("./details.template")(),
     directives:  [LoadingComponent],
-    providers:   [HTTP_PROVIDERS, CharsService]
+    providers:   [CharsService]
 })
 export class CharDetailsComponent implements OnInit {
     constructor(private _charsService: CharsService, private _router: Router, private _data: RouteData, private _routeParams: RouteParams) {

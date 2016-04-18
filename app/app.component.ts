@@ -1,6 +1,5 @@
 import {Component, OnInit} from "angular2/core";
-import {Router, RouteConfig, ROUTER_DIRECTIVES, ROUTER_PROVIDERS} from "angular2/router";
-import {HTTP_PROVIDERS}    from "angular2/http";
+import {Router, RouteConfig, ROUTER_DIRECTIVES} from "angular2/router";
 import {CredentialsService, Session} from "./credentials.service";
 import {CharListComponent} from "./chars/list.component";
 import {CharDetailsComponent} from "./chars/details.component";
@@ -15,8 +14,7 @@ import {MaterializeDirective} from "angular2-materialize";
     selector:    "app",
     directives:  [ROUTER_DIRECTIVES, MaterializeDirective],
     providers: [
-        ROUTER_PROVIDERS,
-        HTTP_PROVIDERS, CredentialsService
+        CredentialsService
     ],
     template: require("./app.template")()
 })

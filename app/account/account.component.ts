@@ -1,5 +1,4 @@
 import {Component, Input, OnInit} from "angular2/core";
-import {HTTP_PROVIDERS}    from "angular2/http";
 import {Router, RouteParams} from "angular2/router";
 
 import {AccountService}   from "./account.service";
@@ -9,7 +8,7 @@ import {LoadingComponent, LoadingStatus}   from "../loading.component";
 @Component({
     template:    require("./account.template")(),
     directives:  [LoadingComponent],
-    providers:   [HTTP_PROVIDERS, AccountService]
+    providers:   [AccountService]
 })
 export class AccountComponent implements OnInit {
     constructor(private _accountService: AccountService, private _router: Router, private _routeParams: RouteParams) {}
