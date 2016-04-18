@@ -7,13 +7,14 @@ import {CharDetailsComponent} from "./chars/details.component";
 import {HomeComponent} from "./home.component";
 import {NewAccountComponent} from "./newaccount.component";
 import {AccountComponent} from "./account/account.component";
-declare var $: any;
+
+// declare var $: any;
 function materializeInit(selector: string, callback) {
-    let elmt = $(selector);
-    if (elmt.attr("materialize-init") === undefined) {
-        elmt.attr("materialize-init", "");
-        callback(elmt);
-    }
+    // let elmt = $(selector);
+    // if (elmt.attr("materialize-init") === undefined) {
+    //     elmt.attr("materialize-init", "");
+    //     callback(elmt);
+    // }
 }
 @Component({
     selector:    "app",
@@ -22,7 +23,8 @@ function materializeInit(selector: string, callback) {
         ROUTER_PROVIDERS,
         HTTP_PROVIDERS, CredentialsService
     ],
-    templateUrl: "app/app.component.html",
+    // templateUrl: "app/app.template.html",
+    template: require("./app.template")()
 })
 @RouteConfig([
   {path: "/",                          name: "Home",        component: HomeComponent, useAsDefault: true},

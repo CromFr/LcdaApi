@@ -8,7 +8,7 @@ import {LoadingComponent, LoadingStatus}   from "../loading.component";
 
 
 @Component({
-    templateUrl: "app/chars/list.component.html",
+    template: require("./list.template.html"),
     directives:  [LoadingComponent, CharDetailsComponent], // components used by this one
     providers:   [HTTP_PROVIDERS, CharsService]
 })

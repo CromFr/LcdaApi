@@ -1,7 +1,7 @@
 {
   "name": "LcdaAccountManager",
   "version": "0.0.1",
-  "license": "GPLv3",
+  "license": "GPL-3.0+",
   "repository": {
     "type": "git",
     "url": "https://github.com/CromFr/LcdaAccountManager"
@@ -9,30 +9,30 @@
   "scripts": {
     "start": "brunch watch",
     "build": "brunch build",
-    "build:prod": "brunch build --production"
+    "build:prod": "brunch build --production",
+    "postinstall": "cp node_modules/materialize-css/js/date_picker/picker.js node_modules/materialize-css/bin"
   },
   "dependencies": {
-    "angular2": "2.0.0-beta.11",
-    "es6-promise": "^3.0.2",
+    "angular2": "^2.0.0-beta.15",
+    "angular2-materialize": "^2.0.1",
+    "es6-promise": "^3.1.2",
     "es6-shim": "^0.35.0",
+    "hammerjs": "^2.0.6",
+    "jquery": "^2.2.3",
+    "materialize-css": "^0.97.6",
     "reflect-metadata": "0.1.2",
     "rxjs": "5.0.0-beta.2",
-    "zone.js": "0.6.4",
-
-    "angular2-materialize": "^2.0.1",
-    "jquery": "^2.2.2",
-    "hammerjs": "^2.0.6",
-    "materialize-css": "^0.97.5"
+    "zone.js": "^0.6.10"
   },
   "devDependencies": {
-    "auto-reload-brunch": ">= 1.0 < 1.9",
-    "brunch": "^2.2.1",
-    "brunch-typescript": "^1.7.0",
-    "clean-css-brunch": ">= 1.0 < 1.9",
-    "css-brunch": ">= 1.0 < 1.9",
+    "auto-reload-brunch": "^2.2.0",
+    "brunch": "^2.6.6",
+    "brunch-typescript": "^1.8.3",
+    "clean-css-brunch": "^2.0.0",
+    "css-brunch": "^2.6.1",
     "environment-brunch": "^1.0.0",
     "html-brunch": "^1.6.1",
-    "javascript-brunch": ">= 1.0 < 1.9",
-    "uglify-js-brunch": ">= 1.0 < 1.9"
+    "javascript-brunch": "^2.0.0",
+    "uglify-js-brunch": "^2.0.1"
   }
 }
