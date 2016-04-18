@@ -60,6 +60,7 @@ export class AppComponent implements OnInit {
             .subscribe(
                 session  => {
                     this.session = session;
+                    this.accountToBrowse = session.account;
                     $("#modal-login").closeModal();
                     this.loginErrorMsg = "";
                     updatePage();
