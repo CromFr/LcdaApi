@@ -10,6 +10,7 @@ import {AccountComponent} from "./account/account.component";
 
 import {MaterializeDirective} from "angular2-materialize";
 
+
 @Component({
     selector:    "app",
     directives:  [ROUTER_DIRECTIVES, MaterializeDirective],
@@ -17,7 +18,6 @@ import {MaterializeDirective} from "angular2-materialize";
         ROUTER_PROVIDERS,
         HTTP_PROVIDERS, CredentialsService
     ],
-    // templateUrl: "app/app.template.html",
     template: require("./app.template")()
 })
 @RouteConfig([

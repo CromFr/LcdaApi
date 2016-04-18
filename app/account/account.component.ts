@@ -7,8 +7,7 @@ import {LoadingComponent, LoadingStatus}   from "../loading.component";
 
 
 @Component({
-    // templateUrl: "app/account/account.template.html",
-    template: require("./account.template.html")(),
+    template:    require("./account.template")(),
     directives:  [LoadingComponent],
     providers:   [HTTP_PROVIDERS, AccountService]
 })
@@ -21,7 +20,6 @@ export class AccountComponent implements OnInit {
         this._accountService.exists(this._routeParams.get("account"))
             .subscribe(
                 c => {
-                    console.log(c);
                     if (c === true) {
                         this.loadingStatus.setSuccess();
                     }
