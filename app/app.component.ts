@@ -28,21 +28,24 @@ import {MaterializeDirective} from "angular2-materialize";
 ])
 export class AppComponent implements OnInit {
     constructor(private _credService: CredentialsService, private _router: Router) {}
-    ngOnInit() {
-        this._credService.getSession()
-            .subscribe(
-                session => {
-                    this.session = session;
-                },
-                error => {
-                    console.error("getAccount() error:", <any>error);
-                });
-    }
+
     public session: Session = {
         authenticated: false,
         admin: false,
         account: "INVALID"
     };
+    private accountToBrowse: string;
+    ngOnInit() {
+        this._credService.getSession()
+            .subscribe(
+                session => {
+                    this.session = session;
+                    this.accountToBrowse = session.account;
+                },
+                error => {
+                    console.error("getAccount() error:", <any>error);
+                });
+    }
 
 
     private loginForm = {
@@ -59,7 +62,7 @@ export class AppComponent implements OnInit {
                     this.session = session;
                     $("#modal-login").closeModal();
                     this.loginErrorMsg = "";
-                    this._router.commit(this._router.currentInstruction, true);
+                    updatePage();
                 },
                 error => {
                     console.error("submitLoginForm() error: ", <any>error);
@@ -81,5 +84,16 @@ export class AppComponent implements OnInit {
                     this._router.root.navigate(["Home"]);
                 },
                 error => console.error("logout() error: ", <any>error));
+    }
+
+    private updatePage() {
+        this._router.commit(this._router.currentInstruction, true);
+    }
+
+    private onAccountToBrowseSet() {
+        let instruction = this._router.currentInstruction;
+        instruction.component.params.account = this.accountToBrowse;
+
+        this._router.commit(instruction, true);
     }
 }

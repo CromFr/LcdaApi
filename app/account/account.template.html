@@ -1,7 +1,7 @@
 <loading [status]="loadingStatus"></loading>
 <div *ngIf="loadingStatus.isOk()">
 
-	<h1 class="center">{{_routeParams.get("account").replace("%20"," ")}}</h1>
+	<h1 class="center">{{_routeParams.get("account").replace("%20"," ")}}</h1><!-- TODO: decode UriEncoded string -->
 
 	<hr>
 

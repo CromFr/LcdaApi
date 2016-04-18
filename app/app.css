@@ -35,3 +35,17 @@ a{
 	/* Links with Angular have no href property */
 	cursor: pointer;
 }
+
+
+.admin-browse-account{
+	background-color: #FDD;
+
+	padding: 0 15px;
+}
+.admin-browse-account input{
+	background-color: #FFF;
+	border-bottom: none;
+	margin-bottom: 0;
+
+	text-align: center;
+}

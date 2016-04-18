@@ -79,31 +79,32 @@ class CharApi{
 
 		immutable deletedVaultPath = getDeletedVaultPath(_account);
 
-		CharListCache cache;
-		auto hash = deletedVaultPath
-			.dirEntries("*.bic", SpanMode.shallow)
-			.map!((file){
-				import std.conv: to;
-				SysTime acc, mod;
-				file.getTimes(acc, mod);
-				return file.name~"="~acc.to!string;
-			})
-			.join(":")
-			.hashOf;
-
-		try{
-			cache = ResourceManager.getMut!CharListCache("cache/"~_account~"/deleted");
-			if(hash == cache.hash){
-				return cache.data;
-			}
-		}
-		catch(ResourceException){
-			cache = new CharListCache;
-			ResourceManager.store("cache/"~_account~"/deleted", cache);
-		}
-
-
 		if(deletedVaultPath.exists && deletedVaultPath.isDir){
+
+			CharListCache cache;
+			auto hash = deletedVaultPath
+				.dirEntries("*.bic", SpanMode.shallow)
+				.map!((file){
+					import std.conv: to;
+					SysTime acc, mod;
+					file.getTimes(acc, mod);
+					return file.name~"="~acc.to!string;
+				})
+				.join(":")
+				.hashOf;
+
+			try{
+				cache = ResourceManager.getMut!CharListCache("cache/"~_account~"/deleted");
+				if(hash == cache.hash){
+					return cache.data;
+				}
+			}
+			catch(ResourceException){
+				cache = new CharListCache;
+				ResourceManager.store("cache/"~_account~"/deleted", cache);
+			}
+
+
 			cache.hash = hash;
 			cache.data = deletedVaultPath
 				.dirEntries("*.bic", SpanMode.shallow)

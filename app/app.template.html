@@ -28,14 +28,17 @@
 	</nav>
 </div>
 <ul id="sidebar" class="side-nav fixed">
+	<li class="admin-browse-account" *ngIf="session.admin">
+		<input type="text" [(ngModel)]="accountToBrowse" (keyup.enter)="onAccountToBrowseSet()">
+	</li>
 	<li *ngIf="session.authenticated">
-		<a [routerLink]="['CharList',{account: session.account}]" class="activable">
+		<a [routerLink]="['CharList',{account: accountToBrowse}]" class="activable">
 			<i class="material-icons left" style="line-height: 64px;">face</i>
 			Personnages
 		</a>
 	</li>
 	<li *ngIf="session.authenticated">
-		<a [routerLink]="['Account',{account: session.account}]" class="activable">
+		<a [routerLink]="['Account',{account: accountToBrowse}]" class="activable">
 			<i class="material-icons left" style="line-height: 64px;">settings</i>
 			Mon compte
 		</a>
