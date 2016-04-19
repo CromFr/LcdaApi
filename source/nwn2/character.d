@@ -39,7 +39,8 @@ class Character{
 		}
 
 		//Race
-		race = strref.get(race2da.get!uint("Name", gff["Subrace"].to!int));
+		auto raceId = gff["Subrace"].to!int;
+		race = strref.get(race2da.get!uint("Name", raceId));
 
 		//Alignment
 		alignment.good_evil = gff["GoodEvil"].to!int;
@@ -53,10 +54,10 @@ class Character{
 		god = gff["Deity"].to!string;
 
 		//Abilities
-		foreach(i ; 0..6){
+		foreach(i, abilityAdj ; ["StrAdjust","DexAdjust","ConAdjust","IntAdjust","WisAdjust","ChaAdjust"]){
 			abilities ~= Ability(
-				strref.get(abilities2da.get!uint("Name", i)),
-				gff[abilities2da.get!string("Label", i)].to!int
+				strref.get(abilities2da.get!uint("Name", cast(uint)i)),
+				gff[abilities2da.get!string("Label", cast(uint)i)].to!int + race2da.get!uint(abilityAdj, raceId)
 			);
 		}
 
