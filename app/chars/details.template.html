@@ -13,9 +13,11 @@
 	<div class="row">
 		<div class="col s10 offset-s1 m4">
 			<div class="z-depth-1">
-				<div class="brown z-depth-1 small-padding">
-					<h4 class="white-text">Caracs</h4>
-				</div>
+				<nav>
+					<div class="nav-wrapper brown">
+						<span class="title-padding brand-logo">Caracs</span>
+					</div>
+				</nav>
 				<div class="small-padding">
 					<table class="bordered condensed">
 						<tbody>
@@ -31,9 +33,15 @@
 		</div>
 		<div class="col s12 m8">
 			<div class="z-depth-1">
-				<div class="teal z-depth-1 small-padding">
-					<h4 class="white-text">Niveau {{character?.lvl}}</h4>
-				</div>
+				<nav>
+					<div class="nav-wrapper teal">
+						<span class="title-padding brand-logo">Niveau {{character?.lvl}}</span>
+						<ul class="right">
+							<li><a class="modal-trigger" data-target="leveling-details" materialize="leanModal">Détails<i class="material-icons right">format_list_numbered</i></a></li>
+						</ul>
+
+					</div>
+				</nav>
 				<div class="small-padding">
 					<table class="bordered flow-text">
 						<tbody>
@@ -51,9 +59,11 @@
 	<div class="row">
 		<div class="col s12">
 			<div class="z-depth-1">
-				<div class="blue-grey lighten-2 z-depth-1 small-padding">
-					<h4 class="white-text">Divers</h4>
-				</div>
+				<nav>
+					<div class="nav-wrapper blue-grey lighten-2">
+						<span class="title-padding brand-logo">Divers</span>
+					</div>
+				</nav>
 				<div class="small-padding">
 					<table class="flow-text">
 						<tbody>
@@ -117,4 +127,45 @@
 		</div>
 
 	</div>
+
+	<div id="leveling-details" class="modal">
+		<div class="modal-content">
+			<table class="striped">
+				<thead>
+					<tr>
+						<th></th>
+						<th>Classe</th>
+						<th>Carac.</th>
+						<th>Compétences</th>
+						<th>Don(s)</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr *ngFor="#lvl of character?.leveling; #i = index">
+						<td>{{i+1}}</td>
+						<td>{{lvl.className}}</td>
+						<td>{{lvl.ability!==""? "+1 "+lvl.ability : ""}}</td>
+						<td>
+							<ul>
+								<li *ngFor="#skill of lvl.skills">
+									<span *ngIf="skill.valueDiff !== 0">
+										+{{skill.valueDiff}} {{skill.name}} ({{skill.value}})
+									</span>
+								</li>
+							</ul>
+						</td>
+						<td>
+							<ul>
+								<li *ngFor="#feat of lvl.feats">
+									{{feat}}
+								</li>
+							</ul>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
 </div>
+
+

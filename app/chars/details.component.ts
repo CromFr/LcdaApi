@@ -1,5 +1,6 @@
 import {Component, Input, OnInit} from "angular2/core";
 import {Router, RouteParams, RouteData} from "angular2/router";
+import {MaterializeDirective} from "angular2-materialize";
 
 import {CharsService}   from "./chars.service";
 import {LoadingComponent, LoadingStatus}   from "../loading.component";
@@ -7,7 +8,7 @@ import {LoadingComponent, LoadingStatus}   from "../loading.component";
 
 @Component({
     template:    require("./details.template")(),
-    directives:  [LoadingComponent],
+    directives:  [LoadingComponent, MaterializeDirective],
     providers:   [CharsService]
 })
 export class CharDetailsComponent implements OnInit {

@@ -18,8 +18,8 @@ table.condensed td,
 tr.condensed td{
 	padding: 8px 5px;
 }
-.small-padding{
-	padding: 5px;
+.title-padding{
+	padding-left: 10px !important;
 }
 
 .progress.char-alignment{

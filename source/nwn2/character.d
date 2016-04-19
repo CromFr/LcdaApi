@@ -15,13 +15,15 @@ class Character{
 
 		this.bicFile = bicFile;
 		bicFileName = baseName(bicFile, ".bic");
-
-		auto strref = ResourceManager.get!StrRefResolver("resolver");
 		auto gff = new Gff(bicFile);
-		auto class2da = ResourceManager.fetchFile!TwoDA("classes.2da");
-		auto race2da = ResourceManager.fetchFile!TwoDA("racialsubtypes.2da");
-		auto abilities2da = ResourceManager.fetchFile!TwoDA("iprp_abilities.2da");
-		auto alignment2da = ResourceManager.fetchFile!TwoDA("iprp_alignment.2da");
+
+		immutable strref = ResourceManager.get!StrRefResolver("resolver");
+		immutable class2da = ResourceManager.fetchFile!TwoDA("classes.2da");
+		immutable race2da = ResourceManager.fetchFile!TwoDA("racialsubtypes.2da");
+		immutable abilities2da = ResourceManager.fetchFile!TwoDA("iprp_abilities.2da");
+		immutable alignment2da = ResourceManager.fetchFile!TwoDA("iprp_alignment.2da");
+		immutable skills2da = ResourceManager.fetchFile!TwoDA("skills.2da");
+		immutable feats2da = ResourceManager.fetchFile!TwoDA("feat.2da");
 
 		//Name
 		name = gff["FirstName"].to!string~" "~gff["LastName"].to!string;
@@ -57,6 +59,39 @@ class Character{
 				gff[abilities2da.get!string("Label", i)].to!int
 			);
 		}
+
+		//Leveling
+		immutable skillsCount = skills2da.rows;
+		uint[] skillRanks;
+		skillRanks.length = skillsCount;
+		foreach(lvlIndex, gffLvl ; gff["LvlStatList"].to!(GffNode[])){
+			Level lvl;
+			//name
+			lvl.className = strref.get(class2da.get!uint("Name", gffLvl["LvlStatClass"].to!uint));
+			//ability
+			if(lvlIndex%4 == 3){
+				lvl.ability = strref.get(abilities2da.get!uint("Name", gffLvl["LvlStatAbility"].to!uint));
+			}
+			//skills
+			lvl.skills.length = skillsCount;
+			foreach(i, gffSkill ; gffLvl["SkillList"].to!(GffNode[])){
+				auto earned = gffSkill["Rank"].to!uint;
+				auto skillName = skills2da.get!string("Name", cast(uint)i);
+				if(skillName!="***" && skillName!=""){
+					skillRanks[i] += earned;
+					lvl.skills[i] = LevelingSkill(
+						strref.get(skillName.to!uint),
+						skillRanks[i],
+						earned
+						);
+				}
+			}
+			//feats
+			foreach(gffFeat ; gffLvl["FeatList"].to!(GffNode[])){
+				lvl.feats ~= strref.get(feats2da.get!uint("FEAT", gffFeat["Feat"].to!uint));
+			}
+			leveling ~= lvl;
+		}
 	}
 
 	bool deleted;
@@ -69,6 +104,19 @@ class Character{
 		int lvl;
 	}
 	Class[] classes;
+
+	struct LevelingSkill{
+		string name;
+		uint value;
+		int valueDiff;
+	}
+	struct Level{
+		string className;
+		string ability;
+		LevelingSkill[] skills;
+		string[] feats;
+	}
+	Level[] leveling;
 
 	string race;
 

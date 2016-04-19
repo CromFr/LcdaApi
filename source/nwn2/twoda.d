@@ -15,7 +15,7 @@ class TwoDA{
 		foreach(lineIndex, line ; readText(filepath).splitLines){
 			if(lineIndex<2)continue;
 
-			auto data = extractDataLine(line);
+			auto data = extractRowData(line);
 
 			if(lineIndex==2){
 				header = data;
@@ -49,11 +49,17 @@ class TwoDA{
 			throw new Exception("Column '"~colName~"' not found");
 	}
 
+	@property{
+		const size_t rows(){
+			return values.length;
+		}
+	}
+
 private:
 	string[] header;
 	string[][] values;
 
-	auto ref extractDataLine(in string line){
+	auto ref extractRowData(in string line){
 		import std.uni;
 		string[] ret;
 
