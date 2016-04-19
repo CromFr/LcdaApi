@@ -57,7 +57,7 @@ class Character{
 		foreach(i, abilityAdj ; ["StrAdjust","DexAdjust","ConAdjust","IntAdjust","WisAdjust","ChaAdjust"]){
 			abilities ~= Ability(
 				strref.get(abilities2da.get!uint("Name", cast(uint)i)),
-				gff[abilities2da.get!string("Label", cast(uint)i)].to!int + race2da.get!uint(abilityAdj, raceId)
+				gff[abilities2da.get!string("Label", cast(uint)i)].to!int + race2da.get!int(abilityAdj, raceId)
 			);
 		}
 
