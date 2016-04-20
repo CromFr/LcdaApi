@@ -97,4 +97,8 @@ export class AppComponent implements OnInit {
 
         this._router.commit(instruction, true);
     }
+
+    private closeSideNav() {
+        $("#sidebar").sideNav("hide");
+    }
 }

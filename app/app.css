@@ -1,18 +1,21 @@
-header, main, footer {
-	padding-left: 240px;
-}
 @media only screen and (max-width : 992px) {
 	header, main, footer {
 		padding-left: 0;
 	}
 }
-#sidebar{
-	top: 64px;
-	bottom: 0px;
-	height: auto;
-}
-.modal-content{
-    overflow: hidden;
+@media only screen and (min-width : 992px) {
+	header, main, footer {
+		padding-left: 240px;
+	}
+
+	#sidebar{
+		top: 64px;
+		bottom: 0px;
+		height: auto;
+	}
+	.modal-content{
+		overflow: hidden;
+	}
 }
 table.condensed td,
 tr.condensed td{

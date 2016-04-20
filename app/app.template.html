@@ -19,7 +19,7 @@
 						Connexion
 					</a>
 					<a *ngIf="session.authenticated" (click)="logout()">
-						<i class="material-icons right">exit_to_app</i> Déconnexion
+						<i class="material-icons right">exit_to_app</i><span class="hide-on-med-and-down">Déconnexion</span>
 					</a>
 				</li>
 			</ul>
@@ -32,26 +32,26 @@
 		<input type="text" [(ngModel)]="accountToBrowse" (keyup.enter)="onAccountToBrowseSet()">
 	</li>
 	<li *ngIf="session.authenticated">
-		<a [routerLink]="['CharList',{account: accountToBrowse}]" class="activable">
+		<a [routerLink]="['CharList',{account: accountToBrowse}]" (click)="closeSideNav()" class="activable">
 			<i class="material-icons left" style="line-height: 64px;">face</i>
 			Personnages
 		</a>
 	</li>
 	<li *ngIf="session.authenticated">
-		<a [routerLink]="['Account',{account: accountToBrowse}]" class="activable">
+		<a [routerLink]="['Account',{account: accountToBrowse}]" (click)="closeSideNav()" class="activable">
 			<i class="material-icons left" style="line-height: 64px;">settings</i>
 			Mon compte
 		</a>
 	</li>
 	<li *ngIf="session.authenticated"><hr></li>
 	<li>
-		<a [routerLink]="['NewAccount']" class="activable">
+		<a [routerLink]="['NewAccount']" (click)="closeSideNav()" class="activable">
 			<i class="material-icons left" style="line-height: 64px;">add_circle_outline</i>
 			Nouveau compte
 		</a>
 	</li>
 	<li>
-		<a href="http://lacoleredaurile.xooit.fr/" class="activable">
+		<a href="http://lacoleredaurile.xooit.fr/" (click)="closeSideNav()" class="activable">
 			<i class="material-icons left" style="line-height: 64px;">forum</i>
 			Forum
 		</a>
