@@ -22,3 +22,9 @@ exports.config =
   plugins:
     copyfilemon:
       fonts: ["node_modules/materialize-css/dist/fonts"]
+
+  overrides:
+    production:
+      plugins:
+        uglify:
+          mangle: false
