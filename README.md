@@ -3,17 +3,33 @@
 Web interface for managing accounts & characters of "La Colère d'Aurile", a French Neverwinter Nights 2 Server (RPG)
 
 
-# Features
-- Character browsing (name, level, race, classes)
-- Character deactivation/activation
-- GFF and TLK reader for localized data
-- Database link for login credentials
+# Front end features
+- Character list
+- Character details
+    + name, level, race, alignment, ...
+    + Leveling history
+    + Delete/reactivate character
+    + Download file
+- Account settings:
+    + Change password
+- Account switch for admins
+
+# Backend features
+- GFF, 2DA, TLK reading
+- Json based web API
+- Database link (MySQL)
+- Session store link (redis, memory)
+- Configuration file
 
 # May be done
 - Auction browsing
 - Multi-language localization (currently French only)
 - File modifications (tlk edit?)
-- Search items on characters
+- Search items across characters on an account in:
+    + Character equipment
+    + Character inventory
+    + Persistent storage (ie casier d'Ibee)
+
 
 
 # Install
@@ -25,6 +41,8 @@ npm run build:prod
 dub build --build=release
 ```
 
+
+---
 
 Dirty hacks to remove:
 - Edit `node_modules/angular2-materialize/dist/index.js` to require `materialize-css` instead of `materialize`
