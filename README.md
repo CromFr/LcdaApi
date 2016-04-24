@@ -32,13 +32,20 @@ Web interface for managing accounts & characters of "La Colère d'Aurile", a Fre
 
 
 
-# Install
+# Build
 
 ```sh
 npm install
 npm run build:prod
 
 dub build --build=release
+```
+
+# Usage
+
+see
+```sh
+./LcdaAccountManager --help
 ```
 
 
