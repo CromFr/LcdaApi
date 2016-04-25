@@ -24,14 +24,17 @@ int main(string[] args){
 	    return 0;
 	}
 
-
+	writeln("Using config ",cfgFile);
 	auto cfg = new Config(readText(cfgFile));
 	ResourceManager.store("cfg", cfg);
 
 	//Register 2da paths
-	foreach(path ; cfg.paths.twoda)
+	foreach(path ; cfg.paths.twoda){
+		writeln("Caching 2DA: ", path.to!string);
 		ResourceManager.path.add(path.to!string);
+	}
 
+	writeln("Caching TLK");
 	auto strresolv = new StrRefResolver(
 		new Tlk(cfg.paths.tlk.to!string),
 		cfg.paths.tlk_custom!=""? new Tlk(cfg.paths.tlk_custom.to!string) : null);
