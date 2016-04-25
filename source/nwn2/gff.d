@@ -7,7 +7,7 @@ import std.conv;
 import nwn2.tlk;
 
 
-class GffNode{
+struct GffNode{
 	string label;
 	Type type;
 
@@ -100,6 +100,9 @@ class Gff{
 		import std.file;
 		firstNode = buildNodeFromStruct(path.read(), 0);
 	}
+	this(in void[] data){
+		firstNode = buildNodeFromStruct(data, 0);
+	}
 
 	alias firstNode this;
 	GffNode firstNode;
@@ -174,7 +177,7 @@ private:
 	GffNode buildNodeFromStruct(in void[] rawData, in size_t structIndex){
 		auto s = getStruct(rawData, structIndex);
 
-		auto ret = new GffNode;
+		GffNode ret;
 		ret.type = GffNode.Type.Struct;
 
 		if(s.field_count==1){
@@ -195,8 +198,7 @@ private:
 		import std.conv : to;
 		auto f = getField(rawData, fieldIndex);
 
-		auto ret = new GffNode;
-		//ret.label = getLabel(rawData, f.label_index).value.to!string;
+		GffNode ret;
 		foreach(c ; getLabel(rawData, f.label_index).value){
 			if(c==0)break;
 			ret.label ~= c;
