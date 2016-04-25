@@ -82,7 +82,10 @@
 			"port": 6379,
 		},
 		//Path to the public directory containing frontend files
-		"public_path": "./public"
+		"public_path": "./public",
+
+		//The server can gzip sent files to minimize network load
+		"compression": true
 	}
 
 

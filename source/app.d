@@ -64,6 +64,7 @@ int main(string[] args){
 	settings.bindAddresses = cfg.server.addresses[].map!(j => j.to!string).array;
 	settings.hostName = cfg.server.hostname.to!string;
 	settings.port = cfg.server.port.to!ushort;
+	settings.useCompressionIfPossible = cfg.server.compression.to!bool;
 	switch(cfg.server.session_store.to!string){
 		case "redis":
 			settings.sessionStore = new RedisSessionStore(
