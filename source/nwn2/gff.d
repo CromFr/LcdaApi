@@ -97,8 +97,8 @@ package:
 class Gff{
 
 	this(in string path){
-		import std.file;
-		firstNode = buildNodeFromStruct(path.read(), 0);
+		import std.file : read;
+		this(path.read());
 	}
 	this(in void[] data){
 		firstNode = buildNodeFromStruct(data, 0);
@@ -109,9 +109,6 @@ class Gff{
 
 
 private:
-	this(){
-
-	}
 	align(1) struct GffHeader{
 		char[4]  file_type;
 		char[4]  file_version;
@@ -199,10 +196,9 @@ private:
 		auto f = getField(rawData, fieldIndex);
 
 		GffNode ret;
-		foreach(c ; getLabel(rawData, f.label_index).value){
-			if(c==0)break;
-			ret.label ~= c;
-		}
+		immutable lbl = getLabel(rawData, f.label_index).value;
+		if(lbl[$-1]=='\0') ret.label = cast(immutable)(lbl.ptr.fromStringz);
+		else               ret.label = cast(immutable)lbl;
 		ret.type = cast(GffNode.Type)f.type;
 
 		switch(f.type) with(GffNode.Type){
@@ -210,35 +206,35 @@ private:
 				ret.simpleTypeContainer = cast(uint64_t)f.data_or_data_offset;
 				break;
 			case DWord64:
-				void* d = getFieldData(rawData, f.data_or_data_offset);
+				const d = getFieldData(rawData, f.data_or_data_offset);
 				ret.simpleTypeContainer = *(cast(uint64_t*)d);
 				break;
 			case Int64:
-				void* d = getFieldData(rawData, f.data_or_data_offset);
+				const d = getFieldData(rawData, f.data_or_data_offset);
 				ret.simpleTypeContainer = *(cast(int64_t*)d);
 				break;
 			case Double:
-				void* d = getFieldData(rawData, f.data_or_data_offset);
+				const d = getFieldData(rawData, f.data_or_data_offset);
 				ret.simpleTypeContainer = *(cast(uint64_t*)d);
 				break;
 			case ExoString:
-				void* data = getFieldData(rawData, f.data_or_data_offset);
+				const data = getFieldData(rawData, f.data_or_data_offset);
 				auto size = cast(uint32_t*)data;
 				auto chars = cast(char*)(data+uint32_t.sizeof);
 
-				ret.stringContainer = (chars[0..*size]).to!string;
+				ret.stringContainer = cast(immutable)(chars[0..*size]);
 				break;
 			case ResRef:
-				void* data = getFieldData(rawData, f.data_or_data_offset);
+				const data = getFieldData(rawData, f.data_or_data_offset);
 				auto size = cast(uint8_t*)data;
 				auto chars = cast(char*)(data+uint8_t.sizeof);
 
-				ret.stringContainer = (chars[0..*size]).to!string;
+				ret.stringContainer = cast(immutable)(chars[0..*size]);
 				break;
 
 			case ExoLocString:
-				void* data = getFieldData(rawData, f.data_or_data_offset);
-				auto total_size = cast(uint32_t*)data;
+				const data = getFieldData(rawData, f.data_or_data_offset);
+				//auto total_size = cast(uint32_t*)data;
 				auto str_ref = cast(uint32_t*)(data+uint32_t.sizeof);
 				auto str_count = cast(uint32_t*)(data+2*uint32_t.sizeof);
 				auto sub_str = cast(void*)(data+3*uint32_t.sizeof);
@@ -250,14 +246,13 @@ private:
 					auto length = cast(int32_t*)(sub_str+uint32_t.sizeof);
 					auto str = cast(char*)(sub_str+2*uint32_t.sizeof);
 
-					ret.exoLocStringContainer[*id] = str[0..*length].to!string;
-
+					ret.exoLocStringContainer[*id] = cast(immutable)(str[0..*length]);
 					sub_str += 2*uint32_t.sizeof + char.sizeof*(*length);
 				}
 				break;
 
 			case Void:
-				void* data = getFieldData(rawData, f.data_or_data_offset);
+				const data = getFieldData(rawData, f.data_or_data_offset);
 				auto size = cast(uint32_t*)data;
 				auto dataVoid = cast(void*)(data+uint32_t.sizeof);
 
@@ -274,6 +269,7 @@ private:
 				if(li.length>0){
 					uint32_t* indices = &li.first_struct_index;
 
+					ret.listContainer.reserve(li.length);
 					foreach(i ; 0 .. li.length){
 						ret.listContainer ~= buildNodeFromStruct(rawData, indices[i]);
 					}
