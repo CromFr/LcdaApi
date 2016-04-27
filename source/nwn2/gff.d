@@ -197,8 +197,8 @@ private:
 
 		GffNode ret;
 		immutable lbl = getLabel(rawData, f.label_index).value;
-		if(lbl[$-1]=='\0') ret.label = cast(immutable)(lbl.ptr.fromStringz);
-		else               ret.label = cast(immutable)lbl;
+		if(lbl[$-1]=='\0') ret.label = lbl.ptr.fromStringz.idup;
+		else               ret.label = lbl.idup;
 		ret.type = cast(GffNode.Type)f.type;
 
 		switch(f.type) with(GffNode.Type){
