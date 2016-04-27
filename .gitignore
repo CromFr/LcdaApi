@@ -3,6 +3,7 @@
 .dub/
 LcdaAccountManager
 LcdaAccountManager.exe
+*.dll
 
 #Angular / Node
 node_modules/
