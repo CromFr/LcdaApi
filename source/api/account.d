@@ -12,6 +12,9 @@ class AccountApi{
 
 	@path("/exists")
 	Json getExists(string _account){
+		enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
+		enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
+
 		import std.path : buildPath, exists, isDir;
 		immutable accountPath = buildPath(
 			api.cfg.paths.servervault.to!string,
