@@ -11,6 +11,7 @@ import nwn2.tlk;
 struct GffNode{
 	string label;
 	Type type;
+	GffNode* parent = null;
 
 	ref auto to(T)(){
 		import std.traits;
@@ -84,6 +85,16 @@ struct GffNode{
 		List         = 15
 	}
 
+	GffNode*[] getParents(){
+		GffNode*[] list;
+		GffNode* current = &this;
+		while(current !is null){
+			list ~= current;
+			current = current.parent;
+		}
+		return list;
+	}
+
 
 package:
 	void[] rawContainer;
@@ -102,7 +113,7 @@ class Gff{
 		this(path.read());
 	}
 	this(in void[] data){
-		firstNode = buildNodeFromStruct(data, 0);
+		firstNode = buildNodeFromStruct(data, 0, null);
 	}
 
 	alias firstNode this;
@@ -127,50 +138,38 @@ private:
 		void[]      listIndices;
 
 
-		uint32_t registerStruct(ref GffNode node){
+		uint32_t registerStruct(in GffNode node){
 			assert(node.type == GffNode.Type.Struct);
 
 			immutable createdStructIndex = cast(uint32_t)structs.length;
-			uint32_t type = structs.length==0? 0xFFFF_FFFF : 0;//TODO: what is the type for?
-			uint32_t field_count = cast(uint32_t)node.structContainer.length;
+			structs ~= GffStruct();
+			GffStruct* gffstruct = &structs[createdStructIndex];
 
-			structs ~= GffStruct(type, 0, field_count);
+			gffstruct.type = structs.length==0? 0xFFFF_FFFF : 0;//TODO: what is the type for?
+			gffstruct.field_count = cast(uint32_t)node.structContainer.length;
 
-			if(field_count == 1){
+			if(gffstruct.field_count == 1){
 				//index in field array
-				structs[createdStructIndex].data_or_data_offset = registerField(
+				gffstruct.data_or_data_offset = registerField(
 					node.structContainer.values[0]
 				);
 			}
 			else{
 				//byte offset in field indices array
-				structs[createdStructIndex].data_or_data_offset = registerList(
-					node.structContainer.values[0]
-				);
+				gffstruct.data_or_data_offset = cast(uint32_t)fieldIndices.length;
+
+				fieldIndices.reserve(fieldIndices.length + uint32_t.sizeof*gffstruct.field_count);
+				foreach(field ; node.structContainer){
+					auto index = registerField(field);
+					fieldIndices ~= (&index)[0..1];
+				}
 			}
 			return createdStructIndex;
 		}
-		uint32_t registerList(ref GffNode node){
-			assert(node.type == GffNode.Type.List);
-
-			immutable createdListOffset = cast(uint32_t)listIndices.length;
-
-			uint32_t listLength = cast(uint32_t)node.listContainer.length;
-			listIndices ~= (&listLength)[0..uint32_t.sizeof];
-			listIndices.length += listLength * uint32_t.sizeof;
-
-			foreach(i, ref fieldNode ; node.listContainer){
-				immutable offset = createdListOffset+uint32_t.sizeof;
-
-				uint32_t fieldIndex = registerField(fieldNode);
-				listIndices[offset..offset+uint32_t.sizeof] = (&fieldIndex)[0..uint32_t.sizeof];
-			}
-
-			return createdListOffset;
-		}
-		uint32_t registerField(ref GffNode node){
+		uint32_t registerField(in GffNode node){
 			immutable createdFieldIndex = cast(uint32_t)fields.length;
 			fields ~= GffField(node.type);
+			auto field = &fields[createdFieldIndex];
 
 			assert(node.label.length <= 16, "Label too long");//TODO: Throw exception on GffNode.label set
 
@@ -180,12 +179,12 @@ private:
 			foreach(i, ref s ; labels){
 				if(s.value == node.label){
 					labelFound = true;
-					fields[createdFieldIndex].label_index = cast(uint32_t)i;
+					field.label_index = cast(uint32_t)i;
 					break;
 				}
 			}
 			if(!labelFound){
-				fields[createdFieldIndex].label_index = cast(uint32_t)labels.length;
+				field.label_index = cast(uint32_t)labels.length;
 				char[16] label;
 				label[0..node.label.length] = node.label.dup;
 				labels ~= GffLabel(label);
@@ -194,23 +193,25 @@ private:
 			final switch(node.type) with(GffNode.Type){
 				case Byte, Char, Word, Short, DWord, Int, Float:{
 					//cast is ok because all those types are <= 32bit
-					fields[createdFieldIndex].data_or_data_offset = *cast(uint32_t*)&node.simpleTypeContainer;
+					field.data_or_data_offset = *cast(uint32_t*)&node.simpleTypeContainer;
 				}break;
 				case DWord64, Int64, Double:{
 					//stored in fieldDatas
-					fields[createdFieldIndex].data_or_data_offset = cast(uint32_t)fieldDatas.length;
-					fieldDatas ~= (&node.simpleTypeContainer)[0..uint64_t.sizeof];
+					field.data_or_data_offset = cast(uint32_t)fieldDatas.length;
+					fieldDatas ~= (&node.simpleTypeContainer)[0..1].dup;
 				}break;
 				case ExoString:{
 					auto stringLength = node.stringContainer.length;
 
-					fields[createdFieldIndex].data_or_data_offset = cast(uint32_t)fieldDatas.length;
+					field.data_or_data_offset = cast(uint32_t)fieldDatas.length;
 					fieldDatas ~= (&stringLength)[0..uint32_t.sizeof];
 					fieldDatas ~= (cast(void*)node.stringContainer.ptr)[0..stringLength];
 				}break;
 				case ResRef:{
 					auto stringLength = node.stringContainer.length;
 					assert(stringLength<=uint8_t.max, "ExoString too long");//TODO: Throw exception on GffNode value set
+
+					field.data_or_data_offset = cast(uint32_t)fieldDatas.length;
 					fieldDatas ~= (&stringLength)[0..uint8_t.sizeof];
 					fieldDatas ~= (cast(void*)node.stringContainer.ptr)[0..stringLength];
 				}break;
@@ -219,21 +220,32 @@ private:
 				}break;
 				case Void:{
 					auto dataLength = node.rawContainer.length;
+					field.data_or_data_offset = cast(uint32_t)fieldDatas.length;
 					fieldDatas ~= (&dataLength)[0..uint8_t.sizeof];
 					fieldDatas ~= node.rawContainer;
-					//TODO
 				}break;
 				case Struct:{
-					//TODO
+					field.data_or_data_offset = registerStruct(node);
 				}break;
 				case List:{
-					//TODO
+					immutable createdListOffset = cast(uint32_t)listIndices.length;
+					field.data_or_data_offset = createdListOffset;
+
+					uint32_t listLength = cast(uint32_t)node.listContainer.length;
+					listIndices ~= (&listLength)[0..uint32_t.sizeof];
+					listIndices.length += listLength * uint32_t.sizeof;
+
+					foreach(i, ref listField ; node.listContainer){
+						immutable offset = createdListOffset+uint32_t.sizeof*i;
+
+						uint32_t fieldIndex = registerField(listField);
+						listIndices[offset..offset+uint32_t.sizeof] = (&fieldIndex)[0..1];
+					}
 				}break;
 			}
 
-			return 0;
+			return createdFieldIndex;
 		}
-
 
 		void[] serialize(immutable char[4] fileType, immutable char[4] fileVersion){
 			header.file_type = fileType;
@@ -259,11 +271,13 @@ private:
 
 			header.field_indices_offset = offset;
 			header.field_indices_count = cast(uint32_t)fieldIndices.length;
-			offset += fieldDatas.length;
+			offset += fieldIndices.length;
 
 			header.list_indices_offset = offset;
 			header.list_indices_count = cast(uint32_t)listIndices.length;
-			offset += fieldDatas.length;
+			offset += listIndices.length;
+
+			writeln(header);
 
 			version(unittest) auto offsetCheck = 0;
 			void[] data;
@@ -275,7 +289,7 @@ private:
 			version(unittest) offsetCheck += structs.length * GffStruct.sizeof;
 			version(unittest) assert(data.length == offsetCheck);
 			data ~= fields[0..fields.length];
-			version(unittest) offsetCheck += structs.length * GffStruct.sizeof;
+			version(unittest) offsetCheck += fields.length * GffStruct.sizeof;
 			version(unittest) assert(data.length == offsetCheck);
 			data ~= labels[0..labels.length];
 			version(unittest) offsetCheck += labels.length * GffLabel.sizeof;
@@ -341,55 +355,57 @@ private:
 		return cast(GffHeader*)(rawData.ptr);
 	}
 	GffStruct* getStruct(in void[] rawData, size_t index){
-		assert(index < getHeader(rawData).struct_count);
+		assert(index < getHeader(rawData).struct_count, "index "~index.to!string~" out of bounds");
 		return cast(GffStruct*)(rawData.ptr + getHeader(rawData).struct_offset + GffStruct.sizeof*index);
 	}
 	GffField* getField(in void[] rawData, size_t index){
-		assert(index < getHeader(rawData).field_count);
+		assert(index < getHeader(rawData).field_count, "index "~index.to!string~" out of bounds");
 		return cast(GffField*)(rawData.ptr + getHeader(rawData).field_offset + GffField.sizeof*index);
 	}
 	GffLabel* getLabel(in void[] rawData, size_t index){
-		assert(index < getHeader(rawData).label_count);
+		assert(index < getHeader(rawData).label_count, "index "~index.to!string~" out of bounds");
 		return cast(GffLabel*)(rawData.ptr + getHeader(rawData).label_offset + GffLabel.sizeof*index);
 	}
 	GffFieldData* getFieldData(in void[] rawData, size_t offset){
-		assert(offset < getHeader(rawData).field_data_count);
+		assert(offset < getHeader(rawData).field_data_count, "offset "~offset.to!string~" out of bounds");
 		return cast(GffFieldData*)(rawData.ptr + getHeader(rawData).field_data_offset + offset);
 	}
 	GffFieldIndices* getFieldIndices(in void[] rawData, size_t offset){
-		assert(offset < getHeader(rawData).field_indices_count);
+		assert(offset < getHeader(rawData).field_indices_count, "offset "~offset.to!string~" out of bounds");
 		return cast(GffFieldIndices*)(rawData.ptr + getHeader(rawData).field_indices_offset + offset);
 	}
 	GffListIndices* getListIndices(in void[] rawData, size_t offset){
-		assert(offset < getHeader(rawData).list_indices_count);
+		assert(offset < getHeader(rawData).list_indices_count, "offset "~offset.to!string~" out of bounds");
 		return cast(GffListIndices*)(rawData.ptr + getHeader(rawData).list_indices_offset + offset);
 	}
 
-	GffNode buildNodeFromStruct(in void[] rawData, in size_t structIndex){
+	GffNode buildNodeFromStruct(in void[] rawData, in size_t structIndex, GffNode* parent){
 		auto s = getStruct(rawData, structIndex);
 
 		GffNode ret;
 		ret.type = GffNode.Type.Struct;
+		ret.parent = parent;
 
 		if(s.field_count==1){
-			auto n = buildNodeFromField(rawData, s.data_or_data_offset);
+			auto n = buildNodeFromField(rawData, s.data_or_data_offset, &ret);
 			ret.structContainer[n.label] = n;
 		}
 		else{
 			auto fi = getFieldIndices(rawData, s.data_or_data_offset);
 			foreach(i ; 0 .. s.field_count){
-				auto n = buildNodeFromField(rawData, fi[i].field_index);
+				auto n = buildNodeFromField(rawData, fi[i].field_index, &ret);
 				ret.structContainer[n.label] = n;
 			}
 		}
 		return ret;
 	}
 
-	GffNode buildNodeFromField(in void[] rawData, in size_t fieldIndex){
+	GffNode buildNodeFromField(in void[] rawData, in size_t fieldIndex, GffNode* parent){
 		import std.conv : to;
 		auto f = getField(rawData, fieldIndex);
 
 		GffNode ret;
+		ret.parent = parent;
 		immutable lbl = getLabel(rawData, f.label_index).value;
 		if(lbl[$-1]=='\0') ret.label = lbl.ptr.fromStringz.idup;
 		else               ret.label = lbl.idup;
@@ -454,7 +470,7 @@ private:
 				break;
 
 			case Struct:
-				auto s = buildNodeFromStruct(rawData, f.data_or_data_offset);
+				auto s = buildNodeFromStruct(rawData, f.data_or_data_offset, &ret);
 				ret.structContainer[s.label] = s;
 				break;
 
@@ -465,7 +481,7 @@ private:
 
 					ret.listContainer.reserve(li.length);
 					foreach(i ; 0 .. li.length){
-						ret.listContainer ~= buildNodeFromStruct(rawData, indices[i]);
+						ret.listContainer ~= buildNodeFromStruct(rawData, indices[i], &ret);
 					}
 				}
 				break;
