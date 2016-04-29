@@ -59,7 +59,7 @@ struct GffNode{
 
 	ref GffNode opIndex(in string label){
 		assert(type==Type.Struct, "Not a struct");
-		return *structLabelMap[label];
+		return aggrContainer[structLabelMap[label]];
 	}
 	ref GffNode opIndex(in size_t index){
 		assert(type==Type.List, "Not a list");
@@ -101,7 +101,7 @@ package:
 	uint64_t simpleTypeContainer;
 	string stringContainer;
 	GffNode[] aggrContainer;
-	GffNode*[string] structLabelMap;
+	size_t[string] structLabelMap;
 	uint32_t exoLocStringID;
 	string[int] exoLocStringContainer;
 }
@@ -387,15 +387,17 @@ private:
 
 		if(s.field_count==1){
 			auto n = buildNodeFromField(rawData, s.data_or_data_offset, &ret);
+
+			ret.structLabelMap[n.label] = ret.aggrContainer.length;
 			ret.aggrContainer ~= n;
-			ret.structLabelMap[n.label] = &ret.aggrContainer[$-1];
 		}
 		else{
 			auto fi = getFieldIndices(rawData, s.data_or_data_offset);
 			foreach(i ; 0 .. s.field_count){
 				auto n = buildNodeFromField(rawData, fi[i].field_index, &ret);
+
+				ret.structLabelMap[n.label] = ret.aggrContainer.length;
 				ret.aggrContainer ~= n;
-				ret.structLabelMap[n.label] = &ret.aggrContainer[$-1];
 			}
 		}
 		return ret;
@@ -412,7 +414,7 @@ private:
 		else               ret.label = lbl.idup;
 		ret.type = cast(GffNode.Type)f.type;
 
-		switch(f.type) with(GffNode.Type){
+		final switch(ret.type) with(GffNode.Type){
 			case Byte, Char, Word, Short, DWord, Int, Float:
 				ret.simpleTypeContainer = cast(uint64_t)f.data_or_data_offset;
 				break;
@@ -472,8 +474,8 @@ private:
 
 			case Struct:
 				auto s = buildNodeFromStruct(rawData, f.data_or_data_offset, &ret);
+				ret.structLabelMap[s.label] = ret.aggrContainer.length;
 				ret.aggrContainer ~= s;
-				ret.structLabelMap[s.label] = &ret.aggrContainer[$-1];
 				break;
 
 			case List:
@@ -484,12 +486,9 @@ private:
 					ret.aggrContainer.reserve(li.length);
 					foreach(i ; 0 .. li.length){
 						ret.aggrContainer ~= buildNodeFromStruct(rawData, indices[i], &ret);
-						ret.structLabelMap[ret.aggrContainer[$-1].label] = &ret.aggrContainer[$-1];
 					}
 				}
 				break;
-
-			default: assert(0);
 		}
 		return ret;
 	}
