@@ -30,29 +30,59 @@ struct GffNode{
 			}
 		}
 		else static if(isSomeString!T){
-			if(type==Type.ExoString || type==Type.ResRef)
-				return stringContainer.to!T;
-			else if(type==Type.ExoLocString){
-				if(exoLocStringID!=uint32_t.max)
-					return ("{{STRREF:"~exoLocStringID.to!string~"}}").to!T;
-				else{
-					return exoLocStringContainer.values[0].to!T;
-				}
+			import std.string: format;
+			final switch(type) with(Type){
+				//unsigned int
+				case Byte, Word, DWord, DWord64:
+					return simpleTypeContainer.to!T;
+				//signed int
+				case Short, Int, Int64:
+					return (*cast(int64_t*)(&simpleTypeContainer)).to!T;
+				//special int
+				case Char:
+					return (*cast(char*)(&simpleTypeContainer)).to!T;
+				//float
+				case Float, Double:
+					return (*cast(double*)(&simpleTypeContainer)).to!T;
+				//string
+				case ExoString, ResRef:
+					return stringContainer.to!T;
+				//special string
+				case ExoLocString:
+					if(exoLocStringID!=uint32_t.max)
+						return ("{{STRREF:"~exoLocStringID.to!string~"}}").to!T;
+					else{
+						if(exoLocStringContainer.length>0)
+							return exoLocStringContainer.values[0].to!T;
+						return "{{INVALID_LOCSTRING}}".to!T;
+					}
+				//raw
+				case Void:
+					string ret = "0x";
+					foreach(i, b ; cast(ubyte[])rawContainer){
+						ret ~= format("%02x%s", b, i%2? " ":null);
+					}
+					return ret;
+				//aggregated values
+				case Struct:
+					//TODO
+					return "{{Struct}}";
+				case List:
+					//TODO
+					return "{{List}}";
 			}
 		}
 		else static if(is(T==void[])){
 			if(type==Type.Void)
 				return rawContainer;
 		}
-		else static if(is(T==GffNode[string])){
-			if(type==Type.Struct)
-				return structContainer;
-		}
+		//else static if(is(T==GffNode[string])){
+		//	if(type==Type.Struct)
+		//		return structContainer;
+		//}
 		else static if(is(T==GffNode[])){
-			if(type==Type.List)
-				return listContainer;
-			else if(type==Type.Struct)
-				return structContainer.values;
+			if(type==Type.List || type==Type.Struct)
+				return aggrContainer;
 		}
 		assert(0, "Incompatible type conversion from "~type.to!string~" to "~T.stringof);
 	}
@@ -93,6 +123,34 @@ struct GffNode{
 			current = current.parent;
 		}
 		return list;
+	}
+
+	string toPrettyString(){
+
+		string toPrettyStringInternal(GffNode* node, string tabs){
+			import std.string;
+
+			if(node.type == Type.Struct){
+				string ret = tabs~"("~node.type.to!string~")\n";
+				foreach(ref childNode ; node.aggrContainer){
+					ret ~= toPrettyStringInternal(&childNode, tabs~"   | ");
+				}
+				return ret;
+			}
+			else if(node.type == Type.List){
+				string ret = tabs~node.label.leftJustify(16)~": ("~node.type.to!string~")\n";
+				foreach(ref childNode ; node.aggrContainer){
+					ret ~= toPrettyStringInternal(&childNode, tabs~"   | ");
+				}
+				return ret;
+			}
+			else{
+				return tabs~node.label.leftJustify(16)~": "~node.to!string~" ("~node.type.to!string~")\n";
+			}
+		}
+
+
+		return toPrettyStringInternal(&this, "");
 	}
 
 
