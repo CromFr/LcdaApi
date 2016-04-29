@@ -57,13 +57,13 @@ struct GffNode{
 		assert(0, "Incompatible type conversion from "~type.to!string~" to "~T.stringof);
 	}
 
-	GffNode opIndex(in string label){
+	ref GffNode opIndex(in string label){
 		assert(type==Type.Struct, "Not a struct");
-		return structContainer[label];
+		return *structLabelMap[label];
 	}
-	GffNode opIndex(in size_t index){
+	ref GffNode opIndex(in size_t index){
 		assert(type==Type.List, "Not a list");
-		return listContainer[index];
+		return aggrContainer[index];
 	}
 
 	enum Type{
@@ -100,8 +100,8 @@ package:
 	void[] rawContainer;
 	uint64_t simpleTypeContainer;
 	string stringContainer;
-	GffNode[string] structContainer;
-	GffNode[] listContainer;
+	GffNode[] aggrContainer;
+	GffNode*[string] structLabelMap;
 	uint32_t exoLocStringID;
 	string[int] exoLocStringContainer;
 }
@@ -146,12 +146,12 @@ private:
 			GffStruct* gffstruct = &structs[createdStructIndex];
 
 			gffstruct.type = structs.length==0? 0xFFFF_FFFF : 0;//TODO: what is the type for?
-			gffstruct.field_count = cast(uint32_t)node.structContainer.length;
+			gffstruct.field_count = cast(uint32_t)node.aggrContainer.length;
 
 			if(gffstruct.field_count == 1){
 				//index in field array
 				gffstruct.data_or_data_offset = registerField(
-					node.structContainer.values[0]
+					node.aggrContainer[0]
 				);
 			}
 			else{
@@ -159,7 +159,7 @@ private:
 				gffstruct.data_or_data_offset = cast(uint32_t)fieldIndices.length;
 
 				fieldIndices.reserve(fieldIndices.length + uint32_t.sizeof*gffstruct.field_count);
-				foreach(field ; node.structContainer){
+				foreach(field ; node.aggrContainer){
 					auto index = registerField(field);
 					fieldIndices ~= (&index)[0..1];
 				}
@@ -209,7 +209,7 @@ private:
 				}break;
 				case ResRef:{
 					auto stringLength = node.stringContainer.length;
-					assert(stringLength<=uint8_t.max, "ExoString too long");//TODO: Throw exception on GffNode value set
+					assert(stringLength<=uint8_t.max, "Resref too long");//TODO: Throw exception on GffNode value set
 
 					field.data_or_data_offset = cast(uint32_t)fieldDatas.length;
 					fieldDatas ~= (&stringLength)[0..uint8_t.sizeof];
@@ -231,11 +231,11 @@ private:
 					immutable createdListOffset = cast(uint32_t)listIndices.length;
 					field.data_or_data_offset = createdListOffset;
 
-					uint32_t listLength = cast(uint32_t)node.listContainer.length;
+					uint32_t listLength = cast(uint32_t)node.aggrContainer.length;
 					listIndices ~= (&listLength)[0..uint32_t.sizeof];
 					listIndices.length += listLength * uint32_t.sizeof;
 
-					foreach(i, ref listField ; node.listContainer){
+					foreach(i, ref listField ; node.aggrContainer){
 						immutable offset = createdListOffset+uint32_t.sizeof*i;
 
 						uint32_t fieldIndex = registerField(listField);
@@ -277,7 +277,6 @@ private:
 			header.list_indices_count = cast(uint32_t)listIndices.length;
 			offset += listIndices.length;
 
-			writeln(header);
 
 			version(unittest) auto offsetCheck = 0;
 			void[] data;
@@ -388,13 +387,15 @@ private:
 
 		if(s.field_count==1){
 			auto n = buildNodeFromField(rawData, s.data_or_data_offset, &ret);
-			ret.structContainer[n.label] = n;
+			ret.aggrContainer ~= n;
+			ret.structLabelMap[n.label] = &ret.aggrContainer[$-1];
 		}
 		else{
 			auto fi = getFieldIndices(rawData, s.data_or_data_offset);
 			foreach(i ; 0 .. s.field_count){
 				auto n = buildNodeFromField(rawData, fi[i].field_index, &ret);
-				ret.structContainer[n.label] = n;
+				ret.aggrContainer ~= n;
+				ret.structLabelMap[n.label] = &ret.aggrContainer[$-1];
 			}
 		}
 		return ret;
@@ -471,7 +472,8 @@ private:
 
 			case Struct:
 				auto s = buildNodeFromStruct(rawData, f.data_or_data_offset, &ret);
-				ret.structContainer[s.label] = s;
+				ret.aggrContainer ~= s;
+				ret.structLabelMap[s.label] = &ret.aggrContainer[$-1];
 				break;
 
 			case List:
@@ -479,9 +481,10 @@ private:
 				if(li.length>0){
 					uint32_t* indices = &li.first_struct_index;
 
-					ret.listContainer.reserve(li.length);
+					ret.aggrContainer.reserve(li.length);
 					foreach(i ; 0 .. li.length){
-						ret.listContainer ~= buildNodeFromStruct(rawData, indices[i], &ret);
+						ret.aggrContainer ~= buildNodeFromStruct(rawData, indices[i], &ret);
+						ret.structLabelMap[ret.aggrContainer[$-1].label] = &ret.aggrContainer[$-1];
 					}
 				}
 				break;
