@@ -243,7 +243,7 @@ private:
 			}
 			if(!labelFound){
 				field.label_index = cast(uint32_t)labels.length;
-				char[16] label;
+				char[16] label = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
 				label[0..node.label.length] = node.label.dup;
 				labels ~= GffLabel(label);
 			}
