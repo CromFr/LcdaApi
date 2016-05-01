@@ -262,19 +262,43 @@ private:
 					auto stringLength = node.stringContainer.length;
 
 					field.data_or_data_offset = cast(uint32_t)fieldDatas.length;
-					fieldDatas ~= (&stringLength)[0..uint32_t.sizeof];
+					fieldDatas ~= (&stringLength)[0..1];
 					fieldDatas ~= (cast(void*)node.stringContainer.ptr)[0..stringLength];
 				}break;
 				case ResRef:{
 					auto stringLength = node.stringContainer.length;
-					assert(stringLength<=uint8_t.max, "Resref too long");//TODO: Throw exception on GffNode value set
+					assert(stringLength<=32, "Resref too long (max length: 32 characters)");//TODO: Throw exception on GffNode value set
 
 					field.data_or_data_offset = cast(uint32_t)fieldDatas.length;
-					fieldDatas ~= (&stringLength)[0..uint8_t.sizeof];
+					fieldDatas ~= (&stringLength)[0..1];
 					fieldDatas ~= (cast(void*)node.stringContainer.ptr)[0..stringLength];
 				}break;
 				case ExoLocString:{
-					//TODO
+					immutable fieldDataIndex = fieldDatas.length;
+					field.data_or_data_offset = cast(uint32_t)fieldDataIndex;
+
+					//total size
+					fieldDatas ~= [0,0,0,0];
+
+					auto strref = cast(uint32_t)node.exoLocStringID;
+					fieldDatas ~= (&strref)[0..1];
+
+					auto strcount = cast(uint32_t)node.exoLocStringContainer.length;
+					fieldDatas ~= (&strcount)[0..1];
+
+					foreach(key, str ; node.exoLocStringContainer){
+						//TODO: keep original ordering
+						fieldDatas ~= (&cast(int32_t)key)[0..1];//string id
+
+						auto length = cast(int32_t)str.length;
+						fieldDatas ~= (&length)[0..1];//length
+
+						fieldDatas ~= str.ptr[0..length].dup;
+					}
+
+					//total size
+					auto totalSize = cast(uint32_t)(fieldDatas.length-fieldDataIndex);
+					fieldDatas[fieldDataIndex..fieldDataIndex+4] = (&totalSize)[0..1];
 				}break;
 				case Void:{
 					auto dataLength = node.rawContainer.length;
@@ -284,20 +308,23 @@ private:
 				}break;
 				case Struct:{
 					field.data_or_data_offset = registerStruct(node);
+					assert(0);
 				}break;
 				case List:{
 					immutable createdListOffset = cast(uint32_t)listIndices.length;
 					field.data_or_data_offset = createdListOffset;
 
 					uint32_t listLength = cast(uint32_t)node.aggrContainer.length;
-					listIndices ~= (&listLength)[0..uint32_t.sizeof];
+					listIndices ~= (&listLength)[0..1];
 					listIndices.length += listLength * uint32_t.sizeof;
+					if(node.aggrContainer !is null){
+						foreach(i, ref listField ; node.aggrContainer){
+							immutable offset = createdListOffset+uint32_t.sizeof*(i+1);
 
-					foreach(i, ref listField ; node.aggrContainer){
-						immutable offset = createdListOffset+uint32_t.sizeof*i;
+							uint32_t structIndex = registerStruct(listField);
+							listIndices[offset..offset+uint32_t.sizeof] = (&structIndex)[0..1];
+						}
 
-						uint32_t fieldIndex = registerField(listField);
-						listIndices[offset..offset+uint32_t.sizeof] = (&fieldIndex)[0..1];
 					}
 				}break;
 			}
