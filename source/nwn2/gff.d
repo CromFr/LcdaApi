@@ -13,6 +13,8 @@ struct GffNode{
 	Type type;
 	GffNode* parent = null;
 
+	/// Convert the node value to a certain type.
+	/// If the type is string, any type of value gets converted into string. Structs and lists are not expanded.
 	ref auto to(T)(){
 		import std.traits;
 		static if(__traits(isArithmetic, T)){
@@ -96,6 +98,7 @@ struct GffNode{
 		return aggrContainer[index];
 	}
 
+	/// Type of data stored in the GffNode
 	enum Type{
 		Byte         = 0,
 		Char         = 1,
@@ -115,6 +118,7 @@ struct GffNode{
 		List         = 15
 	}
 
+	/// Get a list of all parents of the nodes, starting from the node itself to its furtherest parent.
 	GffNode*[] getParents(){
 		GffNode*[] list;
 		GffNode* current = &this;
@@ -125,10 +129,11 @@ struct GffNode{
 		return list;
 	}
 
+	/// Produces a readable string of the node and its children
 	string toPrettyString(){
 
 		string toPrettyStringInternal(GffNode* node, string tabs){
-			import std.string;
+			import std.string: leftJustify;
 
 			if(node.type == Type.Struct){
 				string ret = tabs~"("~node.type.to!string~")\n";
