@@ -167,6 +167,16 @@ package:
 	size_t[string] structLabelMap;
 	uint32_t exoLocStringID;
 	string[int] exoLocStringContainer;
+
+	string stackTrace(){
+		import std.algorithm: map, reduce, reverse;
+		import std.array: array;
+		return getParents
+			.map!(n => n.label!=null? n.label : "{"~n.type.to!string~"}")
+			.array
+			.reverse
+			.reduce!((a,b)=> a~"."~b);
+	}
 }
 
 class Gff{
