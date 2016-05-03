@@ -15,7 +15,7 @@ struct GffNode{
 
 	/// Convert the node value to a certain type.
 	/// If the type is string, any type of value gets converted into string. Structs and lists are not expanded.
-	ref auto to(T)(){
+	const ref auto to(T)(){
 		import std.traits;
 		static if(__traits(isArithmetic, T)){
 			switch(type) with(Type){
@@ -119,9 +119,9 @@ struct GffNode{
 	}
 
 	/// Get a list of all parents of the nodes, starting from the node itself to its furtherest parent.
-	GffNode*[] getParents(){
-		GffNode*[] list;
-		GffNode* current = &this;
+	const const(GffNode)*[] getParents(){
+		const(GffNode)*[] list;
+		const(GffNode)* current = &this;
 		while(current !is null){
 			list ~= current;
 			current = current.parent;
@@ -130,9 +130,9 @@ struct GffNode{
 	}
 
 	/// Produces a readable string of the node and its children
-	string toPrettyString(){
+	const string toPrettyString(){
 
-		string toPrettyStringInternal(GffNode* node, string tabs){
+		string toPrettyStringInternal(const(GffNode)* node, string tabs){
 			import std.string: leftJustify;
 
 			if(node.type == Type.Struct){
@@ -158,6 +158,16 @@ struct GffNode{
 		return toPrettyStringInternal(&this, "");
 	}
 
+	const string path(){
+		import std.algorithm: map, reduce, reverse;
+		import std.array: array;
+		return getParents
+			.map!(n => n.label!=null? n.label : "{"~n.type.to!string~"}")
+			.array
+			.reverse
+			.reduce!((a,b)=> a~"."~b);
+	}
+
 
 package:
 	void[] rawContainer;
@@ -167,16 +177,6 @@ package:
 	size_t[string] structLabelMap;
 	uint32_t exoLocStringID;
 	string[int] exoLocStringContainer;
-
-	string stackTrace(){
-		import std.algorithm: map, reduce, reverse;
-		import std.array: array;
-		return getParents
-			.map!(n => n.label!=null? n.label : "{"~n.type.to!string~"}")
-			.array
-			.reverse
-			.reduce!((a,b)=> a~"."~b);
-	}
 }
 
 class Gff{
