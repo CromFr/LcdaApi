@@ -323,7 +323,7 @@ private:
 				}break;
 				case Struct:{
 					field.data_or_data_offset = registerStruct(node);
-					assert(0);
+					assert(0, "TODO: not handled well "~node.path.to!string);
 				}break;
 				case List:{
 					immutable createdListOffset = cast(uint32_t)listIndices.length;
@@ -479,118 +479,132 @@ private:
 	}
 
 	GffNode buildNodeFromStruct(in void[] rawData, in size_t structIndex, GffNode* parent){
-		auto s = getStruct(rawData, structIndex);
-
 		GffNode ret;
 		ret.type = GffNode.Type.Struct;
 		ret.parent = parent;
 
-		if(s.field_count==1){
-			auto n = buildNodeFromField(rawData, s.data_or_data_offset, &ret);
+		buildNodeFromStructInPlace(rawData, structIndex, &ret);
 
-			ret.structLabelMap[n.label] = ret.aggrContainer.length;
-			ret.aggrContainer ~= n;
-		}
-		else{
-			auto fi = getFieldIndices(rawData, s.data_or_data_offset);
-			foreach(i ; 0 .. s.field_count){
-				auto n = buildNodeFromField(rawData, fi[i].field_index, &ret);
-
-				ret.structLabelMap[n.label] = ret.aggrContainer.length;
-				ret.aggrContainer ~= n;
-			}
-		}
 		return ret;
 	}
 
-	GffNode buildNodeFromField(in void[] rawData, in size_t fieldIndex, GffNode* parent){
-		import std.conv : to;
-		auto f = getField(rawData, fieldIndex);
+	void buildNodeFromStructInPlace(in void[] rawData, in size_t structIndex, GffNode* destNode){
 
+		destNode.type = GffNode.Type.Struct;
+
+		auto s = getStruct(rawData, structIndex);
+		if(s.field_count==1){
+			auto n = buildNodeFromField(rawData, s.data_or_data_offset, destNode);
+
+			destNode.structLabelMap[n.label] = destNode.aggrContainer.length;
+			destNode.aggrContainer ~= n;
+		}
+		else if(s.field_count > 1){
+			auto fi = getFieldIndices(rawData, s.data_or_data_offset);
+			foreach(i ; 0 .. s.field_count){
+				auto n = buildNodeFromField(rawData, fi[i].field_index, destNode);
+
+				destNode.structLabelMap[n.label] = destNode.aggrContainer.length;
+				destNode.aggrContainer ~= n;
+			}
+		}
+	}
+
+	GffNode buildNodeFromField(in void[] rawData, in size_t fieldIndex, GffNode* parent){
 		GffNode ret;
 		ret.parent = parent;
-		immutable lbl = getLabel(rawData, f.label_index).value;
-		if(lbl[$-1]=='\0') ret.label = lbl.ptr.fromStringz.idup;
-		else               ret.label = lbl.idup;
-		ret.type = cast(GffNode.Type)f.type;
+		try{
+			import std.conv : to;
+			auto f = getField(rawData, fieldIndex);
 
-		final switch(ret.type) with(GffNode.Type){
-			case Byte, Char, Word, Short, DWord, Int, Float:
-				ret.simpleTypeContainer = cast(uint64_t)f.data_or_data_offset;
-				break;
-			case DWord64:
-				const d = getFieldData(rawData, f.data_or_data_offset);
-				ret.simpleTypeContainer = *(cast(uint64_t*)d);
-				break;
-			case Int64:
-				const d = getFieldData(rawData, f.data_or_data_offset);
-				ret.simpleTypeContainer = *(cast(int64_t*)d);
-				break;
-			case Double:
-				const d = getFieldData(rawData, f.data_or_data_offset);
-				ret.simpleTypeContainer = *(cast(uint64_t*)d);
-				break;
-			case ExoString:
-				const data = getFieldData(rawData, f.data_or_data_offset);
-				auto size = cast(uint32_t*)data;
-				auto chars = cast(char*)(data+uint32_t.sizeof);
+			immutable lbl = getLabel(rawData, f.label_index).value;
+			if(lbl[$-1]=='\0') ret.label = lbl.ptr.fromStringz.idup;
+			else               ret.label = lbl.idup;
+			ret.type = cast(GffNode.Type)f.type;
 
-				ret.stringContainer = cast(immutable)(chars[0..*size]);
-				break;
-			case ResRef:
-				const data = getFieldData(rawData, f.data_or_data_offset);
-				auto size = cast(uint8_t*)data;
-				auto chars = cast(char*)(data+uint8_t.sizeof);
+			final switch(ret.type) with(GffNode.Type){
+				case Byte, Char, Word, Short, DWord, Int, Float:
+					ret.simpleTypeContainer = cast(uint64_t)f.data_or_data_offset;
+					break;
+				case DWord64:
+					const d = getFieldData(rawData, f.data_or_data_offset);
+					ret.simpleTypeContainer = *(cast(uint64_t*)d);
+					break;
+				case Int64:
+					const d = getFieldData(rawData, f.data_or_data_offset);
+					ret.simpleTypeContainer = *(cast(int64_t*)d);
+					break;
+				case Double:
+					const d = getFieldData(rawData, f.data_or_data_offset);
+					ret.simpleTypeContainer = *(cast(uint64_t*)d);
+					break;
+				case ExoString:
+					const data = getFieldData(rawData, f.data_or_data_offset);
+					auto size = cast(uint32_t*)data;
+					auto chars = cast(char*)(data+uint32_t.sizeof);
 
-				ret.stringContainer = cast(immutable)(chars[0..*size]);
-				break;
+					ret.stringContainer = cast(immutable)(chars[0..*size]);
+					break;
+				case ResRef:
+					const data = getFieldData(rawData, f.data_or_data_offset);
+					auto size = cast(uint8_t*)data;
+					auto chars = cast(char*)(data+uint8_t.sizeof);
 
-			case ExoLocString:
-				const data = getFieldData(rawData, f.data_or_data_offset);
-				//auto total_size = cast(uint32_t*)data;
-				auto str_ref = cast(uint32_t*)(data+uint32_t.sizeof);
-				auto str_count = cast(uint32_t*)(data+2*uint32_t.sizeof);
-				auto sub_str = cast(void*)(data+3*uint32_t.sizeof);
+					ret.stringContainer = cast(immutable)(chars[0..*size]);
+					break;
 
-				ret.exoLocStringID = *str_ref;
+				case ExoLocString:
+					const data = getFieldData(rawData, f.data_or_data_offset);
+					//auto total_size = cast(uint32_t*)data;
+					auto str_ref = cast(uint32_t*)(data+uint32_t.sizeof);
+					auto str_count = cast(uint32_t*)(data+2*uint32_t.sizeof);
+					auto sub_str = cast(void*)(data+3*uint32_t.sizeof);
 
-				foreach(i ; 0 .. *str_count){
-					auto id = cast(int32_t*)sub_str;
-					auto length = cast(int32_t*)(sub_str+uint32_t.sizeof);
-					auto str = cast(char*)(sub_str+2*uint32_t.sizeof);
+					ret.exoLocStringID = *str_ref;
 
-					ret.exoLocStringContainer[*id] = cast(immutable)(str[0..*length]);
-					sub_str += 2*uint32_t.sizeof + char.sizeof*(*length);
-				}
-				break;
+					foreach(i ; 0 .. *str_count){
+						auto id = cast(int32_t*)sub_str;
+						auto length = cast(int32_t*)(sub_str+uint32_t.sizeof);
+						auto str = cast(char*)(sub_str+2*uint32_t.sizeof);
 
-			case Void:
-				const data = getFieldData(rawData, f.data_or_data_offset);
-				auto size = cast(uint32_t*)data;
-				auto dataVoid = cast(void*)(data+uint32_t.sizeof);
-
-				ret.rawContainer = dataVoid[0..*size];
-				break;
-
-			case Struct:
-				auto s = buildNodeFromStruct(rawData, f.data_or_data_offset, &ret);
-				ret.structLabelMap[s.label] = ret.aggrContainer.length;
-				ret.aggrContainer ~= s;
-				break;
-
-			case List:
-				auto li = getListIndices(rawData, f.data_or_data_offset);
-				if(li.length>0){
-					uint32_t* indices = &li.first_struct_index;
-
-					ret.aggrContainer.reserve(li.length);
-					foreach(i ; 0 .. li.length){
-						ret.aggrContainer ~= buildNodeFromStruct(rawData, indices[i], &ret);
+						ret.exoLocStringContainer[*id] = cast(immutable)(str[0..*length]);
+						sub_str += 2*uint32_t.sizeof + char.sizeof*(*length);
 					}
-				}
-				break;
+					break;
+
+				case Void:
+					const data = getFieldData(rawData, f.data_or_data_offset);
+					auto size = cast(uint32_t*)data;
+					auto dataVoid = cast(void*)(data+uint32_t.sizeof);
+
+					ret.rawContainer = dataVoid[0..*size];
+					break;
+
+				case Struct:
+					buildNodeFromStructInPlace(rawData, f.data_or_data_offset, &ret);
+					writeln("New struct: ", ret.path);
+					break;
+
+				case List:
+					auto li = getListIndices(rawData, f.data_or_data_offset);
+					if(li.length>0){
+						uint32_t* indices = &li.first_struct_index;
+
+						ret.aggrContainer.reserve(li.length);
+						foreach(i ; 0 .. li.length){
+							ret.aggrContainer ~= buildNodeFromStruct(rawData, indices[i], &ret);
+						}
+					}
+					break;
+			}
+			return ret;
 		}
-		return ret;
+		catch(Throwable t){
+			if(t.msg[0] != '@'){
+				t.msg = "@"~ret.path()~": "~t.msg;
+			}
+			throw t;
+		}
 	}
 
 }
