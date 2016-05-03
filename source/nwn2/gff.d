@@ -186,7 +186,8 @@ class Gff{
 		this(path.read());
 	}
 	this(in void[] data){
-		firstNode = buildNodeFromStruct(data, 0, null);
+		auto parser = Parser(data.ptr);
+		firstNode = parser.buildNodeFromStruct(data, 0, null);
 	}
 
 	alias firstNode this;
@@ -201,6 +202,221 @@ class Gff{
 	}
 
 private:
+
+	align(1) struct GffHeader{
+		char[4]  file_type;
+		char[4]  file_version;
+		uint32_t struct_offset;
+		uint32_t struct_count;
+		uint32_t field_offset;
+		uint32_t field_count;
+		uint32_t label_offset;
+		uint32_t label_count;
+		uint32_t field_data_offset;
+		uint32_t field_data_count;
+		uint32_t field_indices_offset;
+		uint32_t field_indices_count;
+		uint32_t list_indices_offset;
+		uint32_t list_indices_count;
+	}
+	align(1) struct GffStruct{
+		uint32_t type;
+		uint32_t data_or_data_offset;
+		uint32_t field_count;
+	}
+	align(1) struct GffField{
+		uint32_t type;
+		uint32_t label_index;
+		uint32_t data_or_data_offset;
+	}
+	align(1) struct GffLabel{
+		char[16] value;
+	}
+	align(1) struct GffFieldData{
+		uint8_t first_data;//First byte of data. Other follows
+	}
+	align(1) struct GffFieldIndices{
+		uint32_t field_index;
+	}
+	align(1) struct GffListIndices{
+		uint32_t length;
+		uint32_t first_struct_index;
+	}
+
+	struct Parser{
+		@disable this();
+		this(const(void)* rawData){
+			headerPtr       = cast(immutable GffHeader*)      (rawData);
+			structsPtr      = cast(immutable GffStruct*)      (rawData + headerPtr.struct_offset);
+			fieldsPtr       = cast(immutable GffField*)       (rawData + headerPtr.field_offset);
+			labelsPtr       = cast(immutable GffLabel*)       (rawData + headerPtr.label_offset);
+			fieldDatasPtr   = cast(immutable GffFieldData*)   (rawData + headerPtr.field_data_offset);
+			fieldIndicesPtr = cast(immutable GffFieldIndices*)(rawData + headerPtr.field_indices_offset);
+			listIndicesPtr  = cast(immutable GffListIndices*) (rawData + headerPtr.list_indices_offset);
+		}
+
+		immutable GffHeader*       headerPtr;
+		immutable GffStruct*       structsPtr;
+		immutable GffField*        fieldsPtr;
+		immutable GffLabel*        labelsPtr;
+		immutable GffFieldData*    fieldDatasPtr;
+		immutable GffFieldIndices* fieldIndicesPtr;
+		immutable GffListIndices*  listIndicesPtr;
+
+		immutable(GffStruct*) getStruct(in void[] rawData, size_t index){
+			assert(index < headerPtr.struct_count, "index "~index.to!string~" out of bounds");
+			return &structsPtr[index];
+		}
+		immutable(GffField*) getField(in void[] rawData, size_t index){
+			assert(index < headerPtr.field_count, "index "~index.to!string~" out of bounds");
+			return &fieldsPtr[index];
+		}
+		immutable(GffLabel*) getLabel(in void[] rawData, size_t index){
+			assert(index < headerPtr.label_count, "index "~index.to!string~" out of bounds");
+			return &labelsPtr[index];
+		}
+		immutable(GffFieldData*) getFieldData(in void[] rawData, size_t offset){
+			assert(offset < headerPtr.field_data_count, "offset "~offset.to!string~" out of bounds");
+			return cast(immutable GffFieldData*)(cast(void*)fieldDatasPtr + offset);
+		}
+		immutable(GffFieldIndices*) getFieldIndices(in void[] rawData, size_t offset){
+			assert(offset < headerPtr.field_indices_count, "offset "~offset.to!string~" out of bounds");
+			return cast(immutable GffFieldIndices*)(cast(void*)fieldIndicesPtr + offset);
+		}
+		immutable(GffListIndices*) getListIndices(in void[] rawData, size_t offset){
+			assert(offset < headerPtr.list_indices_count, "offset "~offset.to!string~" out of bounds");
+			return cast(immutable GffListIndices*)(cast(void*)listIndicesPtr + offset);
+		}
+
+		GffNode buildNodeFromStruct(in void[] rawData, in size_t structIndex, GffNode* parent){
+			GffNode ret;
+			ret.type = GffNode.Type.Struct;
+			ret.parent = parent;
+
+			buildNodeFromStructInPlace(rawData, structIndex, &ret);
+
+			return ret;
+		}
+
+		void buildNodeFromStructInPlace(in void[] rawData, in size_t structIndex, GffNode* destNode){
+
+			destNode.type = GffNode.Type.Struct;
+
+			auto s = getStruct(rawData, structIndex);
+			if(s.field_count==1){
+				auto n = buildNodeFromField(rawData, s.data_or_data_offset, destNode);
+
+				destNode.structLabelMap[n.label] = destNode.aggrContainer.length;
+				destNode.aggrContainer ~= n;
+			}
+			else if(s.field_count > 1){
+				auto fi = getFieldIndices(rawData, s.data_or_data_offset);
+				foreach(i ; 0 .. s.field_count){
+					auto n = buildNodeFromField(rawData, fi[i].field_index, destNode);
+
+					destNode.structLabelMap[n.label] = destNode.aggrContainer.length;
+					destNode.aggrContainer ~= n;
+				}
+			}
+		}
+
+		GffNode buildNodeFromField(in void[] rawData, in size_t fieldIndex, GffNode* parent){
+			GffNode ret;
+			ret.parent = parent;
+			try{
+				import std.conv : to;
+				immutable f = getField(rawData, fieldIndex);
+
+				immutable lbl = getLabel(rawData, f.label_index).value;
+				if(lbl[$-1]=='\0') ret.label = lbl.ptr.fromStringz.idup;
+				else               ret.label = lbl.idup;
+				ret.type = cast(GffNode.Type)f.type;
+
+				final switch(ret.type) with(GffNode.Type){
+					case Byte, Char, Word, Short, DWord, Int, Float:
+						ret.simpleTypeContainer = cast(uint64_t)f.data_or_data_offset;
+						break;
+					case DWord64:
+						immutable d = getFieldData(rawData, f.data_or_data_offset);
+						ret.simpleTypeContainer = *(cast(uint64_t*)d);
+						break;
+					case Int64:
+						immutable d = getFieldData(rawData, f.data_or_data_offset);
+						ret.simpleTypeContainer = *(cast(int64_t*)d);//TODO why int64_t ?
+						break;
+					case Double:
+						immutable d = getFieldData(rawData, f.data_or_data_offset);
+						ret.simpleTypeContainer = *(cast(uint64_t*)d);
+						break;
+					case ExoString:
+						immutable data = getFieldData(rawData, f.data_or_data_offset);
+						immutable size = cast(immutable uint32_t*)data;
+						immutable chars = cast(immutable char*)(data+uint32_t.sizeof);
+
+						ret.stringContainer = chars[0..*size].idup;
+						break;
+					case ResRef:
+						immutable data = getFieldData(rawData, f.data_or_data_offset);
+						immutable size = cast(immutable uint8_t*)data;
+						immutable chars = cast(immutable char*)(data+uint8_t.sizeof);
+
+						ret.stringContainer = chars[0..*size].idup;
+						break;
+
+					case ExoLocString:
+						immutable data = getFieldData(rawData, f.data_or_data_offset);
+						//immutable total_size = cast(uint32_t*)data;
+						immutable str_ref = cast(immutable uint32_t*)(data+uint32_t.sizeof);
+						immutable str_count = cast(immutable uint32_t*)(data+2*uint32_t.sizeof);
+						auto sub_str = cast(void*)(data+3*uint32_t.sizeof);
+
+						ret.exoLocStringID = *str_ref;
+
+						foreach(i ; 0 .. *str_count){
+							immutable id = cast(immutable int32_t*)sub_str;
+							immutable length = cast(immutable int32_t*)(sub_str+uint32_t.sizeof);
+							immutable str = cast(immutable char*)(sub_str+2*uint32_t.sizeof);
+
+							ret.exoLocStringContainer[*id] = str[0..*length].idup;
+							sub_str += 2*uint32_t.sizeof + char.sizeof*(*length);
+						}
+						break;
+
+					case Void:
+						immutable data = getFieldData(rawData, f.data_or_data_offset);
+						immutable size = cast(immutable uint32_t*)data;
+						immutable dataVoid = cast(immutable void*)(data+uint32_t.sizeof);
+
+						ret.rawContainer = dataVoid[0..*size].dup;
+						break;
+
+					case Struct:
+						buildNodeFromStructInPlace(rawData, f.data_or_data_offset, &ret);
+						break;
+
+					case List:
+						auto li = getListIndices(rawData, f.data_or_data_offset);
+						if(li.length>0){
+							immutable uint32_t* indices = &li.first_struct_index;
+
+							ret.aggrContainer.reserve(li.length);
+							foreach(i ; 0 .. li.length){
+								ret.aggrContainer ~= buildNodeFromStruct(rawData, indices[i], &ret);
+							}
+						}
+						break;
+				}
+				return ret;
+			}
+			catch(Throwable t){
+				if(t.msg[0] != '@'){
+					t.msg = "@"~ret.path()~": "~t.msg;
+				}
+				throw t;
+			}
+		}
+	}
+
 	struct Serializer{
 		GffHeader   header;
 		GffStruct[] structs;
@@ -407,204 +623,4 @@ private:
 			return data;
 		}
 	}
-
-
-
-	align(1) struct GffHeader{
-		char[4]  file_type;
-		char[4]  file_version;
-		uint32_t struct_offset;
-		uint32_t struct_count;
-		uint32_t field_offset;
-		uint32_t field_count;
-		uint32_t label_offset;
-		uint32_t label_count;
-		uint32_t field_data_offset;
-		uint32_t field_data_count;
-		uint32_t field_indices_offset;
-		uint32_t field_indices_count;
-		uint32_t list_indices_offset;
-		uint32_t list_indices_count;
-	}
-	align(1) struct GffStruct{
-		uint32_t type;
-		uint32_t data_or_data_offset;
-		uint32_t field_count;
-	}
-	align(1) struct GffField{
-		uint32_t type;
-		uint32_t label_index;
-		uint32_t data_or_data_offset;
-	}
-	align(1) struct GffLabel{
-		char[16] value;
-	}
-	align(1) struct GffFieldData{
-		uint8_t first_data;//First byte of data. Other follows
-	}
-	align(1) struct GffFieldIndices{
-		uint32_t field_index;
-	}
-	align(1) struct GffListIndices{
-		uint32_t length;
-		uint32_t first_struct_index;
-	}
-
-	GffHeader* getHeader(in void[] rawData){
-		return cast(GffHeader*)(rawData.ptr);
-	}
-	GffStruct* getStruct(in void[] rawData, size_t index){
-		assert(index < getHeader(rawData).struct_count, "index "~index.to!string~" out of bounds");
-		return cast(GffStruct*)(rawData.ptr + getHeader(rawData).struct_offset + GffStruct.sizeof*index);
-	}
-	GffField* getField(in void[] rawData, size_t index){
-		assert(index < getHeader(rawData).field_count, "index "~index.to!string~" out of bounds");
-		return cast(GffField*)(rawData.ptr + getHeader(rawData).field_offset + GffField.sizeof*index);
-	}
-	GffLabel* getLabel(in void[] rawData, size_t index){
-		assert(index < getHeader(rawData).label_count, "index "~index.to!string~" out of bounds");
-		return cast(GffLabel*)(rawData.ptr + getHeader(rawData).label_offset + GffLabel.sizeof*index);
-	}
-	GffFieldData* getFieldData(in void[] rawData, size_t offset){
-		assert(offset < getHeader(rawData).field_data_count, "offset "~offset.to!string~" out of bounds");
-		return cast(GffFieldData*)(rawData.ptr + getHeader(rawData).field_data_offset + offset);
-	}
-	GffFieldIndices* getFieldIndices(in void[] rawData, size_t offset){
-		assert(offset < getHeader(rawData).field_indices_count, "offset "~offset.to!string~" out of bounds");
-		return cast(GffFieldIndices*)(rawData.ptr + getHeader(rawData).field_indices_offset + offset);
-	}
-	GffListIndices* getListIndices(in void[] rawData, size_t offset){
-		assert(offset < getHeader(rawData).list_indices_count, "offset "~offset.to!string~" out of bounds");
-		return cast(GffListIndices*)(rawData.ptr + getHeader(rawData).list_indices_offset + offset);
-	}
-
-	GffNode buildNodeFromStruct(in void[] rawData, in size_t structIndex, GffNode* parent){
-		GffNode ret;
-		ret.type = GffNode.Type.Struct;
-		ret.parent = parent;
-
-		buildNodeFromStructInPlace(rawData, structIndex, &ret);
-
-		return ret;
-	}
-
-	void buildNodeFromStructInPlace(in void[] rawData, in size_t structIndex, GffNode* destNode){
-
-		destNode.type = GffNode.Type.Struct;
-
-		auto s = getStruct(rawData, structIndex);
-		if(s.field_count==1){
-			auto n = buildNodeFromField(rawData, s.data_or_data_offset, destNode);
-
-			destNode.structLabelMap[n.label] = destNode.aggrContainer.length;
-			destNode.aggrContainer ~= n;
-		}
-		else if(s.field_count > 1){
-			auto fi = getFieldIndices(rawData, s.data_or_data_offset);
-			foreach(i ; 0 .. s.field_count){
-				auto n = buildNodeFromField(rawData, fi[i].field_index, destNode);
-
-				destNode.structLabelMap[n.label] = destNode.aggrContainer.length;
-				destNode.aggrContainer ~= n;
-			}
-		}
-	}
-
-	GffNode buildNodeFromField(in void[] rawData, in size_t fieldIndex, GffNode* parent){
-		GffNode ret;
-		ret.parent = parent;
-		try{
-			import std.conv : to;
-			auto f = getField(rawData, fieldIndex);
-
-			immutable lbl = getLabel(rawData, f.label_index).value;
-			if(lbl[$-1]=='\0') ret.label = lbl.ptr.fromStringz.idup;
-			else               ret.label = lbl.idup;
-			ret.type = cast(GffNode.Type)f.type;
-
-			final switch(ret.type) with(GffNode.Type){
-				case Byte, Char, Word, Short, DWord, Int, Float:
-					ret.simpleTypeContainer = cast(uint64_t)f.data_or_data_offset;
-					break;
-				case DWord64:
-					const d = getFieldData(rawData, f.data_or_data_offset);
-					ret.simpleTypeContainer = *(cast(uint64_t*)d);
-					break;
-				case Int64:
-					const d = getFieldData(rawData, f.data_or_data_offset);
-					ret.simpleTypeContainer = *(cast(int64_t*)d);
-					break;
-				case Double:
-					const d = getFieldData(rawData, f.data_or_data_offset);
-					ret.simpleTypeContainer = *(cast(uint64_t*)d);
-					break;
-				case ExoString:
-					const data = getFieldData(rawData, f.data_or_data_offset);
-					auto size = cast(uint32_t*)data;
-					auto chars = cast(char*)(data+uint32_t.sizeof);
-
-					ret.stringContainer = cast(immutable)(chars[0..*size]);
-					break;
-				case ResRef:
-					const data = getFieldData(rawData, f.data_or_data_offset);
-					auto size = cast(uint8_t*)data;
-					auto chars = cast(char*)(data+uint8_t.sizeof);
-
-					ret.stringContainer = cast(immutable)(chars[0..*size]);
-					break;
-
-				case ExoLocString:
-					const data = getFieldData(rawData, f.data_or_data_offset);
-					//auto total_size = cast(uint32_t*)data;
-					auto str_ref = cast(uint32_t*)(data+uint32_t.sizeof);
-					auto str_count = cast(uint32_t*)(data+2*uint32_t.sizeof);
-					auto sub_str = cast(void*)(data+3*uint32_t.sizeof);
-
-					ret.exoLocStringID = *str_ref;
-
-					foreach(i ; 0 .. *str_count){
-						auto id = cast(int32_t*)sub_str;
-						auto length = cast(int32_t*)(sub_str+uint32_t.sizeof);
-						auto str = cast(char*)(sub_str+2*uint32_t.sizeof);
-
-						ret.exoLocStringContainer[*id] = cast(immutable)(str[0..*length]);
-						sub_str += 2*uint32_t.sizeof + char.sizeof*(*length);
-					}
-					break;
-
-				case Void:
-					const data = getFieldData(rawData, f.data_or_data_offset);
-					auto size = cast(uint32_t*)data;
-					auto dataVoid = cast(void*)(data+uint32_t.sizeof);
-
-					ret.rawContainer = dataVoid[0..*size];
-					break;
-
-				case Struct:
-					buildNodeFromStructInPlace(rawData, f.data_or_data_offset, &ret);
-					writeln("New struct: ", ret.path);
-					break;
-
-				case List:
-					auto li = getListIndices(rawData, f.data_or_data_offset);
-					if(li.length>0){
-						uint32_t* indices = &li.first_struct_index;
-
-						ret.aggrContainer.reserve(li.length);
-						foreach(i ; 0 .. li.length){
-							ret.aggrContainer ~= buildNodeFromStruct(rawData, indices[i], &ret);
-						}
-					}
-					break;
-			}
-			return ret;
-		}
-		catch(Throwable t){
-			if(t.msg[0] != '@'){
-				t.msg = "@"~ret.path()~": "~t.msg;
-			}
-			throw t;
-		}
-	}
-
 }
