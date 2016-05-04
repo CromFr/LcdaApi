@@ -12,6 +12,7 @@ struct GffNode{
 	string label;
 	Type type;
 	GffNode* parent = null;
+	size_t parentListIndex;
 
 	/// Convert the node value to a certain type.
 	/// If the type is string, any type of value gets converted into string. Structs and lists are not expanded.
@@ -71,7 +72,7 @@ struct GffNode{
 					return "{{Struct}}";
 				case List:
 					//TODO
-					return "{{List}}";
+					return "{{List("~aggrContainer.length.to!string~")}}";
 			}
 		}
 		else static if(is(T==void[])){
@@ -162,10 +163,13 @@ struct GffNode{
 		import std.algorithm: map, reduce, reverse;
 		import std.array: array;
 		return getParents
-			.map!(n => n.label!=null? n.label : "{"~n.type.to!string~"}")
+			.map!(n =>
+				n.label!=null?
+					  n.label// ~ "(\x1b[31m"~n.parentListIndex.to!string~"\x1b[m)"
+					: (n.parent!is null && n.parent.type==Type.List? "["~n.parentListIndex.to!string~"]" : "{"~n.type.to!string~"}"))
 			.array
 			.reverse
-			.reduce!((a,b)=> a~"."~b);
+			.reduce!((a,b)=> b[0]=='['? a~b : a~"."~b);
 	}
 
 
@@ -288,10 +292,11 @@ private:
 			return cast(immutable GffListIndices*)(cast(void*)listIndicesPtr + offset);
 		}
 
-		GffNode buildNodeFromStruct(in void[] rawData, in size_t structIndex, GffNode* parent){
+		GffNode buildNodeFromStruct(in void[] rawData, in size_t structIndex, GffNode* parent, size_t parentListIndex=0){
 			GffNode ret;
 			ret.type = GffNode.Type.Struct;
 			ret.parent = parent;
+			ret.parentListIndex = parentListIndex;
 
 			buildNodeFromStructInPlace(rawData, structIndex, &ret);
 
@@ -401,7 +406,7 @@ private:
 
 							ret.aggrContainer.reserve(li.length);
 							foreach(i ; 0 .. li.length){
-								ret.aggrContainer ~= buildNodeFromStruct(rawData, indices[i], &ret);
+								ret.aggrContainer ~= buildNodeFromStruct(rawData, indices[i], &ret, i);
 							}
 						}
 						break;
@@ -409,7 +414,7 @@ private:
 				return ret;
 			}
 			catch(Throwable t){
-				if(t.msg[0] != '@'){
+				if(t.msg.length==0 || t.msg[0] != '@'){
 					t.msg = "@"~ret.path()~": "~t.msg;
 				}
 				throw t;
