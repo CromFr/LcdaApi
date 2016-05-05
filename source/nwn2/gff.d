@@ -425,29 +425,28 @@ private:
 		uint32_t registerStruct(const(GffNode)* node){
 			assert(node.type == GffNode.Type.Struct);
 
+			immutable createdStructIndex = cast(uint32_t)structs.length;
+			structs ~= GffStruct();
+
 			version(gff_verbose){
-				writeln(gff_verbose_rtIndent, "Registering struct corresponding to node ",node.label);
+				writeln(gff_verbose_rtIndent, "Registering struct id=",createdStructIndex," for node ",node.label);
 				gff_verbose_rtIndent ~= "│ ";
 			}
 
-			immutable createdStructIndex = cast(uint32_t)structs.length;
-			structs ~= GffStruct();
-			GffStruct* gffstruct = &structs[createdStructIndex];
+			structs[createdStructIndex].type = structs.length==0? 0xFFFF_FFFF : 0;//TODO: what is the type for?
+			structs[createdStructIndex].field_count = cast(uint32_t)node.aggrContainer.length;
 
-			gffstruct.type = structs.length==0? 0xFFFF_FFFF : 0;//TODO: what is the type for?
-			gffstruct.field_count = cast(uint32_t)node.aggrContainer.length;
-
-			if(gffstruct.field_count == 1){
+			if(structs[createdStructIndex].field_count == 1){
 				//index in field array
-				gffstruct.data_or_data_offset = registerField(
+				structs[createdStructIndex].data_or_data_offset = registerField(
 					&node.aggrContainer[0]
 				);
 			}
 			else{
 				//byte offset in field indices array
-				gffstruct.data_or_data_offset = cast(uint32_t)fieldIndices.length;
+				structs[createdStructIndex].data_or_data_offset = cast(uint32_t)fieldIndices.length;
 
-				fieldIndices.reserve(fieldIndices.length + uint32_t.sizeof*gffstruct.field_count);
+				fieldIndices.reserve(fieldIndices.length + uint32_t.sizeof*structs[createdStructIndex].field_count);
 				foreach(ref field ; node.aggrContainer){
 					auto index = registerField(&field);
 					fieldIndices ~= (&index)[0..1];
@@ -460,10 +459,9 @@ private:
 		uint32_t registerField(const(GffNode)* node){
 			immutable createdFieldIndex = cast(uint32_t)fields.length;
 			fields ~= GffField(node.type);
-			auto field = &fields[createdFieldIndex];
 
 			version(gff_verbose){
-				writeln(gff_verbose_rtIndent, "Registering  field: ", node.label, " (",node.type,"=",node.to!string,")");
+				writeln(gff_verbose_rtIndent, "Registering  field id=",createdFieldIndex,": ", node.label, " (",node.type,"=",node.to!string,")");
 				gff_verbose_rtIndent ~= "│ ";
 			}
 
@@ -475,12 +473,12 @@ private:
 			foreach(i, ref s ; labels){
 				if(s.value == node.label){
 					labelFound = true;
-					field.label_index = cast(uint32_t)i;
+					fields[createdFieldIndex].label_index = cast(uint32_t)i;
 					break;
 				}
 			}
 			if(!labelFound){
-				field.label_index = cast(uint32_t)labels.length;
+				fields[createdFieldIndex].label_index = cast(uint32_t)labels.length;
 				char[16] label = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
 				label[0..node.label.length] = node.label.dup;
 				labels ~= GffLabel(label);
@@ -489,17 +487,17 @@ private:
 			final switch(node.type) with(GffNode.Type){
 				case Byte, Char, Word, Short, DWord, Int, Float:
 					//cast is ok because all those types are <= 32bit
-					field.data_or_data_offset = *cast(uint32_t*)&node.simpleTypeContainer;
+					fields[createdFieldIndex].data_or_data_offset = *cast(uint32_t*)&node.simpleTypeContainer;
 					break;
 				case DWord64, Int64, Double:
 					//stored in fieldDatas
-					field.data_or_data_offset = cast(uint32_t)fieldDatas.length;
+					fields[createdFieldIndex].data_or_data_offset = cast(uint32_t)fieldDatas.length;
 					fieldDatas ~= (&node.simpleTypeContainer)[0..1].dup;
 					break;
 				case ExoString:
 					auto stringLength = node.stringContainer.length;
 
-					field.data_or_data_offset = cast(uint32_t)fieldDatas.length;
+					fields[createdFieldIndex].data_or_data_offset = cast(uint32_t)fieldDatas.length;
 					fieldDatas ~= (&stringLength)[0..1];
 					fieldDatas ~= (cast(void*)node.stringContainer.ptr)[0..stringLength];
 					break;
@@ -507,13 +505,13 @@ private:
 					auto stringLength = node.stringContainer.length;
 					assert(stringLength<=32, "Resref too long (max length: 32 characters)");//TODO: Throw exception on GffNode value set
 
-					field.data_or_data_offset = cast(uint32_t)fieldDatas.length;
+					fields[createdFieldIndex].data_or_data_offset = cast(uint32_t)fieldDatas.length;
 					fieldDatas ~= (&stringLength)[0..1];
 					fieldDatas ~= (cast(void*)node.stringContainer.ptr)[0..stringLength];
 					break;
 				case ExoLocString:
 					immutable fieldDataIndex = fieldDatas.length;
-					field.data_or_data_offset = cast(uint32_t)fieldDataIndex;
+					fields[createdFieldIndex].data_or_data_offset = cast(uint32_t)fieldDataIndex;
 
 					//total size
 					fieldDatas ~= [0,0,0,0];
@@ -540,16 +538,16 @@ private:
 					break;
 				case Void:
 					auto dataLength = node.rawContainer.length;
-					field.data_or_data_offset = cast(uint32_t)fieldDatas.length;
+					fields[createdFieldIndex].data_or_data_offset = cast(uint32_t)fieldDatas.length;
 					fieldDatas ~= (&dataLength)[0..uint8_t.sizeof];
 					fieldDatas ~= node.rawContainer;
 					break;
 				case Struct:
-					field.data_or_data_offset = registerStruct(node);
+					fields[createdFieldIndex].data_or_data_offset = registerStruct(node);
 					break;
 				case List:
 					immutable createdListOffset = cast(uint32_t)listIndices.length;
-					field.data_or_data_offset = createdListOffset;
+					fields[createdFieldIndex].data_or_data_offset = createdListOffset;
 
 					uint32_t listLength = cast(uint32_t)node.aggrContainer.length;
 					listIndices ~= (&listLength)[0..1];
