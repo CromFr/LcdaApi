@@ -433,10 +433,11 @@ private:
 				gff_verbose_rtIndent ~= "│ ";
 			}
 
+			immutable fieldCount = cast(uint32_t)node.aggrContainer.length;
 			structs[createdStructIndex].type = structs.length==0? 0xFFFF_FFFF : 0;//TODO: what is the type for?
-			structs[createdStructIndex].field_count = cast(uint32_t)node.aggrContainer.length;
+			structs[createdStructIndex].field_count = fieldCount;
 
-			if(structs[createdStructIndex].field_count == 1){
+			if(fieldCount == 1){
 				//index in field array
 				structs[createdStructIndex].data_or_data_offset = registerField(
 					&node.aggrContainer[0]
@@ -444,12 +445,15 @@ private:
 			}
 			else{
 				//byte offset in field indices array
-				structs[createdStructIndex].data_or_data_offset = cast(uint32_t)fieldIndices.length;
+				immutable fieldIndicesIndex = cast(uint32_t)fieldIndices.length;
+				structs[createdStructIndex].data_or_data_offset = fieldIndicesIndex;
 
-				fieldIndices.reserve(fieldIndices.length + uint32_t.sizeof*structs[createdStructIndex].field_count);
-				foreach(ref field ; node.aggrContainer){
-					auto index = registerField(&field);
-					fieldIndices ~= (&index)[0..1];
+				fieldIndices.length += uint32_t.sizeof*fieldCount;
+				foreach(i, ref field ; node.aggrContainer){
+					immutable offset = fieldIndicesIndex + +i*uint32_t.sizeof;
+
+					uint32_t index = registerField(&field);
+					fieldIndices[offset..offset+uint32_t.sizeof] = (&index)[0..1];
 				}
 			}
 
@@ -537,9 +541,9 @@ private:
 					fieldDatas[fieldDataIndex..fieldDataIndex+4] = (&totalSize)[0..1];
 					break;
 				case Void:
-					auto dataLength = node.rawContainer.length;
+					auto dataLength = cast(uint32_t)node.rawContainer.length;
 					fields[createdFieldIndex].data_or_data_offset = cast(uint32_t)fieldDatas.length;
-					fieldDatas ~= (&dataLength)[0..uint8_t.sizeof];
+					fieldDatas ~= (&dataLength)[0..1];
 					fieldDatas ~= node.rawContainer;
 					break;
 				case Struct:
