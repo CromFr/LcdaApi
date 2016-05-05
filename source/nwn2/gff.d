@@ -608,13 +608,13 @@ private:
 			data ~= (&header)[0..1];
 			version(unittest) offsetCheck += GffHeader.sizeof;
 			version(unittest) assert(data.length == offsetCheck);
-			data ~= structs[0..structs.length];
+			data ~= structs;
 			version(unittest) offsetCheck += structs.length * GffStruct.sizeof;
 			version(unittest) assert(data.length == offsetCheck);
-			data ~= fields[0..fields.length];
+			data ~= fields;
 			version(unittest) offsetCheck += fields.length * GffStruct.sizeof;
 			version(unittest) assert(data.length == offsetCheck);
-			data ~= labels[0..labels.length];
+			data ~= labels;
 			version(unittest) offsetCheck += labels.length * GffLabel.sizeof;
 			version(unittest) assert(data.length == offsetCheck);
 			data ~= fieldDatas;
