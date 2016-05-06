@@ -88,6 +88,15 @@ struct GffNode{
 		assert(0, "Incompatible type conversion from "~type.to!string~" to "~T.stringof);
 	}
 
+	const ref const(GffNode) opIndex(in string label){
+		assert(type==Type.Struct, "Not a struct");
+		return aggrContainer[structLabelMap[label]];
+	}
+	const ref const(GffNode) opIndex(in size_t index){
+		assert(type==Type.List, "Not a list");
+		return aggrContainer[index];
+	}
+
 	ref GffNode opIndex(in string label){
 		assert(type==Type.Struct, "Not a struct");
 		return aggrContainer[structLabelMap[label]];

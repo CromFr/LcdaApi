@@ -30,9 +30,9 @@ class Character{
 
 		//Level / classes
 		lvl = 0;
-		foreach(n ; gff["ClassList"].to!(GffNode[])){
-			immutable classID = n["Class"].to!int;
-			immutable classLvl = n["ClassLevel"].to!int;
+		foreach(ref classStruct ; gff["ClassList"].to!(GffNode[])){
+			immutable classID = classStruct["Class"].to!int;
+			immutable classLvl = classStruct["ClassLevel"].to!int;
 
 			lvl += classLvl;
 			classes ~= Class(strref.get(class2da.get!uint("Name", classID)), classLvl);
