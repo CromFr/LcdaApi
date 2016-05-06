@@ -2,10 +2,10 @@
 	"fileVersion": 1,
 	"versions": {
 		"memutils": "0.4.5",
-		"vibe-d": "0.7.29-alpha.3",
+		"vibe-d": "0.7.29-beta.1",
 		"libevent": "2.0.1+2.0.16",
 		"openssl": "1.1.4+1.0.1g",
-		"mysql-lited": "0.3.7",
+		"mysql-lited": "0.3.8",
 		"libasync": "0.7.9"
 	}
 }
