@@ -9,6 +9,4 @@ script:
 
 notifications:
     email:
-        recipients:
-            - cromfr@gmail.com
-        on_success: always
+        - cromfr@gmail.com
