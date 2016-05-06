@@ -281,14 +281,7 @@ private:
 			GffNode ret;
 			ret.type = GffNode.Type.Struct;
 
-			version(gff_verbose){
-				writeln(gff_verbose_rtIndent, "Parsing struct: id=",structIndex);
-				gff_verbose_rtIndent ~= "│ ";
-			}
-
 			buildNodeFromStructInPlace(rawData, structIndex, &ret);
-
-			version(gff_verbose) gff_verbose_rtIndent = gff_verbose_rtIndent[0..$-4];
 
 			return ret;
 		}
@@ -298,6 +291,14 @@ private:
 			destNode.type = GffNode.Type.Struct;
 
 			auto s = getStruct(rawData, structIndex);
+
+			version(gff_verbose){
+				writeln(gff_verbose_rtIndent, "Parsing struct: id=",structIndex,
+					" dodo=", s.data_or_data_offset,
+					" field_count=", s.field_count);
+				gff_verbose_rtIndent ~= "│ ";
+			}
+
 			if(s.field_count==1){
 				auto n = buildNodeFromField(rawData, s.data_or_data_offset);
 
@@ -314,6 +315,8 @@ private:
 				}
 			}
 
+			version(gff_verbose) gff_verbose_rtIndent = gff_verbose_rtIndent[0..$-4];
+
 		}
 
 		GffNode buildNodeFromField(in void[] rawData, in size_t fieldIndex){
@@ -328,7 +331,10 @@ private:
 				ret.type = cast(GffNode.Type)f.type;
 
 				version(gff_verbose){
-					writeln(gff_verbose_rtIndent, "Parsing  field: ", ret.label, " (",ret.type,"=",f.data_or_data_offset,")");
+					writeln(gff_verbose_rtIndent, "Parsing  field: '", ret.label,
+						"' (",ret.type,
+						", id=",fieldIndex,
+						", dodo:",f.data_or_data_offset,")");
 					gff_verbose_rtIndent ~= "│ ";
 				}
 
@@ -437,32 +443,36 @@ private:
 			immutable createdStructIndex = cast(uint32_t)structs.length;
 			structs ~= GffStruct();
 
-			version(gff_verbose){
-				writeln(gff_verbose_rtIndent, "Registering struct id=",createdStructIndex," for node ",node.label);
-				gff_verbose_rtIndent ~= "│ ";
-			}
-
 			immutable fieldCount = cast(uint32_t)node.aggrContainer.length;
 			structs[createdStructIndex].type = structs.length==0? 0xFFFF_FFFF : 0;//TODO: what is the type for?
 			structs[createdStructIndex].field_count = fieldCount;
 
+
+			version(gff_verbose){
+				writeln(gff_verbose_rtIndent,
+					"Registering struct id=",createdStructIndex,
+					" from node '",node.label,"'",
+					"(type=",structs[createdStructIndex].type,", fields_count=",structs[createdStructIndex].field_count,")");
+				gff_verbose_rtIndent ~= "│ ";
+			}
+
 			if(fieldCount == 1){
 				//index in field array
-				structs[createdStructIndex].data_or_data_offset = registerField(
-					&node.aggrContainer[0]
-				);
+				immutable fieldId = registerField(&node.aggrContainer[0]);
+				structs[createdStructIndex].data_or_data_offset = fieldId;
 			}
-			else{
+			else if(fieldCount>1){
 				//byte offset in field indices array
 				immutable fieldIndicesIndex = cast(uint32_t)fieldIndices.length;
 				structs[createdStructIndex].data_or_data_offset = fieldIndicesIndex;
 
 				fieldIndices.length += uint32_t.sizeof*fieldCount;
 				foreach(i, ref field ; node.aggrContainer){
-					immutable offset = fieldIndicesIndex + +i*uint32_t.sizeof;
 
-					uint32_t index = registerField(&field);
-					fieldIndices[offset..offset+uint32_t.sizeof] = (&index)[0..1];
+					immutable fieldId = registerField(&field);
+
+					immutable offset = fieldIndicesIndex + +i*uint32_t.sizeof;
+					fieldIndices[offset..offset+uint32_t.sizeof] = (cast(uint32_t*)&fieldId)[0..1];
 				}
 			}
 
@@ -474,7 +484,10 @@ private:
 			fields ~= GffField(node.type);
 
 			version(gff_verbose){
-				writeln(gff_verbose_rtIndent, "Registering  field id=",createdFieldIndex,": ", node.label, " (",node.type,"=",node.to!string,")");
+				writeln(gff_verbose_rtIndent, "Registering  field: '", node.label,
+					"' (",node.type,
+					", id=",createdFieldIndex,
+					", value=",node.to!string,")");
 				gff_verbose_rtIndent ~= "│ ";
 			}
 
@@ -556,7 +569,8 @@ private:
 					fieldDatas ~= node.rawContainer;
 					break;
 				case Struct:
-					fields[createdFieldIndex].data_or_data_offset = registerStruct(node);
+					immutable structId = registerStruct(node);
+					fields[createdFieldIndex].data_or_data_offset = structId;
 					break;
 				case List:
 					immutable createdListOffset = cast(uint32_t)listIndices.length;
