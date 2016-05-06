@@ -5,3 +5,10 @@ d: dmd
 script:
     - dub test --compiler=${DC}
     - dub build --compiler=${DC} --build=release
+
+
+notifications:
+    email:
+        recipients:
+            - cromfr@gmail.com
+        on_success: always
