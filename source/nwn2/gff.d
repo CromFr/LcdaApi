@@ -168,7 +168,15 @@ package:
 	uint32_t structType = 0;
 }
 
+class GffValueSetException : Exception{
+	@safe pure nothrow this(string msg, string f=__FILE__, size_t l=__LINE__, Throwable t=null){
+		super(msg, f, l, t);
+	}
+}
+
 class Gff{
+
+	this(){}
 
 	this(in string path){
 		import std.file : read;
@@ -177,21 +185,41 @@ class Gff{
 	this(in void[] data){
 		auto parser = Parser(data.ptr);
 		version(gff_verbose) parser.printData();
+
+		import std.string: stripRight;
+		m_fileType = parser.headerPtr.file_type.stripRight;
+		m_fileVersion = parser.headerPtr.file_version.stripRight;
 		firstNode = parser.buildNodeFromStruct(data, 0);
 	}
+
+	@property{
+		const string fileType(){return m_fileType;}
+		void fileType(in string type){
+			if(type.length>4)
+				throw new GffValueSetException("fileType length must be <= 4");
+			m_fileType = type;
+		}
+		const string fileVersion(){return m_fileVersion;}
+		void fileVersion(in string ver){
+			if(ver.length>4)
+				throw new GffValueSetException("fileVersion length must be <= 4");
+			m_fileVersion = ver;
+		}
+	}
+
 
 	alias firstNode this;
 	GffNode firstNode;
 
 
 	void[] serialize(){
-
 		Serializer serializer;
 		serializer.registerStruct(&firstNode);
-		return serializer.serialize(cast(char[4])"ANY ", cast(char[4])"V3.2 ");
+		return serializer.serialize(m_fileType, m_fileVersion);
 	}
 
 private:
+	string m_fileType, m_fileVersion;
 
 	align(1) struct GffHeader{
 		char[4]  file_type;
@@ -662,9 +690,14 @@ private:
 			return createdFieldIndex;
 		}
 
-		void[] serialize(immutable char[4] fileType, immutable char[4] fileVersion){
-			header.file_type = fileType;
-			header.file_version = fileVersion;
+		void[] serialize(in string fileType, in string fileVersion){
+			assert(fileType.length <= 4);
+			header.file_type = "    ";
+			header.file_type[0..fileType.length] = fileType.dup;
+
+			assert(fileVersion.length <= 4);
+			header.file_version = "    ";
+			header.file_version[0..fileVersion.length] = fileVersion.dup;
 
 			uint32_t offset = cast(uint32_t)GffHeader.sizeof;
 
