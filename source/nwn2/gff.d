@@ -539,6 +539,9 @@ private:
 					fieldIndices[offset..offset+uint32_t.sizeof] = (cast(uint32_t*)&fieldId)[0..1];
 				}
 			}
+			else{
+				structs[createdStructIndex].data_or_data_offset = -1;
+			}
 
 			version(gff_verbose) gff_verbose_rtIndent = gff_verbose_rtIndent[0..$-4];
 			return createdStructIndex;
@@ -584,26 +587,27 @@ private:
 					fieldDatas ~= (&node.simpleTypeContainer)[0..1].dup;
 					break;
 				case ExoString:
-					auto stringLength = node.stringContainer.length;
+					immutable stringLength = cast(uint32_t)node.stringContainer.length;
 
 					fields[createdFieldIndex].data_or_data_offset = cast(uint32_t)fieldDatas.length;
-					fieldDatas ~= (&stringLength)[0..1];
-					fieldDatas ~= (cast(void*)node.stringContainer.ptr)[0..stringLength];
+					fieldDatas ~= (&stringLength)[0..1].dup;
+					fieldDatas ~= (cast(void*)node.stringContainer.ptr)[0..stringLength].dup;
 					break;
 				case ResRef:
-					auto stringLength = node.stringContainer.length;
-					assert(stringLength<=32, "Resref too long (max length: 32 characters)");//TODO: Throw exception on GffNode value set
+					assert(node.stringContainer.length<=32, "Resref too long (max length: 32 characters)");//TODO: Throw exception on GffNode value set
+
+					immutable stringLength = cast(uint8_t)node.stringContainer.length;
 
 					fields[createdFieldIndex].data_or_data_offset = cast(uint32_t)fieldDatas.length;
-					fieldDatas ~= (&stringLength)[0..1];
-					fieldDatas ~= (cast(void*)node.stringContainer.ptr)[0..stringLength];
+					fieldDatas ~= (&stringLength)[0..1].dup;
+					fieldDatas ~= (cast(void*)node.stringContainer.ptr)[0..stringLength].dup;
 					break;
 				case ExoLocString:
 					immutable fieldDataIndex = fieldDatas.length;
 					fields[createdFieldIndex].data_or_data_offset = cast(uint32_t)fieldDataIndex;
 
 					//total size
-					fieldDatas ~= [cast(uint8_t)0];
+					fieldDatas ~= [cast(uint32_t)0];
 
 					immutable strref = cast(uint32_t)node.exoLocStringID;
 					fieldDatas ~= (&strref)[0..1].dup;
@@ -623,7 +627,7 @@ private:
 					}
 
 					//total size
-					immutable totalSize = cast(uint32_t)(fieldDatas.length-fieldDataIndex);
+					immutable totalSize = cast(uint32_t)(fieldDatas.length-fieldDataIndex) - 4;//totalSize does not count first 4 bytes
 					fieldDatas[fieldDataIndex..fieldDataIndex+4] = (&totalSize)[0..1].dup;
 					break;
 				case Void:
