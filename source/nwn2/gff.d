@@ -164,6 +164,8 @@ package:
 	size_t[string] structLabelMap;
 	uint32_t exoLocStringID;
 	string[int] exoLocStringContainer;
+	int[] exoLocStringContainerOrder;
+	uint32_t structType = 0;
 }
 
 class Gff{
@@ -291,11 +293,13 @@ private:
 			destNode.type = GffNode.Type.Struct;
 
 			auto s = getStruct(rawData, structIndex);
+			destNode.structType = s.type;
 
 			version(gff_verbose){
 				writeln(gff_verbose_rtIndent, "Parsing struct: id=",structIndex,
 					" dodo=", s.data_or_data_offset,
-					" field_count=", s.field_count);
+					" field_count=", s.field_count,
+					" type=",s.type);
 				gff_verbose_rtIndent ~= "│ ";
 			}
 
@@ -383,6 +387,7 @@ private:
 							immutable length = cast(immutable int32_t*)(sub_str+uint32_t.sizeof);
 							immutable str = cast(immutable char*)(sub_str+2*uint32_t.sizeof);
 
+							ret.exoLocStringContainerOrder ~= *id;
 							ret.exoLocStringContainer[*id] = str[0..*length].idup;
 							sub_str += 2*uint32_t.sizeof + char.sizeof*(*length);
 						}
@@ -444,7 +449,7 @@ private:
 			structs ~= GffStruct();
 
 			immutable fieldCount = cast(uint32_t)node.aggrContainer.length;
-			structs[createdStructIndex].type = structs.length==0? 0xFFFF_FFFF : 0;//TODO: what is the type for?
+			structs[createdStructIndex].type = node.structType;
 			structs[createdStructIndex].field_count = fieldCount;
 
 
@@ -540,27 +545,28 @@ private:
 					fields[createdFieldIndex].data_or_data_offset = cast(uint32_t)fieldDataIndex;
 
 					//total size
-					fieldDatas ~= [0,0,0,0];
+					fieldDatas ~= [cast(uint8_t)0];
 
-					auto strref = cast(uint32_t)node.exoLocStringID;
-					fieldDatas ~= (&strref)[0..1];
+					immutable strref = cast(uint32_t)node.exoLocStringID;
+					fieldDatas ~= (&strref)[0..1].dup;
 
-					auto strcount = cast(uint32_t)node.exoLocStringContainer.length;
-					fieldDatas ~= (&strcount)[0..1];
+					immutable strcount = cast(uint32_t)node.exoLocStringContainer.length;
+					fieldDatas ~= (&strcount)[0..1].dup;
 
-					foreach(key, str ; node.exoLocStringContainer){
-						//TODO: keep original ordering
-						fieldDatas ~= (&cast(int32_t)key)[0..1];//string id
+					foreach(key ; node.exoLocStringContainerOrder){
+						immutable str = node.exoLocStringContainer[key];
 
-						auto length = cast(int32_t)str.length;
-						fieldDatas ~= (&length)[0..1];//length
+						fieldDatas ~= (cast(int32_t*)&key)[0..1].dup;//string id
+
+						immutable length = cast(int32_t)str.length;
+						fieldDatas ~= (&length)[0..1].dup;
 
 						fieldDatas ~= str.ptr[0..length].dup;
 					}
 
 					//total size
-					auto totalSize = cast(uint32_t)(fieldDatas.length-fieldDataIndex);
-					fieldDatas[fieldDataIndex..fieldDataIndex+4] = (&totalSize)[0..1];
+					immutable totalSize = cast(uint32_t)(fieldDatas.length-fieldDataIndex);
+					fieldDatas[fieldDataIndex..fieldDataIndex+4] = (&totalSize)[0..1].dup;
 					break;
 				case Void:
 					auto dataLength = cast(uint32_t)node.rawContainer.length;
