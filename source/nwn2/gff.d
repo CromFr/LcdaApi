@@ -557,11 +557,12 @@ private:
 
 			assert(node.label.length <= 16, "Label too long");//TODO: Throw exception on GffNode.label set
 
+			char[16] label = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+			label[0..node.label.length] = node.label.dup;
 			//TODO: this may be totally stupid and complexity too high
-			import std.algorithm: equal;
 			bool labelFound = false;
 			foreach(i, ref s ; labels){
-				if(s.value == node.label){
+				if(s.value == label){
 					labelFound = true;
 					fields[createdFieldIndex].label_index = cast(uint32_t)i;
 					break;
@@ -569,8 +570,6 @@ private:
 			}
 			if(!labelFound){
 				fields[createdFieldIndex].label_index = cast(uint32_t)labels.length;
-				char[16] label = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
-				label[0..node.label.length] = node.label.dup;
 				labels ~= GffLabel(label);
 			}
 
