@@ -176,6 +176,7 @@ class Gff{
 	}
 	this(in void[] data){
 		auto parser = Parser(data.ptr);
+		version(gff_verbose) parser.printData();
 		firstNode = parser.buildNodeFromStruct(data, 0);
 	}
 
@@ -427,6 +428,64 @@ private:
 				}
 				throw t;
 			}
+		}
+
+		version(gff_verbose)
+		void printData(){
+			import std.string: center, rightJustify, toUpper;
+			import std.algorithm: chunkBy;
+			import std.stdio: write;
+
+			void printTitle(in string title){
+				writeln("============================================================");
+				writeln(title.toUpper.center(60));
+				writeln("============================================================");
+			}
+			void printByteArray(in void* byteArray, size_t length){
+				foreach(i ; 0..20){
+					if(i==0)write("    / ");
+					write(i.to!string.rightJustify(4, '_'));
+				}
+				writeln();
+				foreach(i ; 0..length){
+					auto ptr = cast(void*)byteArray + i;
+					if(i%20==0)write((i/10).to!string.rightJustify(3), " > ");
+					write((*cast(ubyte*)ptr).to!string.rightJustify(4));
+					if(i%20==19)writeln();
+				}
+				writeln();
+			}
+
+			printTitle("header");
+			with(headerPtr){
+				writeln("'",file_type, "'    '",file_version,"'");
+				writeln("struct: ",struct_offset," ",struct_count);
+				writeln("field: ",field_offset," ",field_count);
+				writeln("label: ",label_offset," ",label_count);
+				writeln("field_data: ",field_data_offset," ",field_data_count);
+				writeln("field_indices: ",field_indices_offset," ",field_indices_count);
+				writeln("list_indices: ",list_indices_offset," ",list_indices_count);
+			}
+			printTitle("structs");
+			foreach(id, ref a ; structsPtr[0..headerPtr.struct_count])
+				writeln(id.to!string.rightJustify(4), " > ",a);
+
+			printTitle("fields");
+			foreach(id, ref a ; fieldsPtr[0..headerPtr.field_count])
+				writeln(id.to!string.rightJustify(4), " > ",a);
+
+			printTitle("labels");
+			foreach(id, ref a ; labelsPtr[0..headerPtr.label_count])
+				writeln(id.to!string.rightJustify(4), " > ",a);
+
+			printTitle("field data");
+			printByteArray(fieldDatasPtr, headerPtr.field_data_count);
+
+			printTitle("field indices");
+			printByteArray(fieldIndicesPtr, headerPtr.field_indices_count);
+
+			printTitle("list indices");
+			printByteArray(listIndicesPtr, headerPtr.list_indices_count);
 		}
 	}
 
