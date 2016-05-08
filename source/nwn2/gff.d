@@ -81,9 +81,9 @@ struct GffNode{
 					return "{{List("~aggrContainer.length.to!string~")}}";
 			}
 		}
-		else static if(is(T==void[])){
+		else static if(is(T==void[]) || is(T==ubyte[]) || is(T==byte[])){
 			if(type==Type.Void)
-				return rawContainer;
+				return cast(T)rawContainer;
 		}
 		//else static if(is(T==GffNode[string])){
 		//	if(type==Type.Struct)
@@ -94,6 +94,136 @@ struct GffNode{
 				return aggrContainer;
 		}
 		assert(0, "Incompatible type conversion from "~type.to!string~" to "~T.stringof);
+	}
+
+	void opAssign(T)(T rhs) if(!is(T==GffNode)){
+		import std.traits;
+
+		void assignSimpleType(Type TYPE, T)(T rhs){
+			*cast(getNativeType!TYPE*)&simpleTypeContainer = rhs.to!(getNativeType!TYPE);
+		}
+
+		final switch(type) with(Type){
+			case Invalid: assert(0, "type has not been set");
+			case Byte:
+				static if(__traits(isArithmetic, T)) return assignSimpleType!Byte(rhs);    break;
+			case Char:
+				static if(__traits(isArithmetic, T) || isSomeChar!T)
+					return assignSimpleType!Char(rhs);
+				break;
+			case Word:
+				static if(__traits(isArithmetic, T)) return assignSimpleType!Word(rhs);    break;
+			case Short:
+				static if(__traits(isArithmetic, T)) return assignSimpleType!Short(rhs);   break;
+			case DWord:
+				static if(__traits(isArithmetic, T)) return assignSimpleType!DWord(rhs);   break;
+			case Int:
+				static if(__traits(isArithmetic, T)) return assignSimpleType!Int(rhs);     break;
+			case DWord64:
+				static if(__traits(isArithmetic, T)) return assignSimpleType!DWord64(rhs); break;
+			case Int64:
+				static if(__traits(isArithmetic, T)) return assignSimpleType!Int64(rhs);   break;
+			case Float:
+				static if(__traits(isFloating, T))   return assignSimpleType!Float(rhs);   break;
+			case Double:
+				static if(__traits(isFloating, T))   return assignSimpleType!Double(rhs);  break;
+			case ExoString:
+				static if(isSomeString!T){
+					stringContainer = rhs.to!string;
+					return;
+				}
+				break;
+			case ResRef:
+				static if(isSomeString!T){
+					if(rhs.length > 32) throw new GffValueSetException("string is too long for a ResRef (32 characters limit)");
+					stringContainer = rhs.to!string;
+					return;
+				}
+				break;
+			case ExoLocString:
+				static if(__traits(isArithmetic, T)){
+					//set strref
+					exoLocStringID = rhs.to!uint32_t;
+					return;
+				}
+				else static if(isAssociativeArray!T
+					&& __traits(isArithmetic, KeyType!T) && isSomeString!(ValueType!T)){
+					//set strings
+					exoLocStringContainer.clear();
+					exoLocStringContainerOrder.length = 0;
+					foreach(key, value ; rhs){
+						exoLocStringContainer[key] = value.to!string;
+						exoLocStringContainerOrder ~= key.to!int;
+					}
+					return;
+				}
+
+			case Void:
+				static if(is(T==void[]) || is(T==ubyte[]) || is(T==byte[])){
+					rawContainer = rhs.dup;
+					return;
+				}
+			case Struct:
+				static if(is(T==GffNode[])){
+					aggrContainer.clear();
+					foreach(ref s ; rhs){
+						structLabelMap[s.label] = aggrContainer.length;
+						aggrContainer ~= s;
+					}
+					return;
+				}
+				else static if(isAssociativeArray!T && is(ValueType!T==GffNode)){
+					assert(0, "To set a Struct GffNode, use a GffStruct[]. Keys will be automatically set using the node labels");
+				}
+			case List:
+				static if(is(T==GffNode[])){
+					aggrContainer = rhs.dup;
+					return;
+				}
+		}
+
+		assert(0, "Cannot set node of type "~type.to!string~" with value of type "~T.stringof);
+	}
+	unittest{
+		import std.exception;
+
+		auto node = GffNode(GffNode.Type.Byte);
+		assertThrown!ConvOverflowException(node = -1);
+		assertThrown!ConvOverflowException(node = 256);
+		assertThrown!Error(node = "somestring");
+		node = 42;
+		assert(node.to!int == 42);
+
+		node = GffNode(GffNode.Type.Char);
+		assertThrown!ConvOverflowException(node = -129);
+		assertThrown!ConvOverflowException(node = 128);
+		assertThrown!Error(node = "somestring");
+		node = 'a';
+		node = 'z';
+		assert(node.to!char == 'z');
+
+		node = GffNode(GffNode.Type.ExoString);
+		node = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
+		node = "Hello";
+		assert(node.to!string == "Hello");
+
+		node = GffNode(GffNode.Type.ResRef);
+		assertThrown!GffValueSetException(node = "This text is longer than 32 characters");
+		assertThrown!Error(node = 42);
+		node = "HelloWorld";
+		assert(node.to!string == "HelloWorld");
+
+		node = GffNode(GffNode.Type.ExoLocString);
+		node = 1337;//set strref
+		node = [0: "English guy", 1: "English girl", 2: "French guy"];
+		//TODO: test those values back
+
+		node = GffNode(GffNode.Type.Void);
+		ubyte[] data = [0,1,2,3,4,5,6];
+		node = data;
+		assert(node.to!(ubyte[])[3] == 3);
+
+
 	}
 
 	const ref const(GffNode) opIndex(in string label){
