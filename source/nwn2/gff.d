@@ -106,40 +106,48 @@ struct GffNode{
 		final switch(type) with(Type){
 			case Invalid: assert(0, "type has not been set");
 			case Byte:
-				static if(__traits(isArithmetic, T)) return assignSimpleType!Byte(rhs);    break;
+				static if(__traits(isArithmetic, T)) return assignSimpleType!Byte(rhs);
+				else break;
 			case Char:
-				static if(__traits(isArithmetic, T) || isSomeChar!T)
-					return assignSimpleType!Char(rhs);
-				break;
+				static if(__traits(isArithmetic, T) || isSomeChar!T) return assignSimpleType!Char(rhs);
+				else break;
 			case Word:
-				static if(__traits(isArithmetic, T)) return assignSimpleType!Word(rhs);    break;
+				static if(__traits(isArithmetic, T)) return assignSimpleType!Word(rhs);
+				else break;
 			case Short:
-				static if(__traits(isArithmetic, T)) return assignSimpleType!Short(rhs);   break;
+				static if(__traits(isArithmetic, T)) return assignSimpleType!Short(rhs);
+				else break;
 			case DWord:
-				static if(__traits(isArithmetic, T)) return assignSimpleType!DWord(rhs);   break;
+				static if(__traits(isArithmetic, T)) return assignSimpleType!DWord(rhs);
+				else break;
 			case Int:
-				static if(__traits(isArithmetic, T)) return assignSimpleType!Int(rhs);     break;
+				static if(__traits(isArithmetic, T)) return assignSimpleType!Int(rhs);
+				else break;
 			case DWord64:
-				static if(__traits(isArithmetic, T)) return assignSimpleType!DWord64(rhs); break;
+				static if(__traits(isArithmetic, T)) return assignSimpleType!DWord64(rhs);
+				else break;
 			case Int64:
-				static if(__traits(isArithmetic, T)) return assignSimpleType!Int64(rhs);   break;
+				static if(__traits(isArithmetic, T)) return assignSimpleType!Int64(rhs);
+				else break;
 			case Float:
-				static if(__traits(isFloating, T))   return assignSimpleType!Float(rhs);   break;
+				static if(__traits(isFloating, T))   return assignSimpleType!Float(rhs);
+				else break;
 			case Double:
-				static if(__traits(isFloating, T))   return assignSimpleType!Double(rhs);  break;
+				static if(__traits(isFloating, T))   return assignSimpleType!Double(rhs);
+				else break;
 			case ExoString:
 				static if(isSomeString!T){
 					stringContainer = rhs.to!string;
 					return;
 				}
-				break;
+				else break;
 			case ResRef:
 				static if(isSomeString!T){
 					if(rhs.length > 32) throw new GffValueSetException("string is too long for a ResRef (32 characters limit)");
 					stringContainer = rhs.to!string;
 					return;
 				}
-				break;
+				else break;
 			case ExoLocString:
 				static if(__traits(isArithmetic, T)){
 					//set strref
@@ -157,12 +165,13 @@ struct GffNode{
 					}
 					return;
 				}
-
+				else break;
 			case Void:
 				static if(is(T==void[]) || is(T==ubyte[]) || is(T==byte[])){
 					rawContainer = rhs.dup;
 					return;
 				}
+				else break;
 			case Struct:
 				static if(is(T==GffNode[])){
 					aggrContainer.clear();
@@ -175,11 +184,13 @@ struct GffNode{
 				else static if(isAssociativeArray!T && is(ValueType!T==GffNode)){
 					assert(0, "To set a Struct GffNode, use a GffStruct[]. Keys will be automatically set using the node labels");
 				}
+				else break;
 			case List:
 				static if(is(T==GffNode[])){
 					aggrContainer = rhs.dup;
 					return;
 				}
+				else break;
 		}
 
 		assert(0, "Cannot set node of type "~type.to!string~" with value of type "~T.stringof);
@@ -223,7 +234,7 @@ struct GffNode{
 		node = data;
 		assert(node.to!(ubyte[])[3] == 3);
 
-
+		//TODO: test structs & lists
 	}
 
 	const ref const(GffNode) opIndex(in string label){
