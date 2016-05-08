@@ -17,7 +17,7 @@ struct GffNode{
 	string label;
 
 	@property const Type type(){return m_type;}
-	package Type m_type;
+	package Type m_type = Type.Invalid;
 
 	/// Convert the node value to a certain type.
 	/// If the type is string, any type of value gets converted into string. Structs and lists are not expanded.
@@ -40,6 +40,7 @@ struct GffNode{
 		else static if(isSomeString!T){
 			import std.string: format;
 			final switch(type) with(Type){
+				case Invalid: assert(0, "type has not been set");
 				//unsigned int
 				case Byte, Word, DWord, DWord64:
 					return simpleTypeContainer.to!T;
@@ -120,6 +121,7 @@ struct GffNode{
 
 	/// Type of data stored in the GffNode
 	enum Type{
+		Invalid      = -1,
 		Byte         = 0,
 		Char         = 1,
 		Word         = 2,
@@ -403,6 +405,7 @@ private:
 				}
 
 				final switch(ret.type) with(GffNode.Type){
+					case Invalid: assert(0, "type has not been set");
 					case Byte, Char, Word, Short, DWord, Int, Float:
 						ret.simpleTypeContainer = cast(uint64_t)f.data_or_data_offset;
 						break;
@@ -636,6 +639,7 @@ private:
 			}
 
 			final switch(node.type) with(GffNode.Type){
+				case Invalid: assert(0, "type has not been set");
 				case Byte, Char, Word, Short, DWord, Int, Float:
 					//cast is ok because all those types are <= 32bit
 					fields[createdFieldIndex].data_or_data_offset = *cast(uint32_t*)&node.simpleTypeContainer;
