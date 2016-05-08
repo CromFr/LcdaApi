@@ -93,6 +93,7 @@ struct GffNode{
 		return aggrContainer[structLabelMap[label]];
 	}
 	const ref const(GffNode) opIndex(in size_t index){
+		//TODO: get localized strings
 		assert(type==Type.List, "Not a list");
 		return aggrContainer[index];
 	}
@@ -104,6 +105,10 @@ struct GffNode{
 	ref GffNode opIndex(in size_t index){
 		assert(type==Type.List, "Not a list");
 		return aggrContainer[index];
+	}
+
+	ref GffNode opDispatch(string key)(){
+		return this[key];
 	}
 
 	/// Type of data stored in the GffNode
