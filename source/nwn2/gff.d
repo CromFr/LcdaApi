@@ -70,6 +70,55 @@ struct GffNode{
 	@property const GffType type(){return m_type;}
 	package GffType m_type = GffType.Invalid;
 
+
+	const auto ref as(GffType T)(){
+		static assert(T!=GffType.Invalid, "Cannot use GffNode.as with type Invalid");
+		assert(T == type || type==GffType.Invalid, "Type mismatch");
+
+		with(GffType)
+		static if(T==Invalid){
+			return null;
+		}
+		else static if(
+			   T==Byte || T==Char
+			|| T==Word || T==Short
+			|| T==DWord || T==Int
+			|| T==DWord64 || T==Int64
+			|| T==Float || T==Double){
+			return *cast(gffTypeToNative!T*)&simpleTypeContainer;
+		}
+		else static if(
+			   T==ExoString
+			|| T==ResRef){
+			return stringContainer;
+		}
+		else static if(T==ExoLocString){
+			return exoLocStringContainer;
+		}
+		else static if(T==Void){
+			return rawContainer;
+		}
+		else static if(T==Struct){
+			return this;
+		}
+		else static if(T==List){
+			return aggrContainer;
+		}
+		else
+			static assert(0, "Type "~T.stringof~" not implemented");
+	}
+	unittest{
+		import std.exception;
+		import std.traits: EnumMembers;
+		with(GffType){
+			assert(!__traits(compiles, GffNode(Invalid).as!Invalid));
+			foreach(m ; EnumMembers!GffType){
+				static if(m!=GffType.Invalid)
+					GffNode(m).as!m;
+			}
+		}
+	}
+
 	/// Convert the node value to a certain type.
 	/// If the type is string, any type of value gets converted into string. Structs and lists are not expanded.
 	const ref auto to(T)(){
