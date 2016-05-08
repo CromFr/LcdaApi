@@ -7,31 +7,82 @@ import std.conv;
 debug import std.stdio: writeln;
 import nwn2.tlk;
 
+class GffValueSetException : Exception{
+	@safe pure nothrow this(string msg, string f=__FILE__, size_t l=__LINE__, Throwable t=null){
+		super(msg, f, l, t);
+	}
+}
+class GffTypeException : Exception{
+	@safe pure nothrow this(string msg, string f=__FILE__, size_t l=__LINE__, Throwable t=null){
+		super(msg, f, l, t);
+	}
+}
+
+/// Type of data stored in the GffNode
+enum GffType{
+	Invalid      = -1,
+	Byte         = 0,
+	Char         = 1,
+	Word         = 2,
+	Short        = 3,
+	DWord        = 4,
+	Int          = 5,
+	DWord64      = 6,
+	Int64        = 7,
+	Float        = 8,
+	Double       = 9,
+	ExoString    = 10,
+	ResRef       = 11,
+	ExoLocString = 12,
+	Void         = 13,
+	Struct       = 14,
+	List         = 15
+}
+
+template gffTypeToNative(GffType t){
+	import std.typecons: Tuple;
+	static if(t==GffType.Byte)			alias gffTypeToNative = uint8_t;
+	static if(t==GffType.Char)         alias gffTypeToNative = int8_t;
+	static if(t==GffType.Word)         alias gffTypeToNative = uint16_t;
+	static if(t==GffType.Short)        alias gffTypeToNative = int16_t;
+	static if(t==GffType.DWord)        alias gffTypeToNative = uint32_t;
+	static if(t==GffType.Int)          alias gffTypeToNative = int32_t;
+	static if(t==GffType.DWord64)      alias gffTypeToNative = uint64_t;
+	static if(t==GffType.Int64)        alias gffTypeToNative = int64_t;
+	static if(t==GffType.Float)        alias gffTypeToNative = float;
+	static if(t==GffType.Double)       alias gffTypeToNative = double;
+	static if(t==GffType.ExoString)    alias gffTypeToNative = string;
+	static if(t==GffType.ResRef)       alias gffTypeToNative = string;// length<=32
+	static if(t==GffType.ExoLocString) alias gffTypeToNative = Tuple!(uint32_t,"strref", string[int32_t],"strings");
+	static if(t==GffType.Void)         alias gffTypeToNative = void[];
+	static if(t==GffType.Struct)       alias gffTypeToNative = GffNode[string];
+	static if(t==GffType.List)         alias gffTypeToNative = GffNode[];
+}
 
 struct GffNode{
-	this(Type t, string lbl=null){
+	this(GffType t, string lbl=null){
 		m_type = t;
 		label = lbl;
 	}
 
 	string label;
 
-	@property const Type type(){return m_type;}
-	package Type m_type = Type.Invalid;
+	@property const GffType type(){return m_type;}
+	package GffType m_type = GffType.Invalid;
 
 	/// Convert the node value to a certain type.
 	/// If the type is string, any type of value gets converted into string. Structs and lists are not expanded.
 	const ref auto to(T)(){
 		import std.traits;
 		static if(__traits(isArithmetic, T)){
-			switch(type) with(Type){
+			switch(type) with(GffType){
 				case Byte, Char, Word, Short, DWord, Int, DWord64, Int64:
 					return cast(T)simpleTypeContainer;
 				default: break;
 			}
 		}
 		else static if(__traits(isFloating, T)){
-			switch(type) with(Type){
+			switch(type) with(GffType){
 				case Float, Double:
 					return cast(T)simpleTypeContainer;
 				default: break;
@@ -39,7 +90,7 @@ struct GffNode{
 		}
 		else static if(isSomeString!T){
 			import std.string: format;
-			final switch(type) with(Type){
+			final switch(type) with(GffType){
 				case Invalid: assert(0, "type has not been set");
 				//unsigned int
 				case Byte, Word, DWord, DWord64:
@@ -82,15 +133,15 @@ struct GffNode{
 			}
 		}
 		else static if(is(T==void[]) || is(T==ubyte[]) || is(T==byte[])){
-			if(type==Type.Void)
+			if(type==GffType.Void)
 				return cast(T)rawContainer;
 		}
 		//else static if(is(T==GffNode[string])){
-		//	if(type==Type.Struct)
+		//	if(type==GffType.Struct)
 		//		return structContainer;
 		//}
 		else static if(is(T==GffNode[])){
-			if(type==Type.List || type==Type.Struct)
+			if(type==GffType.List || type==GffType.Struct)
 				return aggrContainer;
 		}
 		assert(0, "Incompatible type conversion from "~type.to!string~" to "~T.stringof);
@@ -99,11 +150,11 @@ struct GffNode{
 	void opAssign(T)(T rhs) if(!is(T==GffNode)){
 		import std.traits;
 
-		void assignSimpleType(Type TYPE, T)(T rhs){
-			*cast(getNativeType!TYPE*)&simpleTypeContainer = rhs.to!(getNativeType!TYPE);
+		void assignSimpleType(GffType TYPE, T)(T rhs){
+			*cast(gffTypeToNative!TYPE*)&simpleTypeContainer = rhs.to!(gffTypeToNative!TYPE);
 		}
 
-		final switch(type) with(Type){
+		final switch(type) with(GffType){
 			case Invalid: assert(0, "type has not been set");
 			case Byte:
 				static if(__traits(isArithmetic, T)) return assignSimpleType!Byte(rhs);
@@ -198,14 +249,14 @@ struct GffNode{
 	unittest{
 		import std.exception;
 
-		auto node = GffNode(GffNode.Type.Byte);
+		auto node = GffNode(GffType.Byte);
 		assertThrown!ConvOverflowException(node = -1);
 		assertThrown!ConvOverflowException(node = 256);
 		assertThrown!Error(node = "somestring");
 		node = 42;
 		assert(node.to!int == 42);
 
-		node = GffNode(GffNode.Type.Char);
+		node = GffNode(GffType.Char);
 		assertThrown!ConvOverflowException(node = -129);
 		assertThrown!ConvOverflowException(node = 128);
 		assertThrown!Error(node = "somestring");
@@ -213,23 +264,23 @@ struct GffNode{
 		node = 'z';
 		assert(node.to!char == 'z');
 
-		node = GffNode(GffNode.Type.ExoString);
+		node = GffNode(GffType.ExoString);
 		node = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
 		node = "Hello";
 		assert(node.to!string == "Hello");
 
-		node = GffNode(GffNode.Type.ResRef);
+		node = GffNode(GffType.ResRef);
 		assertThrown!GffValueSetException(node = "This text is longer than 32 characters");
 		assertThrown!Error(node = 42);
 		node = "HelloWorld";
 		assert(node.to!string == "HelloWorld");
 
-		node = GffNode(GffNode.Type.ExoLocString);
+		node = GffNode(GffType.ExoLocString);
 		node = 1337;//set strref
 		node = [0: "English guy", 1: "English girl", 2: "French guy"];
 		//TODO: test those values back
 
-		node = GffNode(GffNode.Type.Void);
+		node = GffNode(GffType.Void);
 		ubyte[] data = [0,1,2,3,4,5,6];
 		node = data;
 		assert(node.to!(ubyte[])[3] == 3);
@@ -238,66 +289,26 @@ struct GffNode{
 	}
 
 	const ref const(GffNode) opIndex(in string label){
-		assert(type==Type.Struct, "Not a struct");
+		assert(type==GffType.Struct, "Not a struct");
 		return aggrContainer[structLabelMap[label]];
 	}
 	const ref const(GffNode) opIndex(in size_t index){
 		//TODO: get localized strings
-		assert(type==Type.List, "Not a list");
+		assert(type==GffType.List, "Not a list");
 		return aggrContainer[index];
 	}
 
 	ref GffNode opIndex(in string label){
-		assert(type==Type.Struct, "Not a struct");
+		assert(type==GffType.Struct, "Not a struct");
 		return aggrContainer[structLabelMap[label]];
 	}
 	ref GffNode opIndex(in size_t index){
-		assert(type==Type.List, "Not a list");
+		assert(type==GffType.List, "Not a list");
 		return aggrContainer[index];
 	}
 
 	ref GffNode opDispatch(string key)(){
 		return this[key];
-	}
-
-	/// Type of data stored in the GffNode
-	enum Type{
-		Invalid      = -1,
-		Byte         = 0,
-		Char         = 1,
-		Word         = 2,
-		Short        = 3,
-		DWord        = 4,
-		Int          = 5,
-		DWord64      = 6,
-		Int64        = 7,
-		Float        = 8,
-		Double       = 9,
-		ExoString    = 10,
-		ResRef       = 11,
-		ExoLocString = 12,
-		Void         = 13,
-		Struct       = 14,
-		List         = 15
-	}
-
-	template getNativeType(Type t){
-		static if(t==Type.Byte)			alias getNativeType = uint8_t;
-		static if(t==Type.Char)         alias getNativeType = int8_t;
-		static if(t==Type.Word)         alias getNativeType = uint16_t;
-		static if(t==Type.Short)        alias getNativeType = int16_t;
-		static if(t==Type.DWord)        alias getNativeType = uint32_t;
-		static if(t==Type.Int)          alias getNativeType = int32_t;
-		static if(t==Type.DWord64)      alias getNativeType = uint64_t;
-		static if(t==Type.Int64)        alias getNativeType = int64_t;
-		static if(t==Type.Float)        alias getNativeType = float;
-		static if(t==Type.Double)       alias getNativeType = double;
-		static if(t==Type.ExoString)    alias getNativeType = string;
-		static if(t==Type.ResRef)       alias getNativeType = string;// length<=32
-		static if(t==Type.ExoLocString) alias getNativeType = string[int];// localized
-		static if(t==Type.Void)         alias getNativeType = void[];
-		static if(t==Type.Struct)       alias getNativeType = GffNode[string];
-		static if(t==Type.List)         alias getNativeType = GffNode[];
 	}
 
 	/// Produces a readable string of the node and its children
@@ -306,14 +317,14 @@ struct GffNode{
 		string toPrettyStringInternal(const(GffNode)* node, string tabs){
 			import std.string: leftJustify;
 
-			if(node.type == Type.Struct){
+			if(node.type == GffType.Struct){
 				string ret = tabs~"("~node.type.to!string~")\n";
 				foreach(ref childNode ; node.aggrContainer){
 					ret ~= toPrettyStringInternal(&childNode, tabs~"   | ");
 				}
 				return ret;
 			}
-			else if(node.type == Type.List){
+			else if(node.type == GffType.List){
 				string ret = tabs~node.label.leftJustify(16)~": ("~node.type.to!string~")\n";
 				foreach(ref childNode ; node.aggrContainer){
 					ret ~= toPrettyStringInternal(&childNode, tabs~"   | ");
@@ -337,15 +348,9 @@ package:
 	GffNode[] aggrContainer;
 	size_t[string] structLabelMap;
 	uint32_t exoLocStringID;
-	string[int] exoLocStringContainer;
-	int[] exoLocStringContainerOrder;
+	string[uint32_t] exoLocStringContainer;
+	uint32_t[] exoLocStringContainerOrder;
 	uint32_t structType = 0;
-}
-
-class GffValueSetException : Exception{
-	@safe pure nothrow this(string msg, string f=__FILE__, size_t l=__LINE__, Throwable t=null){
-		super(msg, f, l, t);
-	}
 }
 
 class Gff{
@@ -483,7 +488,7 @@ private:
 		version(gff_verbose) string gff_verbose_rtIndent;
 
 		GffNode buildNodeFromStruct(in void[] rawData, in size_t structIndex){
-			auto ret = GffNode(GffNode.Type.Struct);
+			auto ret = GffNode(GffType.Struct);
 
 			buildNodeFromStructInPlace(rawData, structIndex, &ret);
 
@@ -492,7 +497,7 @@ private:
 
 		void buildNodeFromStructInPlace(in void[] rawData, in size_t structIndex, GffNode* destNode){
 
-			destNode.m_type = GffNode.Type.Struct;
+			destNode.m_type = GffType.Struct;
 
 			auto s = getStruct(rawData, structIndex);
 			destNode.structType = s.type;
@@ -535,7 +540,7 @@ private:
 				if(lbl[$-1]=='\0') ret.label = lbl.ptr.fromStringz.idup;
 				else               ret.label = lbl.idup;
 
-				ret.m_type = cast(GffNode.Type)f.type;
+				ret.m_type = cast(GffType)f.type;
 
 				version(gff_verbose){
 					writeln(gff_verbose_rtIndent, "Parsing  field: '", ret.label,
@@ -545,7 +550,7 @@ private:
 					gff_verbose_rtIndent ~= "│ ";
 				}
 
-				final switch(ret.type) with(GffNode.Type){
+				final switch(ret.type) with(GffType){
 					case Invalid: assert(0, "type has not been set");
 					case Byte, Char, Word, Short, DWord, Int, Float:
 						ret.simpleTypeContainer = cast(uint64_t)f.data_or_data_offset;
@@ -705,7 +710,7 @@ private:
 
 
 		uint32_t registerStruct(const(GffNode)* node){
-			assert(node.type == GffNode.Type.Struct);
+			assert(node.type == GffType.Struct);
 
 			immutable createdStructIndex = cast(uint32_t)structs.length;
 			structs ~= GffStruct();
@@ -779,7 +784,7 @@ private:
 				labels ~= GffLabel(label);
 			}
 
-			final switch(node.type) with(GffNode.Type){
+			final switch(node.type) with(GffType){
 				case Invalid: assert(0, "type has not been set");
 				case Byte, Char, Word, Short, DWord, Int, Float:
 					//cast is ok because all those types are <= 32bit

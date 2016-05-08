@@ -4,7 +4,7 @@ import std.stdint;
 import std.string;
 import std.conv;
 
-import nwn2.gff : GffNode;
+import nwn2.gff : GffNode, GffType;
 
 class StrRefException : Exception{
 	public @safe pure nothrow
@@ -39,7 +39,7 @@ class StrRefResolver{
 	}
 
 	const string get(in GffNode node){
-		if(node.type!=GffNode.Type.ExoLocString)
+		if(node.type!=GffType.ExoLocString)
 			throw new StrRefException("Node '"~node.label~"' is not an ExoLocString");
 
 		auto langID = baseTable.language;
