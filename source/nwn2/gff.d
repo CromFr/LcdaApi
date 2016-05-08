@@ -9,8 +9,15 @@ import nwn2.tlk;
 
 
 struct GffNode{
+	this(Type t, string lbl=null){
+		m_type = t;
+		label = lbl;
+	}
+
 	string label;
-	Type type; //TODO: make type read only
+
+	@property const Type type(){return m_type;}
+	package Type m_type;
 
 	/// Convert the node value to a certain type.
 	/// If the type is string, any type of value gets converted into string. Structs and lists are not expanded.
@@ -333,8 +340,7 @@ private:
 		version(gff_verbose) string gff_verbose_rtIndent;
 
 		GffNode buildNodeFromStruct(in void[] rawData, in size_t structIndex){
-			GffNode ret;
-			ret.type = GffNode.Type.Struct;
+			auto ret = GffNode(GffNode.Type.Struct);
 
 			buildNodeFromStructInPlace(rawData, structIndex, &ret);
 
@@ -343,7 +349,7 @@ private:
 
 		void buildNodeFromStructInPlace(in void[] rawData, in size_t structIndex, GffNode* destNode){
 
-			destNode.type = GffNode.Type.Struct;
+			destNode.m_type = GffNode.Type.Struct;
 
 			auto s = getStruct(rawData, structIndex);
 			destNode.structType = s.type;
@@ -385,7 +391,8 @@ private:
 				immutable lbl = getLabel(rawData, f.label_index).value;
 				if(lbl[$-1]=='\0') ret.label = lbl.ptr.fromStringz.idup;
 				else               ret.label = lbl.idup;
-				ret.type = cast(GffNode.Type)f.type;
+
+				ret.m_type = cast(GffNode.Type)f.type;
 
 				version(gff_verbose){
 					writeln(gff_verbose_rtIndent, "Parsing  field: '", ret.label,
