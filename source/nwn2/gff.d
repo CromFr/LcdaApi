@@ -10,7 +10,7 @@ import nwn2.tlk;
 
 struct GffNode{
 	string label;
-	Type type;
+	Type type; //TODO: make type read only
 
 	/// Convert the node value to a certain type.
 	/// If the type is string, any type of value gets converted into string. Structs and lists are not expanded.
@@ -129,6 +129,25 @@ struct GffNode{
 		Void         = 13,
 		Struct       = 14,
 		List         = 15
+	}
+
+	template getNativeType(Type t){
+		static if(t==Type.Byte)			alias getNativeType = uint8_t;
+		static if(t==Type.Char)         alias getNativeType = int8_t;
+		static if(t==Type.Word)         alias getNativeType = uint16_t;
+		static if(t==Type.Short)        alias getNativeType = int16_t;
+		static if(t==Type.DWord)        alias getNativeType = uint32_t;
+		static if(t==Type.Int)          alias getNativeType = int32_t;
+		static if(t==Type.DWord64)      alias getNativeType = uint64_t;
+		static if(t==Type.Int64)        alias getNativeType = int64_t;
+		static if(t==Type.Float)        alias getNativeType = float;
+		static if(t==Type.Double)       alias getNativeType = double;
+		static if(t==Type.ExoString)    alias getNativeType = string;
+		static if(t==Type.ResRef)       alias getNativeType = string;// length<=32
+		static if(t==Type.ExoLocString) alias getNativeType = string[int];// localized
+		static if(t==Type.Void)         alias getNativeType = void[];
+		static if(t==Type.Struct)       alias getNativeType = GffNode[string];
+		static if(t==Type.List)         alias getNativeType = GffNode[];
 	}
 
 	/// Produces a readable string of the node and its children
