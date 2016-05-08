@@ -43,16 +43,16 @@ class StrRefResolver{
 			throw new StrRefException("Node '"~node.label~"' is not an ExoLocString");
 
 		auto langID = baseTable.language;
-		if(node.exoLocStringID!=uint32_t.max)
-			return get(node.exoLocStringID);
+		if(node.exoLocStringContainer.strref!=uint32_t.max)
+			return get(node.exoLocStringContainer.strref);
 
 		if(node.exoLocStringContainer.length == 0)
 			return "";
 
-		if(langID in node.exoLocStringContainer)
-			return node.exoLocStringContainer[langID].to!string;
+		if(langID in node.exoLocStringContainer.strings)
+			return node.exoLocStringContainer.strings[langID].to!string;
 
-		return node.exoLocStringContainer.values[0].to!string;
+		return node.exoLocStringContainer.strings.values[0].to!string;
 	}
 
 	Tlk baseTable;

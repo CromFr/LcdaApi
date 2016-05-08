@@ -109,11 +109,11 @@ struct GffNode{
 					return stringContainer.to!T;
 				//special string
 				case ExoLocString:
-					if(exoLocStringID!=uint32_t.max)
-						return ("{{STRREF:"~exoLocStringID.to!string~"}}").to!T;
+					if(exoLocStringContainer.strref!=uint32_t.max)
+						return ("{{STRREF:"~exoLocStringContainer.strref.to!string~"}}").to!T;
 					else{
-						if(exoLocStringContainer.length>0)
-							return exoLocStringContainer.values[0].to!T;
+						if(exoLocStringContainer.strings.length>0)
+							return exoLocStringContainer.strings.values[0].to!T;
 						return "{{INVALID_LOCSTRING}}".to!T;
 					}
 				//raw
@@ -202,16 +202,16 @@ struct GffNode{
 			case ExoLocString:
 				static if(__traits(isArithmetic, T)){
 					//set strref
-					exoLocStringID = rhs.to!uint32_t;
+					exoLocStringContainer.strref = rhs.to!uint32_t;
 					return;
 				}
 				else static if(isAssociativeArray!T
 					&& __traits(isArithmetic, KeyType!T) && isSomeString!(ValueType!T)){
 					//set strings
-					exoLocStringContainer.clear();
+					exoLocStringContainer.strings.clear();
 					exoLocStringContainerOrder.length = 0;
 					foreach(key, value ; rhs){
-						exoLocStringContainer[key] = value.to!string;
+						exoLocStringContainer.strings[key] = value.to!string;
 						exoLocStringContainerOrder ~= key.to!int;
 					}
 					return;
@@ -347,8 +347,7 @@ package:
 	string stringContainer;
 	GffNode[] aggrContainer;
 	size_t[string] structLabelMap;
-	uint32_t exoLocStringID;
-	string[uint32_t] exoLocStringContainer;
+	gffTypeToNative!(GffType.ExoLocString) exoLocStringContainer;
 	uint32_t[] exoLocStringContainerOrder;
 	uint32_t structType = 0;
 }
@@ -597,7 +596,7 @@ private:
 							immutable str = cast(immutable char*)(sub_str+2*uint32_t.sizeof);
 
 							ret.exoLocStringContainerOrder ~= *id;
-							ret.exoLocStringContainer[*id] = str[0..*length].idup;
+							ret.exoLocStringContainer.strings[*id] = str[0..*length].idup;
 							sub_str += 2*uint32_t.sizeof + char.sizeof*(*length);
 						}
 						break;
@@ -818,14 +817,14 @@ private:
 					//total size
 					fieldDatas ~= [cast(uint32_t)0];
 
-					immutable strref = cast(uint32_t)node.exoLocStringID;
+					immutable strref = cast(uint32_t)node.exoLocStringContainer.strref;
 					fieldDatas ~= (&strref)[0..1].dup;
 
-					immutable strcount = cast(uint32_t)node.exoLocStringContainer.length;
+					immutable strcount = cast(uint32_t)node.exoLocStringContainer.strings.length;
 					fieldDatas ~= (&strcount)[0..1].dup;
 
 					foreach(key ; node.exoLocStringContainerOrder){
-						immutable str = node.exoLocStringContainer[key];
+						immutable str = node.exoLocStringContainer.strings[key];
 
 						fieldDatas ~= (cast(int32_t*)&key)[0..1].dup;//string id
 
