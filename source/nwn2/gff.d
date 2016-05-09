@@ -71,12 +71,17 @@ struct GffNode{
 	@property const GffType type(){return m_type;}
 	package GffType m_type = GffType.Invalid;
 
+	/// Access by reference the underlying data stored in the GffNode.
+	/// The type of this data is determined by gffTypeToNative.
+	/// Types must match exactly or it will throw
 	const ref const(gffTypeToNative!T) as(GffType T)(){
 		return cast(const)((cast(GffNode)this).as!T);
 	}
+	/// ditto
 	ref gffTypeToNative!T as(GffType T)(){
 		static assert(T!=GffType.Invalid, "Cannot use GffNode.as with type Invalid");
-		assert(T == type || type==GffType.Invalid, "Type mismatch: GffNode of type "~type.to!string~" cannot be used with as!(GffNode."~T.to!string~")");
+		if(T == type || type==GffType.Invalid)
+			throw new GffTypeException("Type mismatch: GffNode of type "~type.to!string~" cannot be used with as!(GffNode."~T.to!string~")");
 
 		with(GffType)
 		static if(
@@ -99,19 +104,19 @@ struct GffNode{
 			static assert(0, "Type "~T.stringof~" not implemented");
 	}
 	unittest{
-		//import std.exception;
-		//import std.traits: EnumMembers;
-		//with(GffType){
-		//	foreach(m ; EnumMembers!GffType){
-		//		static if(m!=GffType.Invalid && m!=GffType.Struct)//TODO: remove Struct
-		//			GffNode(m).as!m;
-		//	}
-		//}
+		import std.exception;
+		import std.traits: EnumMembers;
+		with(GffType){
+			foreach(m ; EnumMembers!GffType){
+				static if(m!=GffType.Invalid && m!=GffType.Struct)//TODO: remove Structcfrom here
+					GffNode(m).as!m;
+			}
+		}
 	}
 
 	/// Convert the node value to a certain type.
 	/// If the type is string, any type of value gets converted into string. Structs and lists are not expanded.
-	const const(DestType) to(DestType)(){
+	const auto ref const(DestType) to(DestType)(){
 		import std.traits;
 
 		final switch(type) with(GffType){
@@ -277,6 +282,9 @@ struct GffNode{
 	ref GffNode opDispatch(string key)(){
 		return this[key];
 	}
+	const ref const(GffNode) opDispatch(string key)(){
+		return this[key];
+	}
 
 	/// Produces a readable string of the node and its children
 	const string toPrettyString(){
@@ -315,7 +323,6 @@ package:
 	GffNode[] aggrContainer;
 	size_t[string] structLabelMap;
 	gffTypeToNative!(GffType.ExoLocString) exoLocStringContainer;
-	uint32_t[] exoLocStringContainerOrder;
 	uint32_t structType = 0;
 }
 
