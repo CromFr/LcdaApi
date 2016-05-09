@@ -562,7 +562,6 @@ private:
 							immutable length = cast(immutable int32_t*)(sub_str+uint32_t.sizeof);
 							immutable str = cast(immutable char*)(sub_str+2*uint32_t.sizeof);
 
-							ret.exoLocStringContainerOrder ~= *id;
 							ret.exoLocStringContainer.strings[*id] = str[0..*length].idup;
 							sub_str += 2*uint32_t.sizeof + char.sizeof*(*length);
 						}
@@ -790,15 +789,16 @@ private:
 					immutable strcount = cast(uint32_t)node.exoLocStringContainer.strings.length;
 					fieldDatas ~= (&strcount)[0..1].dup;
 
-					foreach(key ; node.exoLocStringContainerOrder){
-						immutable str = node.exoLocStringContainer.strings[key];
+					import std.algorithm: sort;
+					import std.array: array;
+					foreach(locstr ; node.exoLocStringContainer.strings.byKeyValue.array.sort!((a,b)=>a.key<b.key)){
+						immutable key = cast(int32_t)locstr.key;
+						fieldDatas ~= (&key)[0..1].dup;//string id
 
-						fieldDatas ~= (cast(int32_t*)&key)[0..1].dup;//string id
-
-						immutable length = cast(int32_t)str.length;
+						immutable length = cast(int32_t)locstr.value.length;
 						fieldDatas ~= (&length)[0..1].dup;
 
-						fieldDatas ~= str.ptr[0..length].dup;
+						fieldDatas ~= locstr.value.ptr[0..length].dup;
 					}
 
 					//total size
