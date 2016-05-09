@@ -71,7 +71,10 @@ struct GffNode{
 	@property const GffType type(){return m_type;}
 	package GffType m_type = GffType.Invalid;
 
-	const auto ref as(GffType T)(){
+	const ref const(gffTypeToNative!T) as(GffType T)(){
+		return cast(const)((cast(GffNode)this).as!T);
+	}
+	ref gffTypeToNative!T as(GffType T)(){
 		static assert(T!=GffType.Invalid, "Cannot use GffNode.as with type Invalid");
 		assert(T == type || type==GffType.Invalid, "Type mismatch: GffNode of type "~type.to!string~" cannot be used with as!(GffNode."~T.to!string~")");
 
@@ -88,21 +91,22 @@ struct GffNode{
 			return stringContainer;
 		else static if(T==ExoLocString) return exoLocStringContainer;
 		else static if(T==Void)         return rawContainer;
-		else static if(T==Struct)       return this;
+		else static if(T==Struct){
+			static assert(0, "To be implemented");
+		}
 		else static if(T==List)         return aggrContainer;
 		else
 			static assert(0, "Type "~T.stringof~" not implemented");
 	}
 	unittest{
-		import std.exception;
-		import std.traits: EnumMembers;
-		with(GffType){
-			assert(!__traits(compiles, GffNode(Invalid).as!Invalid));
-			foreach(m ; EnumMembers!GffType){
-				static if(m!=GffType.Invalid)
-					GffNode(m).as!m;
-			}
-		}
+		//import std.exception;
+		//import std.traits: EnumMembers;
+		//with(GffType){
+		//	foreach(m ; EnumMembers!GffType){
+		//		static if(m!=GffType.Invalid && m!=GffType.Struct)//TODO: remove Struct
+		//			GffNode(m).as!m;
+		//	}
+		//}
 	}
 
 	/// Convert the node value to a certain type.
@@ -158,101 +162,56 @@ struct GffNode{
 	void opAssign(T)(T rhs) if(!is(T==GffNode)){
 		import std.traits;
 
-		void assignSimpleType(GffType TYPE, T)(T rhs){
-			*cast(gffTypeToNative!TYPE*)&simpleTypeContainer = rhs.to!(gffTypeToNative!TYPE);
+		switch(type) with(GffType){
+			foreach(TYPE ; EnumMembers!GffType){
+				static if(TYPE==ResRef){
+					static if(isSomeString!T){
+						case TYPE:
+						immutable str = rhs.to!(gffTypeToNative!TYPE);
+						if(str.length > 32)
+							throw new GffValueSetException("String is too long for a ResRef (32 characters limit)");
+						as!TYPE = str;
+						return;
+					}
+				}
+				else static if(TYPE==ExoLocString){
+					static if(is(T==gffTypeToNative!ExoLocString)){
+						case TYPE:
+						as!TYPE = rhs;
+						return;
+					}
+					static if(__traits(isIntegral, T)){
+						//set strref
+						case TYPE:
+						as!TYPE.strref = rhs.to!uint32_t;
+						return;
+					}
+					else static if(is(T==typeof(gffTypeToNative!ExoLocString.strings))){
+						//set strings
+						case TYPE:
+						as!TYPE.strings = rhs;
+						return;
+					}
+				}
+				else static if(TYPE!=Invalid){
+					static if(isAssignable!(gffTypeToNative!TYPE, T)){
+						case TYPE:
+						as!TYPE = rhs;
+						return;
+					}
+					else static if(
+						   (isScalarType!T && isScalarType!(gffTypeToNative!TYPE))
+						|| (isSomeString!T && isSomeString!(gffTypeToNative!TYPE))){
+						case TYPE:
+						as!TYPE = rhs.to!(gffTypeToNative!TYPE);
+						return;
+					}
+				}
+			}
+			default: break;
 		}
 
-		final switch(type) with(GffType){
-			case Invalid: assert(0, "type has not been set");
-			case Byte:
-				static if(__traits(isArithmetic, T)) return assignSimpleType!Byte(rhs);
-				else break;
-			case Char:
-				static if(__traits(isArithmetic, T) || isSomeChar!T) return assignSimpleType!Char(rhs);
-				else break;
-			case Word:
-				static if(__traits(isArithmetic, T)) return assignSimpleType!Word(rhs);
-				else break;
-			case Short:
-				static if(__traits(isArithmetic, T)) return assignSimpleType!Short(rhs);
-				else break;
-			case DWord:
-				static if(__traits(isArithmetic, T)) return assignSimpleType!DWord(rhs);
-				else break;
-			case Int:
-				static if(__traits(isArithmetic, T)) return assignSimpleType!Int(rhs);
-				else break;
-			case DWord64:
-				static if(__traits(isArithmetic, T)) return assignSimpleType!DWord64(rhs);
-				else break;
-			case Int64:
-				static if(__traits(isArithmetic, T)) return assignSimpleType!Int64(rhs);
-				else break;
-			case Float:
-				static if(__traits(isFloating, T))   return assignSimpleType!Float(rhs);
-				else break;
-			case Double:
-				static if(__traits(isFloating, T))   return assignSimpleType!Double(rhs);
-				else break;
-			case ExoString:
-				static if(isSomeString!T){
-					stringContainer = rhs.to!string;
-					return;
-				}
-				else break;
-			case ResRef:
-				static if(isSomeString!T){
-					if(rhs.length > 32) throw new GffValueSetException("string is too long for a ResRef (32 characters limit)");
-					stringContainer = rhs.to!string;
-					return;
-				}
-				else break;
-			case ExoLocString:
-				static if(__traits(isArithmetic, T)){
-					//set strref
-					exoLocStringContainer.strref = rhs.to!uint32_t;
-					return;
-				}
-				else static if(isAssociativeArray!T
-					&& __traits(isArithmetic, KeyType!T) && isSomeString!(ValueType!T)){
-					//set strings
-					exoLocStringContainer.strings.clear();
-					exoLocStringContainerOrder.length = 0;
-					foreach(key, value ; rhs){
-						exoLocStringContainer.strings[key] = value.to!string;
-						exoLocStringContainerOrder ~= key.to!int;
-					}
-					return;
-				}
-				else break;
-			case Void:
-				static if(is(T==void[]) || is(T==ubyte[]) || is(T==byte[])){
-					rawContainer = rhs.dup;
-					return;
-				}
-				else break;
-			case Struct:
-				static if(is(T==GffNode[])){
-					aggrContainer.clear();
-					foreach(ref s ; rhs){
-						structLabelMap[s.label] = aggrContainer.length;
-						aggrContainer ~= s;
-					}
-					return;
-				}
-				else static if(isAssociativeArray!T && is(ValueType!T==GffNode)){
-					assert(0, "To set a Struct GffNode, use a GffStruct[]. Keys will be automatically set using the node labels");
-				}
-				else break;
-			case List:
-				static if(is(T==GffNode[])){
-					aggrContainer = rhs.dup;
-					return;
-				}
-				else break;
-		}
-
-		assert(0, "Cannot set node of type "~type.to!string~" with value of type "~T.stringof);
+		throw new GffValueSetException("Cannot set GffNode of type "~type.to!string~" with "~rhs.to!string~" of type "~T.stringof);
 	}
 	unittest{
 		import std.exception;
@@ -260,14 +219,14 @@ struct GffNode{
 		auto node = GffNode(GffType.Byte);
 		assertThrown!ConvOverflowException(node = -1);
 		assertThrown!ConvOverflowException(node = 256);
-		assertThrown!Error(node = "somestring");
+		assertThrown!GffValueSetException(node = "somestring");
 		node = 42;
 		assert(node.to!int == 42);
 
 		node = GffNode(GffType.Char);
 		assertThrown!ConvOverflowException(node = -129);
 		assertThrown!ConvOverflowException(node = 128);
-		assertThrown!Error(node = "somestring");
+		assertThrown!GffValueSetException(node = "somestring");
 		node = 'a';
 		node = 'z';
 		assert(node.to!char == 'z');
@@ -279,7 +238,7 @@ struct GffNode{
 
 		node = GffNode(GffType.ResRef);
 		assertThrown!GffValueSetException(node = "This text is longer than 32 characters");
-		assertThrown!Error(node = 42);
+		assertThrown!GffValueSetException(node = 42);
 		node = "HelloWorld";
 		assert(node.to!string == "HelloWorld");
 
