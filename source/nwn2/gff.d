@@ -56,7 +56,7 @@ template gffTypeToNative(GffType t){
 	static if(t==GffType.ResRef)       alias gffTypeToNative = string;// length<=32
 	static if(t==GffType.ExoLocString) alias gffTypeToNative = Tuple!(uint32_t,"strref", string[int32_t],"strings");
 	static if(t==GffType.Void)         alias gffTypeToNative = void[];
-	static if(t==GffType.Struct)       alias gffTypeToNative = GffNode[string];
+	static if(t==GffType.Struct)       alias gffTypeToNative = GffNode[];
 	static if(t==GffType.List)         alias gffTypeToNative = GffNode[];
 }
 
@@ -104,10 +104,8 @@ struct GffNode{
 			return stringContainer;
 		else static if(T==ExoLocString) return exoLocStringContainer;
 		else static if(T==Void)         return rawContainer;
-		else static if(T==Struct){
-			static assert(0, "To be implemented");
-		}
-		else static if(T==List)         return aggrContainer;
+		else static if(T==Struct || T==List)
+			return aggrContainer;
 		else
 			static assert(0, "Type "~T.stringof~" not implemented");
 	}
@@ -116,7 +114,7 @@ struct GffNode{
 		import std.traits: EnumMembers;
 		with(GffType){
 			foreach(m ; EnumMembers!GffType){
-				static if(m!=GffType.Invalid && m!=GffType.Struct)//TODO: remove Structcfrom here
+				static if(m!=GffType.Invalid)
 					GffNode(m).as!m;
 			}
 		}
@@ -209,7 +207,16 @@ struct GffNode{
 				else static if(TYPE!=Invalid){
 					static if(isAssignable!(gffTypeToNative!TYPE, T)){
 						case TYPE:
+						static if(TYPE==List){
+							//Check if all nodes are structs
+							foreach(ref s ; rhs){
+								if(s.type != GffType.Struct)
+									throw new GffValueSetException("The list contains one or more GffNode that is not a struct");
+							}
+						}
 						as!TYPE = rhs;
+						static if(TYPE==Struct)
+							updateFieldLabelMap();
 						return;
 					}
 					else static if(
@@ -227,14 +234,14 @@ struct GffNode{
 		throw new GffValueSetException("Cannot set GffNode of type "~type.to!string~" with "~rhs.to!string~" of type "~T.stringof);
 	}
 	unittest{
-		import std.exception;
+		import std.exception: assertThrown, assertNotThrown;
 
 		auto node = GffNode(GffType.Byte);
 		assertThrown!ConvOverflowException(node = -1);
 		assertThrown!ConvOverflowException(node = 256);
 		assertThrown!GffValueSetException(node = "somestring");
 		node = 42;
-		assert(node.to!int == 42);
+		assert(node.as!(GffType.Byte) == 42);
 
 		node = GffNode(GffType.Char);
 		assertThrown!ConvOverflowException(node = -129);
@@ -242,48 +249,86 @@ struct GffNode{
 		assertThrown!GffValueSetException(node = "somestring");
 		node = 'a';
 		node = 'z';
-		assert(node.to!char == 'z');
+		assert(node.as!(GffType.Char) == 'z');
 
 		node = GffNode(GffType.ExoString);
 		node = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
 		node = "Hello";
-		assert(node.to!string == "Hello");
+		assert(node.stringContainer == "Hello");
 
 		node = GffNode(GffType.ResRef);
 		assertThrown!GffValueSetException(node = "This text is longer than 32 characters");
 		assertThrown!GffValueSetException(node = 42);
 		node = "HelloWorld";
-		assert(node.to!string == "HelloWorld");
+		assert(node.stringContainer == "HelloWorld");
 
 		node = GffNode(GffType.ExoLocString);
 		node = 1337;//set strref
-		node = [0: "English guy", 1: "English girl", 2: "French guy"];
-		//TODO: test those values back
+		node = [0: "English guy", 1: "English girl", 3: "French girl"];
+		assert(node.exoLocStringContainer.strref == 1337);
+		assert(node.exoLocStringContainer.strings.length == 3);
+		assert(node.exoLocStringContainer.strings[0] == "English guy");
+		assert(node.exoLocStringContainer.strings[3] == "French girl");
 
 		node = GffNode(GffType.Void);
 		ubyte[] data = [0,1,2,3,4,5,6];
 		node = data;
-		assert(node.to!(ubyte[])[3] == 3);
+		assert((cast(ubyte[])node.rawContainer)[3] == 3);
 
-		//TODO: test structs & lists
+		node = GffNode(GffType.Struct);
+		node = [
+			GffNode(GffType.Byte, "TestByte"),
+			GffNode(GffType.ExoString, "TestExoString"),
+		];
+		assertNotThrown(node["TestByte"]);
+		assertNotThrown(node["TestExoString"]);
+
+		auto listStructs = [
+			GffNode(GffType.Struct, "StructA"),
+			GffNode(GffType.Struct, "StructB"),
+		];
+		listStructs[0].as!(GffType.Struct) ~= GffNode(GffType.Int, "TestInt");
+		listStructs[0].as!(GffType.Struct) ~= GffNode(GffType.Float, "TestFloat");
+		listStructs[0].updateFieldLabelMap();
+		listStructs[0]["TestInt"] = 6;
+		listStructs[0]["TestFloat"] = float.epsilon;
+		listStructs[1].as!(GffType.Struct) ~= GffNode(GffType.Void, "TestVoid");
+		listStructs[1].updateFieldLabelMap();
+
+		node = GffNode(GffType.List);
+		node = listStructs;
+		assertNotThrown(node[0]);
+		assertNotThrown(node[0]["TestInt"]);
+		assert(node[0]["TestInt"].as!(GffType.Int) == 6);
+		assertNotThrown(node[0]["TestFloat"]);
+		assert(node[0]["TestFloat"].as!(GffType.Float) == float.epsilon);
+		assertNotThrown(node[1]);
+		assertNotThrown(node[1]["TestVoid"]);
 	}
 
 	const ref const(GffNode) opIndex(in string label){
-		assert(type==GffType.Struct, "Not a struct");
-		return aggrContainer[structLabelMap[label]];
+		return (cast(GffNode)this).opIndex(label);
 	}
 	const ref const(GffNode) opIndex(in size_t index){
-		//TODO: get localized strings
-		assert(type==GffType.List, "Not a list");
-		return aggrContainer[index];
+		return (cast(GffNode)this).opIndex(index);
 	}
 
 	ref GffNode opIndex(in string label){
-		assert(type==GffType.Struct, "Not a struct");
-		return aggrContainer[structLabelMap[label]];
+		if(type!=GffType.Struct)
+			throw new GffTypeException("Not a struct");
+
+		auto index = label in structLabelMap;
+		if(!index){
+			//Try to find it by updating the label map
+			updateFieldLabelMap();
+			return aggrContainer[structLabelMap[label]];
+		}
+		return aggrContainer[*index];
 	}
 	ref GffNode opIndex(in size_t index){
-		assert(type==GffType.List, "Not a list");
+		if(type!=GffType.List)
+			throw new GffTypeException("Not a list");
+
 		return aggrContainer[index];
 	}
 
@@ -314,6 +359,19 @@ struct GffNode{
 
 
 		return toPrettyStringInternal(&this, "");
+	}
+
+	/// Updates the structLabelMap for struct fields lookup.
+	/// Should be called each time the struct field list is modified or a field's label is modified
+	void updateFieldLabelMap(){
+		if(type != GffType.Struct)
+			throw new GffTypeException(__FUNCTION__~" can only be called on a GffNode of type Struct");
+
+		structLabelMap.clear();
+		foreach(index, ref node ; aggrContainer){
+			structLabelMap[node.label] = index;
+		}
+		structLabelMap.rehash();
 	}
 
 
