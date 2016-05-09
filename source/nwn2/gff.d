@@ -4,8 +4,10 @@ module nwn2.gff;
 import std.stdint;
 import std.string;
 import std.conv;
-debug import std.stdio: writeln;
 import nwn2.tlk;
+
+debug import std.stdio: writeln;
+version(unittest) import std.exception: assertThrown, assertNotThrown;
 
 class GffValueSetException : Exception{
 	@safe pure nothrow this(string msg, string f=__FILE__, size_t l=__LINE__, Throwable t=null){
@@ -75,6 +77,11 @@ struct GffNode{
 		}
 	}
 	package string m_label;
+	unittest{
+		assertThrown!GffValueSetException(GffNode(GffType.Struct, "ThisLabelIsLongerThan16Chars"));
+		auto node = GffNode(GffType.Struct, "labelok");
+		assertThrown!GffValueSetException(node.label = "ThisLabelIsLongerThan16Chars");
+	}
 
 	@property const GffType type(){return m_type;}
 	package GffType m_type = GffType.Invalid;
@@ -117,6 +124,8 @@ struct GffNode{
 				static if(m!=GffType.Invalid)
 					GffNode(m).as!m;
 			}
+
+			assertThrown!GffTypeException(GffNode(GffType.Float).as!(GffType.Double));
 		}
 	}
 
@@ -126,6 +135,9 @@ struct GffNode{
 		import std.traits;
 
 		final switch(type) with(GffType){
+
+			case Invalid: throw new GffTypeException("Cannot convert "~type.to!string);
+
 			foreach(TYPE ; EnumMembers!GffType){
 				static if(TYPE!=Invalid){
 					case TYPE:
@@ -134,7 +146,7 @@ struct GffNode{
 							static if(TYPE==Void) return as!Void.dup;
 							else                  return as!TYPE;
 						}
-						else static if(TYPE==Void && isArray!DestType && ForeachType!DestType.sizeof==1)
+						else static if(TYPE==Void && isArray!DestType && ForeachType!DestType.sizeof==1 && !isSomeString!DestType)
 							return cast(DestType)as!Void.dup;
 						else static if(TYPE==ExoLocString && isSomeString!DestType){
 							if(exoLocStringContainer.strref!=uint32_t.max)
@@ -153,7 +165,7 @@ struct GffNode{
 							else static if(TYPE==Void && isSomeString!DestType){
 								string ret = "0x";
 								foreach(i, b ; cast(ubyte[])rawContainer){
-									ret ~= format("%02x%s", b, i%2? " ":null);
+									ret ~= format("%s%02x", (i%2==0 && i!=0)? " ":null, b);
 								}
 								return ret.to!DestType;
 							}
@@ -161,12 +173,50 @@ struct GffNode{
 								return as!TYPE.to!DestType;
 						}
 						else
-							assert(0, "Cannot convert GffType."~type.to!string~" from "~NativeType.stringof~" to "~DestType.stringof);
+							throw new GffTypeException("Cannot convert GffType."~type.to!string~" from "~NativeType.stringof~" to "~DestType.stringof);
 
 				}
 			}
+		}
+	}
+	unittest{
+		with(GffType){
+			GffNode node;
 
-			case Invalid: throw new GffTypeException("Cannot convert "~type.to!string);
+			node = GffNode(Void);
+			ubyte[] voidData = [0, 2, 5, 9, 255, 6];
+			node.as!Void = voidData;
+			assert(node.to!(ubyte[])[3] == 9);
+			assert(node.to!(byte[])[4] == -1);
+			assert(node.to!string == "0x0002 0509 ff06");
+			assertThrown!GffTypeException(node.to!int);
+
+			node = GffNode(ExoLocString);
+			node.as!ExoLocString.strref = 12;
+			//assert(node.to!int == 12);//TODO
+			assert(node.to!string == "{{STRREF:12}}");
+			node.as!ExoLocString.strref = -1;
+			assert(node.to!string == "{{INVALID_LOCSTRING}}");
+			node.as!ExoLocString.strings = [0: "a", 3: "b"];
+			assert(node.to!string == "a");
+			//assert(node.to!(string[int]) == [0: "a", 3: "b"]);//TODO
+			assertThrown!GffTypeException(node.to!float);
+
+			node = GffNode(Struct);
+			assert(node.to!string == "{{Struct}}");
+			assertThrown!GffTypeException(node.to!int);
+
+			node = GffNode(List);
+			node.as!List = [GffNode(Struct), GffNode(Struct)];
+			assert(node.to!string == "{{List(2)}}");
+
+			node = GffNode(Int);
+			node.as!Int = 42;
+			assert(node.to!byte == 42);
+
+			node = GffNode(Invalid);
+			assertThrown!GffTypeException(node.to!string);
+
 		}
 	}
 
@@ -175,7 +225,11 @@ struct GffNode{
 
 		switch(type) with(GffType){
 			foreach(TYPE ; EnumMembers!GffType){
-				static if(TYPE==ResRef){
+				static if(TYPE==Invalid){
+					case TYPE:
+					throw new GffTypeException("GffNode type is Invalid");
+				}
+				else static if(TYPE==ResRef){
 					static if(isSomeString!T){
 						case TYPE:
 						immutable str = rhs.to!(gffTypeToNative!TYPE);
@@ -204,7 +258,7 @@ struct GffNode{
 						return;
 					}
 				}
-				else static if(TYPE!=Invalid){
+				else{
 					static if(isAssignable!(gffTypeToNative!TYPE, T)){
 						case TYPE:
 						static if(TYPE==List){
@@ -234,76 +288,80 @@ struct GffNode{
 		throw new GffValueSetException("Cannot set GffNode of type "~type.to!string~" with "~rhs.to!string~" of type "~T.stringof);
 	}
 	unittest{
-		import std.exception: assertThrown, assertNotThrown;
+		with(GffType){
+			auto node = GffNode(Byte);
+			assertThrown!ConvOverflowException(node = -1);
+			assertThrown!ConvOverflowException(node = 256);
+			assertThrown!GffValueSetException(node = "somestring");
+			node = 42;
+			assert(node.as!(Byte) == 42);
 
-		auto node = GffNode(GffType.Byte);
-		assertThrown!ConvOverflowException(node = -1);
-		assertThrown!ConvOverflowException(node = 256);
-		assertThrown!GffValueSetException(node = "somestring");
-		node = 42;
-		assert(node.as!(GffType.Byte) == 42);
+			node = GffNode(Char);
+			assertThrown!ConvOverflowException(node = -129);
+			assertThrown!ConvOverflowException(node = 128);
+			assertThrown!GffValueSetException(node = "somestring");
+			node = 'a';
+			node = 'z';
+			assert(node.as!(Char) == 'z');
 
-		node = GffNode(GffType.Char);
-		assertThrown!ConvOverflowException(node = -129);
-		assertThrown!ConvOverflowException(node = 128);
-		assertThrown!GffValueSetException(node = "somestring");
-		node = 'a';
-		node = 'z';
-		assert(node.as!(GffType.Char) == 'z');
+			node = GffNode(ExoString);
+			node = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
+			node = "Hello";
+			assert(node.stringContainer == "Hello");
 
-		node = GffNode(GffType.ExoString);
-		node = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
-		node = "Hello";
-		assert(node.stringContainer == "Hello");
+			node = GffNode(ResRef);
+			assertThrown!GffValueSetException(node = "This text is longer than 32 characters");
+			assertThrown!GffValueSetException(node = 42);
+			node = "HelloWorld";
+			assert(node.stringContainer == "HelloWorld");
 
-		node = GffNode(GffType.ResRef);
-		assertThrown!GffValueSetException(node = "This text is longer than 32 characters");
-		assertThrown!GffValueSetException(node = 42);
-		node = "HelloWorld";
-		assert(node.stringContainer == "HelloWorld");
+			node = GffNode(ExoLocString);
+			node = 1337;//set strref
+			node = [0: "English guy", 1: "English girl", 3: "French girl"];
+			assert(node.exoLocStringContainer.strref == 1337);
+			assert(node.exoLocStringContainer.strings.length == 3);
+			assert(node.exoLocStringContainer.strings[0] == "English guy");
+			assert(node.exoLocStringContainer.strings[3] == "French girl");
 
-		node = GffNode(GffType.ExoLocString);
-		node = 1337;//set strref
-		node = [0: "English guy", 1: "English girl", 3: "French girl"];
-		assert(node.exoLocStringContainer.strref == 1337);
-		assert(node.exoLocStringContainer.strings.length == 3);
-		assert(node.exoLocStringContainer.strings[0] == "English guy");
-		assert(node.exoLocStringContainer.strings[3] == "French girl");
+			node = GffNode(Void);
+			ubyte[] data = [0,1,2,3,4,5,6];
+			node = data;
+			assert((cast(ubyte[])node.rawContainer)[3] == 3);
 
-		node = GffNode(GffType.Void);
-		ubyte[] data = [0,1,2,3,4,5,6];
-		node = data;
-		assert((cast(ubyte[])node.rawContainer)[3] == 3);
+			node = GffNode(Struct);
+			node = [
+				GffNode(Byte, "TestByte"),
+				GffNode(ExoString, "TestExoString"),
+			];
+			assertNotThrown(node["TestByte"]);
+			assertNotThrown(node["TestExoString"]);
 
-		node = GffNode(GffType.Struct);
-		node = [
-			GffNode(GffType.Byte, "TestByte"),
-			GffNode(GffType.ExoString, "TestExoString"),
-		];
-		assertNotThrown(node["TestByte"]);
-		assertNotThrown(node["TestExoString"]);
+			auto listStructs = [
+				GffNode(Struct, "StructA"),
+				GffNode(Struct, "StructB"),
+			];
+			listStructs[0].as!(Struct) ~= GffNode(Int, "TestInt");
+			listStructs[0].as!(Struct) ~= GffNode(Float, "TestFloat");
+			listStructs[0].updateFieldLabelMap();
+			listStructs[0]["TestInt"] = 6;
+			listStructs[0]["TestFloat"] = float.epsilon;
+			listStructs[1].as!(Struct) ~= GffNode(Void, "TestVoid");
+			listStructs[1].updateFieldLabelMap();
 
-		auto listStructs = [
-			GffNode(GffType.Struct, "StructA"),
-			GffNode(GffType.Struct, "StructB"),
-		];
-		listStructs[0].as!(GffType.Struct) ~= GffNode(GffType.Int, "TestInt");
-		listStructs[0].as!(GffType.Struct) ~= GffNode(GffType.Float, "TestFloat");
-		listStructs[0].updateFieldLabelMap();
-		listStructs[0]["TestInt"] = 6;
-		listStructs[0]["TestFloat"] = float.epsilon;
-		listStructs[1].as!(GffType.Struct) ~= GffNode(GffType.Void, "TestVoid");
-		listStructs[1].updateFieldLabelMap();
+			node = GffNode(List);
+			node = listStructs;
+			assertNotThrown(node[0]);
+			assertNotThrown(node[0]["TestInt"]);
+			assert(node[0]["TestInt"].as!(Int) == 6);
+			assertNotThrown(node[0]["TestFloat"]);
+			assert(node[0]["TestFloat"].as!(Float) == float.epsilon);
+			assertNotThrown(node[1]);
+			assertNotThrown(node[1]["TestVoid"]);
+			assertThrown!GffValueSetException(node = [GffNode(Byte, "TestByte")]);
 
-		node = GffNode(GffType.List);
-		node = listStructs;
-		assertNotThrown(node[0]);
-		assertNotThrown(node[0]["TestInt"]);
-		assert(node[0]["TestInt"].as!(GffType.Int) == 6);
-		assertNotThrown(node[0]["TestFloat"]);
-		assert(node[0]["TestFloat"].as!(GffType.Float) == float.epsilon);
-		assertNotThrown(node[1]);
-		assertNotThrown(node[1]["TestVoid"]);
+			node = GffNode(Invalid);
+			assertThrown!GffTypeException(node = 5);
+		}
 	}
 
 	const ref const(GffNode) opIndex(in string label){
@@ -330,6 +388,33 @@ struct GffNode{
 			throw new GffTypeException("Not a list");
 
 		return aggrContainer[index];
+	}
+	unittest{
+		with(GffType){
+			GffNode node;
+			const(GffNode)* constNode;
+
+			node = GffNode(Struct);
+			constNode = &node;
+			node = [GffNode(Byte, "TestByte"), GffNode(Float, "TestFloat")];
+
+			assertNotThrown((*constNode)["TestByte"]);
+			assertNotThrown((*constNode)["TestFloat"]);
+			assertThrown!Error((*constNode)["yoloooo"]);
+			assertThrown!GffTypeException((*constNode)[0]);
+
+			node = GffNode(List);
+			constNode = &node;
+			node = [GffNode(Struct), GffNode(Struct)];
+			assertNotThrown((*constNode)[0]);
+			assertNotThrown((*constNode)[1]);
+			assertThrown!Error((*constNode)[2]);
+			assertThrown!GffTypeException((*constNode)["yoloooo"]);
+
+
+			node = GffNode(Void);
+			assertThrown!GffTypeException(node["any"]);
+		}
 	}
 
 	/// Produces a readable string of the node and its children
@@ -372,6 +457,10 @@ struct GffNode{
 			structLabelMap[node.label] = index;
 		}
 		structLabelMap.rehash();
+	}
+	unittest{
+		auto node = GffNode(GffType.Int64);
+		assertThrown!GffTypeException(node.updateFieldLabelMap);
 	}
 
 
