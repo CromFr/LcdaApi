@@ -80,7 +80,7 @@ struct GffNode{
 	/// ditto
 	ref gffTypeToNative!T as(GffType T)(){
 		static assert(T!=GffType.Invalid, "Cannot use GffNode.as with type Invalid");
-		if(T == type || type==GffType.Invalid)
+		if(T != type || type==GffType.Invalid)
 			throw new GffTypeException("Type mismatch: GffNode of type "~type.to!string~" cannot be used with as!(GffNode."~T.to!string~")");
 
 		with(GffType)
@@ -130,6 +130,15 @@ struct GffNode{
 						}
 						else static if(TYPE==Void && isArray!DestType && ForeachType!DestType.sizeof==1)
 							return cast(DestType)as!Void.dup;
+						else static if(TYPE==ExoLocString && isSomeString!DestType){
+							if(exoLocStringContainer.strref!=uint32_t.max)
+								return ("{{STRREF:"~exoLocStringContainer.strref.to!string~"}}").to!DestType;
+							else{
+								if(exoLocStringContainer.strings.length>0)
+									return exoLocStringContainer.strings.values[0].to!DestType;
+								return "{{INVALID_LOCSTRING}}".to!DestType;
+							}
+						}
 						else static if(__traits(compiles, as!TYPE.to!DestType)){
 							static if(TYPE==Struct && isSomeString!DestType)
 								return "{{Struct}}".to!DestType;
@@ -141,15 +150,6 @@ struct GffNode{
 									ret ~= format("%02x%s", b, i%2? " ":null);
 								}
 								return ret.to!DestType;
-							}
-							else static if(TYPE==ExoLocString && isSomeString!DestType){
-								if(exoLocStringContainer.strref!=uint32_t.max)
-									return ("{{STRREF:"~exoLocStringContainer.strref.to!string~"}}").to!DestType;
-								else{
-									if(exoLocStringContainer.strings.length>0)
-										return exoLocStringContainer.strings.values[0].to!DestType;
-									return "{{INVALID_LOCSTRING}}".to!DestType;
-								}
 							}
 							else
 								return as!TYPE.to!DestType;
