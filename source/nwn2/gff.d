@@ -41,7 +41,8 @@ enum GffType{
 
 template gffTypeToNative(GffType t){
 	import std.typecons: Tuple;
-	static if(t==GffType.Byte)			alias gffTypeToNative = uint8_t;
+	static if(t==GffType.Invalid)      static assert(0, "No native type for GffType.Invalid");
+	static if(t==GffType.Byte)         alias gffTypeToNative = uint8_t;
 	static if(t==GffType.Char)         alias gffTypeToNative = int8_t;
 	static if(t==GffType.Word)         alias gffTypeToNative = uint16_t;
 	static if(t==GffType.Short)        alias gffTypeToNative = int16_t;
@@ -70,16 +71,12 @@ struct GffNode{
 	@property const GffType type(){return m_type;}
 	package GffType m_type = GffType.Invalid;
 
-
 	const auto ref as(GffType T)(){
 		static assert(T!=GffType.Invalid, "Cannot use GffNode.as with type Invalid");
-		assert(T == type || type==GffType.Invalid, "Type mismatch");
+		assert(T == type || type==GffType.Invalid, "Type mismatch: GffNode of type "~type.to!string~" cannot be used with as!(GffNode."~T.to!string~")");
 
 		with(GffType)
-		static if(T==Invalid){
-			return null;
-		}
-		else static if(
+		static if(
 			   T==Byte || T==Char
 			|| T==Word || T==Short
 			|| T==DWord || T==Int
@@ -87,23 +84,12 @@ struct GffNode{
 			|| T==Float || T==Double){
 			return *cast(gffTypeToNative!T*)&simpleTypeContainer;
 		}
-		else static if(
-			   T==ExoString
-			|| T==ResRef){
+		else static if(T==ExoString || T==ResRef)
 			return stringContainer;
-		}
-		else static if(T==ExoLocString){
-			return exoLocStringContainer;
-		}
-		else static if(T==Void){
-			return rawContainer;
-		}
-		else static if(T==Struct){
-			return this;
-		}
-		else static if(T==List){
-			return aggrContainer;
-		}
+		else static if(T==ExoLocString) return exoLocStringContainer;
+		else static if(T==Void)         return rawContainer;
+		else static if(T==Struct)       return this;
+		else static if(T==List)         return aggrContainer;
 		else
 			static assert(0, "Type "~T.stringof~" not implemented");
 	}
@@ -121,79 +107,52 @@ struct GffNode{
 
 	/// Convert the node value to a certain type.
 	/// If the type is string, any type of value gets converted into string. Structs and lists are not expanded.
-	const ref auto to(T)(){
+	const const(DestType) to(DestType)(){
 		import std.traits;
-		static if(__traits(isArithmetic, T)){
-			switch(type) with(GffType){
-				case Byte, Char, Word, Short, DWord, Int, DWord64, Int64:
-					return cast(T)simpleTypeContainer;
-				default: break;
+
+		final switch(type) with(GffType){
+			foreach(TYPE ; EnumMembers!GffType){
+				static if(TYPE!=Invalid){
+					case TYPE:
+						alias NativeType = gffTypeToNative!TYPE;
+						static if(is(DestType==NativeType) || isImplicitlyConvertible!(NativeType, DestType)){
+							static if(TYPE==Void) return as!Void.dup;
+							else                  return as!TYPE;
+						}
+						else static if(TYPE==Void && isArray!DestType && ForeachType!DestType.sizeof==1)
+							return cast(DestType)as!Void.dup;
+						else static if(__traits(compiles, as!TYPE.to!DestType)){
+							static if(TYPE==Struct && isSomeString!DestType)
+								return "{{Struct}}".to!DestType;
+							else static if(TYPE==List && isSomeString!DestType)
+								return "{{List("~aggrContainer.length.to!string~")}}".to!string;
+							else static if(TYPE==Void && isSomeString!DestType){
+								string ret = "0x";
+								foreach(i, b ; cast(ubyte[])rawContainer){
+									ret ~= format("%02x%s", b, i%2? " ":null);
+								}
+								return ret.to!DestType;
+							}
+							else static if(TYPE==ExoLocString && isSomeString!DestType){
+								if(exoLocStringContainer.strref!=uint32_t.max)
+									return ("{{STRREF:"~exoLocStringContainer.strref.to!string~"}}").to!DestType;
+								else{
+									if(exoLocStringContainer.strings.length>0)
+										return exoLocStringContainer.strings.values[0].to!DestType;
+									return "{{INVALID_LOCSTRING}}".to!DestType;
+								}
+							}
+							else
+								return as!TYPE.to!DestType;
+						}
+						else
+							assert(0, "Cannot convert GffType."~type.to!string~" from "~NativeType.stringof~" to "~DestType.stringof);
+
+				}
 			}
+
+			case Invalid: throw new GffTypeException("Cannot convert "~type.to!string);
 		}
-		else static if(__traits(isFloating, T)){
-			switch(type) with(GffType){
-				case Float, Double:
-					return cast(T)simpleTypeContainer;
-				default: break;
-			}
-		}
-		else static if(isSomeString!T){
-			import std.string: format;
-			final switch(type) with(GffType){
-				case Invalid: assert(0, "type has not been set");
-				//unsigned int
-				case Byte, Word, DWord, DWord64:
-					return simpleTypeContainer.to!T;
-				//signed int
-				case Short, Int, Int64:
-					return (*cast(int64_t*)(&simpleTypeContainer)).to!T;
-				//special int
-				case Char:
-					return (*cast(char*)(&simpleTypeContainer)).to!T;
-				//float
-				case Float, Double:
-					return (*cast(double*)(&simpleTypeContainer)).to!T;
-				//string
-				case ExoString, ResRef:
-					return stringContainer.to!T;
-				//special string
-				case ExoLocString:
-					if(exoLocStringContainer.strref!=uint32_t.max)
-						return ("{{STRREF:"~exoLocStringContainer.strref.to!string~"}}").to!T;
-					else{
-						if(exoLocStringContainer.strings.length>0)
-							return exoLocStringContainer.strings.values[0].to!T;
-						return "{{INVALID_LOCSTRING}}".to!T;
-					}
-				//raw
-				case Void:
-					string ret = "0x";
-					foreach(i, b ; cast(ubyte[])rawContainer){
-						ret ~= format("%02x%s", b, i%2? " ":null);
-					}
-					return ret;
-				//aggregated values
-				case Struct:
-					//TODO
-					return "{{Struct}}";
-				case List:
-					//TODO
-					return "{{List("~aggrContainer.length.to!string~")}}";
-			}
-		}
-		else static if(is(T==void[]) || is(T==ubyte[]) || is(T==byte[])){
-			if(type==GffType.Void)
-				return cast(T)rawContainer;
-		}
-		//else static if(is(T==GffNode[string])){
-		//	if(type==GffType.Struct)
-		//		return structContainer;
-		//}
-		else static if(is(T==GffNode[])){
-			if(type==GffType.List || type==GffType.Struct)
-				return aggrContainer;
-		}
-		assert(0, "Incompatible type conversion from "~type.to!string~" to "~T.stringof);
 	}
 
 	void opAssign(T)(T rhs) if(!is(T==GffNode)){
