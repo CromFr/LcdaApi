@@ -7,6 +7,8 @@
 				"public/app/*.js",
 				"public/app/*.map",
 				"npm-debug*",
+				"*-.dub-packages-*.lst",
+				"*-dub_test_root-*.lst"
 			],
 			"folder_exclude_patterns": [
 				"node_modules",
@@ -23,13 +25,13 @@
 			"working_dir": "${project_path:${folder:${file_path}}}",
 			"variants": [
 				{
-					"name": "Start Typescript compiler in background",
-					"shell_cmd": "npm run tsc:w",
+					"name": "Watch & build web files",
+					"shell_cmd": "npm start",
 					"working_dir": "${project_path}"
 				},
 				{
-					"name": "Exec unittests",
-					"shell_cmd": "dub test -q --nodeps --compiler=dmd --vquiet",
+					"name": "Run unittests & coverage",
+					"shell_cmd": "dub test -q --nodeps --vquiet --compiler=dmd --build=unittest-coverage",
 					"working_dir": "${project_path:${folder:${file_path}}}"
 				}
 			]

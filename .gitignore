@@ -5,6 +5,12 @@ LcdaAccountManager
 LcdaAccountManager.exe
 *.dll
 
+#Unittests, coverage & profiling
+__test__library__
+*.lst
+*.def
+*.log
+
 #Angular / Node
 node_modules/
 public/
