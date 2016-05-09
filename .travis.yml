@@ -1,11 +1,11 @@
 language: d
-
 d: dmd
 
 script:
-    - dub test --compiler=${DC}
     - dub build --compiler=${DC} --build=release
-
+    - dub test --compiler=${DC} --build=unittest-cov --combined
+    # see https://github.com/rejectedsoftware/vibe.d/issues/767 for --combined
+    - bash <(curl -s https://codecov.io/bash)
 
 notifications:
     email:
