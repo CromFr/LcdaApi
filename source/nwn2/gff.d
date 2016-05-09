@@ -279,13 +279,6 @@ struct GffNode{
 		return aggrContainer[index];
 	}
 
-	ref GffNode opDispatch(string key)(){
-		return this[key];
-	}
-	const ref const(GffNode) opDispatch(string key)(){
-		return this[key];
-	}
-
 	/// Produces a readable string of the node and its children
 	const string toPrettyString(){
 
@@ -562,7 +555,7 @@ private:
 						immutable str_count = cast(immutable uint32_t*)(data+2*uint32_t.sizeof);
 						auto sub_str = cast(void*)(data+3*uint32_t.sizeof);
 
-						ret.exoLocStringID = *str_ref;
+						ret.exoLocStringContainer.strref = *str_ref;
 
 						foreach(i ; 0 .. *str_count){
 							immutable id = cast(immutable int32_t*)sub_str;
