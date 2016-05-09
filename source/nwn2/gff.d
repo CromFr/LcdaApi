@@ -66,7 +66,15 @@ struct GffNode{
 		label = lbl;
 	}
 
-	string label;
+	@property{
+		const string label(){return m_label;}
+		void label(string lbl){
+			if(lbl.length>16)
+				throw new GffValueSetException("Labels cannot be longer than 16 characters");
+			m_label = lbl;
+		}
+	}
+	package string m_label;
 
 	@property const GffType type(){return m_type;}
 	package GffType m_type = GffType.Invalid;
