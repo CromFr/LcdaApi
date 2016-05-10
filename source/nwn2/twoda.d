@@ -2,12 +2,27 @@ module nwn2.twoda;
 
 import std.string;
 import std.conv : to;
+version(unittest) import std.exception: assertThrown, assertNotThrown;
+
+
+
+class TwoDAParseException : Exception{
+	@safe pure nothrow this(string msg, string f=__FILE__, size_t l=__LINE__, Throwable t=null){
+		super(msg, f, l, t);
+	}
+}
+class TwoDAColumnNotFoundException : Exception{
+	@safe pure nothrow this(string msg, string f=__FILE__, size_t l=__LINE__, Throwable t=null){
+		super(msg, f, l, t);
+	}
+}
+class TwoDAOutOfBoundsException : Exception{
+	@safe pure nothrow this(string msg, string f=__FILE__, size_t l=__LINE__, Throwable t=null){
+		super(msg, f, l, t);
+	}
+}
 
 class TwoDA{
-
-	class ParseException : Exception{
-		this(in string s){super(s);}
-	}
 
 	this(string filepath){
 		import std.file;
@@ -18,14 +33,17 @@ class TwoDA{
 			auto data = extractRowData(line);
 
 			if(lineIndex==2){
-				header = data;
+				foreach(index, title ; data){
+					header[title] = index;
+				}
+				header.rehash();
 			}
 			else{
 				if(data.length != header.length+1){
-					throw new ParseException("Incorrect number of fields: "~filepath~":"~lineIndex.to!string);
+					throw new TwoDAParseException("Incorrect number of fields: "~filepath~":"~lineIndex.to!string);
 				}
 
-				int lineNo = data[0].to!int;
+				auto lineNo = data[0].to!size_t;
 				if(lineNo >= values.length)
 					values.length = lineNo+1;
 				values[lineNo] = data[1..$];
@@ -35,18 +53,18 @@ class TwoDA{
 
 	}
 
-	const auto ref get(T)(in string colName, in int line){
-		size_t index = size_t.max;
-		foreach(i, cn ; header){
-			if(cn==colName){
-				index = i;
-				break;
-			}
+	const auto ref get(T = string)(in string colName, in size_t line){
+		if(line >= rows)
+			throw new TwoDAOutOfBoundsException("Line out of bounds");
+
+		auto colIndex = colName in header;
+		if(colIndex){
+			if(values[line] is null)
+				return "".to!T;
+			return values[line][*colIndex].to!T;
 		}
-		if(index!=size_t.max)
-			return values[line][index].to!T;
 		else
-			throw new Exception("Column '"~colName~"' not found");
+			throw new TwoDAColumnNotFoundException("Column '"~colName~"' not found");
 	}
 
 	@property{
@@ -56,13 +74,12 @@ class TwoDA{
 	}
 
 private:
-	string[] header;
+	size_t[string] header;
 	string[][] values;
 
 	auto ref extractRowData(in string line){
 		import std.uni;
 		string[] ret;
-
 
 		enum State{
 			Whitespace,
@@ -72,7 +89,7 @@ private:
 		string fieldBuf;
 		auto state = State.Whitespace;
 		foreach(ref c ; line~" "){
-			switch(state){
+			final switch(state){
 				case State.Whitespace:
 					if(c.isWhite)
 						continue;
@@ -107,10 +124,26 @@ private:
 					else
 						fieldBuf ~= c;
 					break;
-
-				default: assert(0);
 			}
 		}
 		return ret;
 	}
+}
+unittest{
+	auto twoda = new TwoDA("unittest/data/polymorph.2da");
+
+	assert(twoda.get("Name", 0) == "POLYMORPH_TYPE_WEREWOLF");
+	assert(twoda.get!int("RacialType", 0) == 23);
+	assert(twoda.get("EQUIPPED", 0) == null);
+	assert(twoda.get!int("MergeA", 13) == 1);
+	assert(twoda.get("Name", 21) == "MULTI WORD VALUE");
+
+	assert(twoda.get("Name", 1) == "POLYMORPH_TYPE_WERERAT");
+	assert(twoda.get("Name", 8) == null);//deleted line
+	assert(twoda.get("Name", 17) == "POLYMORPH_TYPE_ELDER_FIRE_ELEMENTAL");//misordered line
+	assert(twoda.get("Name", 26) == null);//empty value
+	assert(twoda.get("Name", 207) == "POLYMORPH_TYPE_LESS_EMBER_GUARD");//last line
+
+	assertThrown!TwoDAColumnNotFoundException(twoda.get("Yolooo", 1));
+	assertThrown!TwoDAOutOfBoundsException(twoda.get("Name", 208));
 }
