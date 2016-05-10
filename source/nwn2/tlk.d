@@ -4,82 +4,131 @@ import std.stdint;
 import std.string;
 import std.conv;
 
-import nwn2.gff : GffNode, GffType;
+import nwn2.gff : GffNode, GffType, gffTypeToNative;
 
-class StrRefException : Exception{
-	public @safe pure nothrow
-	this(string message, string file =__FILE__, size_t line = __LINE__, Throwable next = null){
-		super(message, file, line, next);
+debug import std.stdio: writeln;
+version(unittest) import std.exception: assertThrown, assertNotThrown;
+
+class TlkOutOfBoundsException : Exception{
+	@safe pure nothrow this(string msg, string f=__FILE__, size_t l=__LINE__, Throwable t=null){
+		super(msg, f, l, t);
 	}
 }
-class StrRefNotFoundException : Exception{
-	public @safe pure nothrow
-	this(string message, string file =__FILE__, size_t line = __LINE__, Throwable next = null){
-		super(message, file, line, next);
-	}
-}
+
+alias StrRef = uint32_t;
 
 class StrRefResolver{
-	this(Tlk baseTable, Tlk userTable){
-		this.baseTable = baseTable;
+	this(in Tlk standartTable, in Tlk userTable){
+		this.standartTable = standartTable;
 		this.userTable = userTable;
 	}
 
-	const string get(in uint32_t strref){
+	/// Get a localized string in the tlk tables (can be a standard or user strref)
+	const ref string opIndex(in StrRef strref){
 		if(strref<Tlk.UserTlkIndexOffset){
-			if(baseTable !is null)
-				return baseTable.get(strref);
-			throw new StrRefException("Asking a standard strref and baseTable is null");
+			assert(standartTable !is null, "standartTable is null");
+			return standartTable[strref];
 		}
 		else{
-			if(userTable !is null)
-				return userTable.get(strref-Tlk.UserTlkIndexOffset);
-			throw new StrRefException("Asking a user strref and userTable is null");
+			assert(standartTable !is null, "userTable is null");
+			return userTable[strref-Tlk.UserTlkIndexOffset];
 		}
 	}
 
-	const string get(in GffNode node){
-		if(node.type!=GffType.ExoLocString)
-			throw new StrRefException("Node '"~node.label~"' is not an ExoLocString");
+	/// Resolves an ExoLocString GffNode to the appropriate language using the tlk tables and language ID
+	const auto ref string opIndex(in GffNode node){
+		assert(node.type==GffType.ExoLocString, "Node '"~node.label~"' is not an ExoLocString");
 
-		auto langID = baseTable.language;
-		if(node.exoLocStringContainer.strref!=uint32_t.max)
-			return get(node.exoLocStringContainer.strref);
+		if(node.exoLocStringContainer.strref!=StrRef.max){
+			try return this[node.exoLocStringContainer.strref];
+			catch(TlkOutOfBoundsException){}
+		}
 
-		if(node.exoLocStringContainer.length == 0)
-			return "";
+		if(node.exoLocStringContainer.strings.length == 0)
+			return "invalid_strref";
 
-		if(langID in node.exoLocStringContainer.strings)
-			return node.exoLocStringContainer.strings[langID].to!string;
+		immutable strid = standartTable.language * 2;
+		//male
+		if(auto s = strid in node.exoLocStringContainer.strings)
+			return (*s).to!string;
+		//female
+		if(auto s = strid+1 in node.exoLocStringContainer.strings)
+			return (*s).to!string;
 
 		return node.exoLocStringContainer.strings.values[0].to!string;
 	}
 
-	Tlk baseTable;
-	Tlk userTable;
+	const Tlk standartTable;
+	const Tlk userTable;
+}
+unittest{
+	auto strref = new StrRefResolver(
+		new Tlk("unittest/data/dialog.tlk"),
+		new Tlk("unittest/data/user.tlk"));
+
+	enum string lastLine =
+		 "Niveau(x) de lanceur de sorts : prêtre 1, paladin 1\n"
+		~"Niveau inné : 1\n"
+		~"Ecole : Evocation\n"
+		~"Registre(s) : \n"
+		~"Composante(s) : verbale, gestuelle\n"
+		~"Portée : personnelle\n"
+		~"Zone d'effet / cible : lanceur\n"
+		~"Durée : 60 secondes\n"
+		~"Jet de sauvegarde : aucun\n"
+		~"Résistance à la magie : non\n"
+		~"\n"
+		~"Tous les trois niveaux effectifs de lanceur de sorts, vous gagnez un bonus de +1 à vos jets d'attaque et un bonus de +1 de dégâts magiques (minimum +1, maximum +3).";
+
+	assert(strref.standartTable.language == Tlk.Language.French);
+	assert(strref[0] == "Bad Strref");
+	assert(strref[54] == lastLine);
+	assertThrown!TlkOutOfBoundsException(strref[55]);
+
+	assert(strref[Tlk.UserTlkIndexOffset + 0] == "Hello world");
+	assert(strref[Tlk.UserTlkIndexOffset + 1] == "Café liégeois");
+
+	auto node = GffNode(GffType.ExoLocString);
+	node = Tlk.UserTlkIndexOffset + 1;
+	node = [0:"male english", 1:"female english", 2:"male french"];
+
+	assert(strref[node] == "Café liégeois");
+	node = Tlk.UserTlkIndexOffset + 50;
+	assert(strref[node] == "male french");
+	node = StrRef.max;
+	assert(strref[node] == "male french");
+	node = StrRef.max;
+	node = [1:"female english"];
+	assert(strref[node] == "female english");
+	node = [1:"female english", 3:"female french"];
+	assert(strref[node] == "female french");
+	node = [1:"female english", 4:"male yolo"];
+	assert(strref[node] == "female english");
+	node = (typeof(gffTypeToNative!(GffType.ExoLocString).strings)).init;
+	assert(strref[node] == "invalid_strref");
+
 }
 
 
 class Tlk{
 	this(in string path){
-		import std.file;
-		data = path.read();
-		header = cast(TlkHeader*)data.ptr;
-		strData = cast(TlkStringData*)(data.ptr + TlkHeader.sizeof);
-		strEntries = cast(char*)(data.ptr + header.string_entries_offset);
+		import std.file: read;
+		data =          cast(immutable)               path.read();
+		headerPtr =     cast(immutable TlkHeader*)    data.ptr;
+		strDataPtr =    cast(immutable TlkStringData*)(data.ptr + TlkHeader.sizeof);
+		strEntriesPtr = cast(immutable char*)         (data.ptr + headerPtr.string_entries_offset);
 	}
 
-	const string get(uint32_t strref){
-		if(strref>=UserTlkIndexOffset-1)
-			throw new Exception("Tlk indexex must be lower than "~UserTlkIndexOffset.to!string);
+	const auto ref string opIndex(in StrRef strref){
+		assert(strref < UserTlkIndexOffset, "Tlk indexes must be lower than "~UserTlkIndexOffset.to!string);
 
-		if(strref>=header.string_count)
-			throw new Exception("strref "~strref.to!string~" out of bounds");
+		if(strref>=headerPtr.string_count)
+			throw new TlkOutOfBoundsException("strref "~strref.to!string~" out of bounds");
 
-		char* str = cast(char*)(cast(size_t)strEntries + strData[strref].offset_to_string);
-		uint32_t length = strData[strref].string_size;
+		immutable strData = &strDataPtr[strref];
+		immutable str = strEntriesPtr + strData.offset_to_string;
 
-		return str[0..length].to!string;
+		return str[0..strData.string_size];
 	}
 
 	enum Language{
@@ -97,17 +146,17 @@ class Tlk{
 
 	@property{
 		const Language language(){
-			return cast(Language)(header.language_id);
+			return cast(Language)(headerPtr.language_id);
 		}
 	}
 
 	enum UserTlkIndexOffset = 16777216;
 
 private:
-	void[] data;
-	TlkHeader* header;
-	TlkStringData* strData;
-	char* strEntries;
+	immutable void[] data;
+	immutable TlkHeader* headerPtr;
+	immutable TlkStringData* strDataPtr;
+	immutable char* strEntriesPtr;
 
 
 	align(1) struct TlkHeader{
@@ -132,6 +181,4 @@ private:
 		SND_PRESENT=0x2,
 		SNDLENGTH_PRESENT=0x4,
 	}
-
-
 }
