@@ -28,7 +28,7 @@ class AccountApi{
 		enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
 		enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
 
-		import sql: replacePlaceholders, Placeholder, MySQLRow;
+		import sql: replacePlaceholders, SqlPlaceholder, MySQLRow;
 
 		string accountToCheck;
 		if(api.admin)
@@ -38,8 +38,8 @@ class AccountApi{
 
 		immutable loginQuery = api.cfg.sql_queries.login.to!string
 			.replacePlaceholders(
-				Placeholder!string("ACCOUNT", accountToCheck),
-				Placeholder!string("PASSWORD", oldPassword)
+				SqlPlaceholder("ACCOUNT", accountToCheck),
+				SqlPlaceholder("PASSWORD", oldPassword)
 			);
 
 		bool credsOK = false;
@@ -51,8 +51,8 @@ class AccountApi{
 
 		immutable setPasswdQuery = api.cfg.sql_queries.set_password.to!string
 			.replacePlaceholders(
-				Placeholder!string("ACCOUNT", _account),
-				Placeholder!string("NEW_PASSWORD", newPassword)
+				SqlPlaceholder("ACCOUNT", _account),
+				SqlPlaceholder("NEW_PASSWORD", newPassword)
 			);
 		api.mysqlConnection.execute(setPasswdQuery);
 

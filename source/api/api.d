@@ -33,12 +33,12 @@ class Api{
 	}
 
 	Json postLogin(string login, string password){
-		import sql: replacePlaceholders, Placeholder, MySQLRow;
+		import sql: replacePlaceholders, SqlPlaceholder, MySQLRow;
 
 		immutable query = cfg.sql_queries.login.to!string
 			.replacePlaceholders(
-				Placeholder!string("ACCOUNT", login),
-				Placeholder!string("PASSWORD", password)
+				SqlPlaceholder("ACCOUNT", login),
+				SqlPlaceholder("PASSWORD", password)
 			);
 
 		bool credsOK = false, isAdmin;

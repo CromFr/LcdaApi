@@ -178,11 +178,11 @@ class CharApi{
 		}while(target.exists);
 
 		if(auto query = api.cfg.sql_queries.on_delete.to!string){
-			import sql: replacePlaceholders, Placeholder;
+			import sql: replacePlaceholders, SqlPlaceholder;
 			api.mysqlConnection.execute(query
 				.replacePlaceholders(
-					Placeholder!string("ACCOUNT", _account),
-					Placeholder!string("CHAR", _char),
+					SqlPlaceholder("ACCOUNT", _account),
+					SqlPlaceholder("CHAR", _char),
 				));
 		}
 
@@ -214,11 +214,11 @@ class CharApi{
 		enforceHTTP(!target.exists, HTTPStatus.conflict, "An active character has the same name.");
 
 		if(auto query = api.cfg.sql_queries.on_activate.to!string){
-			import sql: replacePlaceholders, Placeholder;
+			import sql: replacePlaceholders, SqlPlaceholder;
 			api.mysqlConnection.execute(query
 				.replacePlaceholders(
-					Placeholder!string("ACCOUNT", _account),
-					Placeholder!string("CHAR", _char),
+					SqlPlaceholder("ACCOUNT", _account),
+					SqlPlaceholder("CHAR", _char),
 				));
 		}
 
