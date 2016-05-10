@@ -7,7 +7,10 @@ import std.conv;
 import nwn2.tlk;
 
 debug import std.stdio: writeln;
-version(unittest) import std.exception: assertThrown, assertNotThrown;
+version(unittest){
+	import std.exception: assertThrown, assertNotThrown;
+	import std.algorithm : equal;
+}
 
 class GffValueSetException : Exception{
 	@safe pure nothrow this(string msg, string f=__FILE__, size_t l=__LINE__, Throwable t=null){
@@ -424,7 +427,10 @@ struct GffNode{
 			import std.string: leftJustify;
 
 			if(node.type == GffType.Struct){
-				string ret = tabs~"("~node.type.to!string~")\n";
+				string ret = tabs~"("~node.type.to!string~")";
+				if(node.label !is null)
+					ret ~= " "~node.label;
+				ret ~= "\n";
 				foreach(ref childNode ; node.aggrContainer){
 					ret ~= toPrettyStringInternal(&childNode, tabs~"   | ");
 				}
@@ -1057,4 +1063,53 @@ private:
 			return data;
 		}
 	}
+}
+unittest{
+	import std.file : read;
+	with(GffType){
+		auto gff = new Gff("unittest/vault/CromFr/krogar.bic");
+
+		//Parsing checks
+		assert(gff.fileType == "BIC");
+		assert(gff.fileVersion == "V3.2");
+		//assert(gff.fileVersion)
+		assert(gff["IsPC"].as!Byte == true);
+		assert(gff["RefSaveThrow"].as!Char == 13);
+		assert(gff["SoundSetFile"].as!Word == 363);
+		assert(gff["HitPoints"].as!Short == 320);
+		assert(gff["Gold"].as!DWord == 6400);
+		assert(gff["Age"].as!Int == 50);
+		//assert(gff[""].as!DWord64 == );
+		//assert(gff[""].as!Int64 == );
+		assert(gff["XpMod"].as!Float == 1);
+		//assert(gff[""].as!Double == );
+		assert(gff["Deity"].as!ExoString    == "Gorm Gulthyn");
+		assert(gff["ScriptHeartbeat"].as!ResRef       == "gb_player_heart");
+		assert(gff["FirstName"].as!ExoLocString.strref == -1);
+		assert(gff["FirstName"].as!ExoLocString.strings[0] == "Krogar");
+		//assert(gff[""].as!Void == );
+		assert(gff["Tint_Head"]["Tintable"]["Tint"]["1"]["b"].as!Byte == 109);
+		assert(gff["ClassList"][0]["Class"].as!Int == 4);
+
+		auto krogarDataOrig = cast(ubyte[])read("unittest/vault/CromFr/krogar.bic");
+		gff = new Gff(krogarDataOrig);
+
+		auto krogarDataSerialized = cast(ubyte[])gff.serialize();
+		auto gffSerialized = new Gff(krogarDataSerialized);
+
+		assert(gff.toPrettyString() == gffSerialized.toPrettyString(), "Serialization data mismatch");
+		assert(krogarDataSerialized == krogarDataOrig, "Serialization not byte perfect");
+
+		assertThrown!GffValueSetException(gff.fileType = "FILETYPE");
+		gff.fileType = "A C";
+		assert(gff.fileType == "A C");
+		assertThrown!GffValueSetException(gff.fileVersion = "VERSION");
+		gff.fileVersion = "V42";
+		assert(gff.fileVersion == "V42");
+
+		auto data = cast(char[])gff.serialize();
+		assert(data[0..4]=="A C ");
+		assert(data[4..8]=="V42 ");
+	}
+
 }
