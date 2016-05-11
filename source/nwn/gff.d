@@ -1,9 +1,10 @@
 module nwn.gff;
 
 
+import std.stdio: File;
 import std.stdint;
 import std.string;
-import std.conv;
+import std.conv: to;
 
 debug import std.stdio: writeln;
 version(unittest) import std.exception: assertThrown, assertNotThrown;
@@ -496,6 +497,20 @@ class Gff{
 		m_fileVersion = parser.headerPtr.file_version.stripRight;
 
 		parser.buildNodeFromStructInPlace(0, &firstNode);
+	}
+	this(File stream){
+		void[] data;
+		data.length = GffHeader.sizeof;
+		stream.rawRead(data);
+
+		GffHeader* header = cast(GffHeader*)data.ptr;
+		immutable size_t fileLength =
+			header.list_indices_offset + header.list_indices_count;
+
+		data.length = fileLength;
+		stream.rawRead(data[GffHeader.sizeof..$]);
+
+		this(data);
 	}
 
 	@property{
