@@ -1,7 +1,7 @@
 language: d
 d: dmd
 
-before_script:
+install:
     - git clone https://github.com/CromFr/nwn-lib-d.git ../nwn-lib-d
     - dub add-local ../nwn-lib-d
 
@@ -9,6 +9,8 @@ script:
     - dub build --compiler=${DC} --build=release
     - dub test --compiler=${DC} --build=unittest-cov --combined
     # see https://github.com/rejectedsoftware/vibe.d/issues/767 for --combined
+
+after_success:
     - bash <(curl -s https://codecov.io/bash)
 
 notifications:
