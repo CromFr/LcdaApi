@@ -4,13 +4,9 @@ module nwn2.gff;
 import std.stdint;
 import std.string;
 import std.conv;
-import nwn2.tlk;
 
 debug import std.stdio: writeln;
-version(unittest){
-	import std.exception: assertThrown, assertNotThrown;
-	import std.algorithm : equal;
-}
+version(unittest) import std.exception: assertThrown, assertNotThrown;
 
 class GffValueSetException : Exception{
 	@safe pure nothrow this(string msg, string f=__FILE__, size_t l=__LINE__, Throwable t=null){
@@ -495,7 +491,7 @@ class Gff{
 		import std.string: stripRight;
 		m_fileType = parser.headerPtr.file_type.stripRight;
 		m_fileVersion = parser.headerPtr.file_version.stripRight;
-		firstNode = parser.buildNodeFromStruct(data, 0);
+		parser.buildNodeFromStructInPlace(0, &firstNode);
 	}
 
 	@property{
@@ -587,46 +583,38 @@ private:
 		immutable GffFieldIndices* fieldIndicesPtr;
 		immutable GffListIndices*  listIndicesPtr;
 
-		immutable(GffStruct*) getStruct(in void[] rawData, size_t index){
+		immutable(GffStruct*) getStruct(in size_t index){
 			assert(index < headerPtr.struct_count, "index "~index.to!string~" out of bounds");
 			return &structsPtr[index];
 		}
-		immutable(GffField*) getField(in void[] rawData, size_t index){
+		immutable(GffField*) getField(in size_t index){
 			assert(index < headerPtr.field_count, "index "~index.to!string~" out of bounds");
 			return &fieldsPtr[index];
 		}
-		immutable(GffLabel*) getLabel(in void[] rawData, size_t index){
+		immutable(GffLabel*) getLabel(in size_t index){
 			assert(index < headerPtr.label_count, "index "~index.to!string~" out of bounds");
 			return &labelsPtr[index];
 		}
-		immutable(GffFieldData*) getFieldData(in void[] rawData, size_t offset){
+		immutable(GffFieldData*) getFieldData(in size_t offset){
 			assert(offset < headerPtr.field_data_count, "offset "~offset.to!string~" out of bounds");
 			return cast(immutable GffFieldData*)(cast(void*)fieldDatasPtr + offset);
 		}
-		immutable(GffFieldIndices*) getFieldIndices(in void[] rawData, size_t offset){
+		immutable(GffFieldIndices*) getFieldIndices(in size_t offset){
 			assert(offset < headerPtr.field_indices_count, "offset "~offset.to!string~" out of bounds");
 			return cast(immutable GffFieldIndices*)(cast(void*)fieldIndicesPtr + offset);
 		}
-		immutable(GffListIndices*) getListIndices(in void[] rawData, size_t offset){
+		immutable(GffListIndices*) getListIndices(in size_t offset){
 			assert(offset < headerPtr.list_indices_count, "offset "~offset.to!string~" out of bounds");
 			return cast(immutable GffListIndices*)(cast(void*)listIndicesPtr + offset);
 		}
 
 		version(gff_verbose) string gff_verbose_rtIndent;
 
-		GffNode buildNodeFromStruct(in void[] rawData, in size_t structIndex){
-			auto ret = GffNode(GffType.Struct);
-
-			buildNodeFromStructInPlace(rawData, structIndex, &ret);
-
-			return ret;
-		}
-
-		void buildNodeFromStructInPlace(in void[] rawData, in size_t structIndex, GffNode* destNode){
+		void buildNodeFromStructInPlace(in size_t structIndex, GffNode* destNode){
 
 			destNode.m_type = GffType.Struct;
 
-			auto s = getStruct(rawData, structIndex);
+			auto s = getStruct(structIndex);
 			destNode.structType = s.type;
 
 			version(gff_verbose){
@@ -638,18 +626,23 @@ private:
 			}
 
 			if(s.field_count==1){
-				auto n = buildNodeFromField(rawData, s.data_or_data_offset);
+				immutable startIndex = destNode.aggrContainer.length;
+				destNode.aggrContainer.length++;
 
-				destNode.structLabelMap[n.label] = destNode.aggrContainer.length;
-				destNode.aggrContainer ~= n;
+				GffNode* n = &destNode.aggrContainer[startIndex];
+				buildNodeFromFieldInPlace(s.data_or_data_offset, n);
+				destNode.structLabelMap[n.label] = startIndex;
 			}
 			else if(s.field_count > 1){
-				auto fi = getFieldIndices(rawData, s.data_or_data_offset);
-				foreach(i ; 0 .. s.field_count){
-					auto n = buildNodeFromField(rawData, fi[i].field_index);
+				auto fi = getFieldIndices(s.data_or_data_offset);
 
-					destNode.structLabelMap[n.label] = destNode.aggrContainer.length;
-					destNode.aggrContainer ~= n;
+				immutable startIndex = destNode.aggrContainer.length;
+				destNode.aggrContainer.length += s.field_count;
+				foreach(i ; 0 .. s.field_count){
+					immutable nodeIndex = startIndex + i;
+					GffNode* n = &destNode.aggrContainer[nodeIndex];
+					buildNodeFromFieldInPlace(fi[i].field_index, n);
+					destNode.structLabelMap[n.label] = nodeIndex;
 				}
 			}
 
@@ -657,108 +650,114 @@ private:
 
 		}
 
-		GffNode buildNodeFromField(in void[] rawData, in size_t fieldIndex){
-			GffNode ret;
+
+		void buildNodeFromFieldInPlace(in size_t fieldIndex, GffNode* destField){
+			import std.typetuple: TypeTuple;
+			auto ref string parseLabel(in uint32_t labelIndex){
+				immutable lbl = getLabel(labelIndex).value;
+				if(lbl[$-1]=='\0') return lbl.ptr.fromStringz.idup;
+				else               return lbl.idup;
+			}
+
 			try{
 				import std.conv : to;
-				immutable f = getField(rawData, fieldIndex);
+				immutable f = getField(fieldIndex);
 
-				immutable lbl = getLabel(rawData, f.label_index).value;
-				if(lbl[$-1]=='\0') ret.label = lbl.ptr.fromStringz.idup;
-				else               ret.label = lbl.idup;
-
-				ret.m_type = cast(GffType)f.type;
+				destField.m_type = cast(GffType)f.type;
+				destField.label(parseLabel(f.label_index));
 
 				version(gff_verbose){
-					writeln(gff_verbose_rtIndent, "Parsing  field: '", ret.label,
-						"' (",ret.type,
+					writeln(gff_verbose_rtIndent, "Parsing  field: '", destField.label,
+						"' (",destField.type,
 						", id=",fieldIndex,
 						", dodo:",f.data_or_data_offset,")");
 					gff_verbose_rtIndent ~= "│ ";
 				}
 
-				final switch(ret.type) with(GffType){
+
+				final switch(destField.type) with(GffType){
 					case Invalid: assert(0, "type has not been set");
-					case Byte, Char, Word, Short, DWord, Int, Float:
-						ret.simpleTypeContainer = cast(uint64_t)f.data_or_data_offset;
-						break;
-					case DWord64:
-						immutable d = getFieldData(rawData, f.data_or_data_offset);
-						ret.simpleTypeContainer = *(cast(uint64_t*)d);
-						break;
-					case Int64:
-						immutable d = getFieldData(rawData, f.data_or_data_offset);
-						ret.simpleTypeContainer = *(cast(int64_t*)d);//TODO why int64_t ?
-						break;
-					case Double:
-						immutable d = getFieldData(rawData, f.data_or_data_offset);
-						ret.simpleTypeContainer = *(cast(uint64_t*)d);
-						break;
+
+					buildNodeFromField_breakSwitch: break;
+
+					foreach(TYPE ; TypeTuple!(Byte,Char,Word,Short,DWord,Int,Float)){
+						case TYPE:
+							alias NativeType = gffTypeToNative!TYPE;
+							*cast(NativeType*)&destField.simpleTypeContainer = *cast(NativeType*)&f.data_or_data_offset;
+							//TODO: goto is shitty but break doesn't work at all
+							goto buildNodeFromField_breakSwitch;
+					}
+					foreach(TYPE ; TypeTuple!(DWord64,Int64,Double)){
+						case TYPE:
+							alias NativeType = gffTypeToNative!TYPE;
+							immutable d = getFieldData(f.data_or_data_offset);
+							*cast(NativeType*)&destField.simpleTypeContainer = cast(NativeType)d;
+							goto buildNodeFromField_breakSwitch;
+					}
 					case ExoString:
-						immutable data = getFieldData(rawData, f.data_or_data_offset);
+						immutable data = getFieldData(f.data_or_data_offset);
 						immutable size = cast(immutable uint32_t*)data;
 						immutable chars = cast(immutable char*)(data+uint32_t.sizeof);
 
-						ret.stringContainer = chars[0..*size].idup;
+						destField.stringContainer = chars[0..*size].idup;
 						break;
 					case ResRef:
-						immutable data = getFieldData(rawData, f.data_or_data_offset);
+						immutable data = getFieldData(f.data_or_data_offset);
 						immutable size = cast(immutable uint8_t*)data;
 						immutable chars = cast(immutable char*)(data+uint8_t.sizeof);
 
-						ret.stringContainer = chars[0..*size].idup;
+						destField.stringContainer = chars[0..*size].idup;
 						break;
 
 					case ExoLocString:
-						immutable data = getFieldData(rawData, f.data_or_data_offset);
+						immutable data = getFieldData(f.data_or_data_offset);
 						//immutable total_size = cast(uint32_t*)data;
 						immutable str_ref = cast(immutable uint32_t*)(data+uint32_t.sizeof);
 						immutable str_count = cast(immutable uint32_t*)(data+2*uint32_t.sizeof);
 						auto sub_str = cast(void*)(data+3*uint32_t.sizeof);
 
-						ret.exoLocStringContainer.strref = *str_ref;
+						destField.exoLocStringContainer.strref = *str_ref;
 
 						foreach(i ; 0 .. *str_count){
 							immutable id = cast(immutable int32_t*)sub_str;
 							immutable length = cast(immutable int32_t*)(sub_str+uint32_t.sizeof);
 							immutable str = cast(immutable char*)(sub_str+2*uint32_t.sizeof);
 
-							ret.exoLocStringContainer.strings[*id] = str[0..*length].idup;
+							destField.exoLocStringContainer.strings[*id] = str[0..*length].idup;
 							sub_str += 2*uint32_t.sizeof + char.sizeof*(*length);
 						}
 						break;
 
 					case Void:
-						immutable data = getFieldData(rawData, f.data_or_data_offset);
+						immutable data = getFieldData(f.data_or_data_offset);
 						immutable size = cast(immutable uint32_t*)data;
 						immutable dataVoid = cast(immutable void*)(data+uint32_t.sizeof);
 
-						ret.rawContainer = dataVoid[0..*size].dup;
+						destField.rawContainer = dataVoid[0..*size].dup;
 						break;
 
 					case Struct:
-						buildNodeFromStructInPlace(rawData, f.data_or_data_offset, &ret);
+						buildNodeFromStructInPlace(f.data_or_data_offset, destField);
 						break;
 
 					case List:
-						auto li = getListIndices(rawData, f.data_or_data_offset);
+						auto li = getListIndices(f.data_or_data_offset);
 						if(li.length>0){
 							immutable uint32_t* indices = &li.first_struct_index;
 
-							ret.aggrContainer.reserve(li.length);
+							immutable startIndex = destField.aggrContainer.length;
+							destField.aggrContainer.length += li.length;
 							foreach(i ; 0 .. li.length){
-								ret.aggrContainer ~= buildNodeFromStruct(rawData, indices[i]);
+								buildNodeFromStructInPlace(indices[i], &destField.aggrContainer[startIndex+i]);
 							}
 						}
 						break;
 				}
 				version(gff_verbose) gff_verbose_rtIndent = gff_verbose_rtIndent[0..$-4];
-
-				return ret;
 			}
 			catch(Throwable t){
 				if(t.msg.length==0 || t.msg[0] != '@'){
-					t.msg = "@"~ret.label~": "~t.msg;
+					t.msg = "@"~destField.label~": "~t.msg;
 				}
 				throw t;
 			}
