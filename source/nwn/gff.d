@@ -286,6 +286,7 @@ struct GffNode{
 		throw new GffValueSetException("Cannot set GffNode of type "~type.to!string~" with "~rhs.to!string~" of type "~T.stringof);
 	}
 	unittest{
+		import std.conv: ConvOverflowException;
 		with(GffType){
 			auto node = GffNode(Byte);
 			assertThrown!ConvOverflowException(node = -1);
