@@ -626,28 +626,25 @@ private:
 			}
 
 			if(s.field_count==1){
-				immutable startIndex = destNode.aggrContainer.length;
 				destNode.aggrContainer.length++;
+				GffNode* field = &destNode.aggrContainer[0];
 
-				GffNode* n = &destNode.aggrContainer[startIndex];
-				buildNodeFromFieldInPlace(s.data_or_data_offset, n);
-				destNode.structLabelMap[n.label] = startIndex;
+				buildNodeFromFieldInPlace(s.data_or_data_offset, field);
+				destNode.structLabelMap[field.label] = 0;
 			}
 			else if(s.field_count > 1){
 				auto fi = getFieldIndices(s.data_or_data_offset);
 
-				immutable startIndex = destNode.aggrContainer.length;
-				destNode.aggrContainer.length += s.field_count;
-				foreach(i ; 0 .. s.field_count){
-					immutable nodeIndex = startIndex + i;
-					GffNode* n = &destNode.aggrContainer[nodeIndex];
-					buildNodeFromFieldInPlace(fi[i].field_index, n);
-					destNode.structLabelMap[n.label] = nodeIndex;
-				}
+				destNode.aggrContainer.length = s.field_count;
+
+				foreach(i, ref field ; destNode.aggrContainer)
+					buildNodeFromFieldInPlace(fi[i].field_index, &field);
+
+				foreach(i, ref field ; destNode.aggrContainer)
+					destNode.structLabelMap[field.label] = i;
 			}
 
 			version(gff_verbose) gff_verbose_rtIndent = gff_verbose_rtIndent[0..$-4];
-
 		}
 
 
@@ -674,25 +671,22 @@ private:
 					gff_verbose_rtIndent ~= "│ ";
 				}
 
-
+				typeswitch:
 				final switch(destField.type) with(GffType){
 					case Invalid: assert(0, "type has not been set");
-
-					buildNodeFromField_breakSwitch: break;
 
 					foreach(TYPE ; TypeTuple!(Byte,Char,Word,Short,DWord,Int,Float)){
 						case TYPE:
 							alias NativeType = gffTypeToNative!TYPE;
 							*cast(NativeType*)&destField.simpleTypeContainer = *cast(NativeType*)&f.data_or_data_offset;
-							//TODO: goto is shitty but break doesn't work at all
-							goto buildNodeFromField_breakSwitch;
+							break typeswitch;
 					}
 					foreach(TYPE ; TypeTuple!(DWord64,Int64,Double)){
 						case TYPE:
 							alias NativeType = gffTypeToNative!TYPE;
 							immutable d = getFieldData(f.data_or_data_offset);
 							*cast(NativeType*)&destField.simpleTypeContainer = cast(NativeType)d;
-							goto buildNodeFromField_breakSwitch;
+							break typeswitch;
 					}
 					case ExoString:
 						immutable data = getFieldData(f.data_or_data_offset);
