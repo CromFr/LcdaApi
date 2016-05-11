@@ -1,10 +1,10 @@
-module nwn2.tlk;
+module nwn.tlk;
 
 import std.stdint;
 import std.string;
 import std.conv;
 
-import nwn2.gff : GffNode, GffType, gffTypeToNative;
+import nwn.gff : GffNode, GffType, gffTypeToNative;
 
 debug import std.stdio: writeln;
 version(unittest) import std.exception: assertThrown, assertNotThrown;

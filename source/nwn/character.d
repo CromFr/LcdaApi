@@ -1,4 +1,4 @@
-module nwn2.character;
+module nwn.character;
 
 import std.conv;
 
@@ -7,9 +7,9 @@ class Character{
 	this(in string bicFile, bool isDeleted=false){
 		import std.path : baseName;
 		import resourcemanager;
-		import nwn2.gff;
-		import nwn2.tlk;
-		import nwn2.twoda;
+		import nwn.gff;
+		import nwn.tlk;
+		import nwn.twoda;
 
 		deleted = isDeleted;
 
@@ -138,4 +138,22 @@ class Character{
 
 	string bicFile;
 	string bicFileName;
+}
+
+unittest{
+	import resourcemanager;
+	import nwn.gff;
+	import nwn.tlk;
+
+	//TODO: make character.d independent of ResourceManager
+
+	//auto strresolv = new StrRefResolver(
+	//	new Tlk("unittest/data/dialog.tlk"),
+	//	null);
+	//ResourceManager.store("resolver", strresolv);
+	//ResourceManager.path.add("/home/crom/Documents/Neverwinter Nights 2/override/LcdaClientSrc/lcda2da.hak/");
+
+	//new Character("unittest/vault/CromFr/krogar.bic");
+
+	//ResourceManager.remove!StrRefResolver("resolver");
 }

@@ -1,4 +1,4 @@
-module nwn2.gff;
+module nwn.gff;
 
 
 import std.stdint;
@@ -437,6 +437,9 @@ struct GffNode{
 				}
 				return ret;
 			}
+			else if(node.type == GffType.Invalid){
+				return tabs~node.label.leftJustify(16)~": {{INVALID}}\n";
+			}
 			else{
 				return tabs~node.label.leftJustify(16)~": "~node.to!string~" ("~node.type.to!string~")\n";
 			}
@@ -491,6 +494,7 @@ class Gff{
 		import std.string: stripRight;
 		m_fileType = parser.headerPtr.file_type.stripRight;
 		m_fileVersion = parser.headerPtr.file_version.stripRight;
+
 		parser.buildNodeFromStructInPlace(0, &firstNode);
 	}
 
@@ -611,6 +615,8 @@ private:
 		version(gff_verbose) string gff_verbose_rtIndent;
 
 		void buildNodeFromStructInPlace(in size_t structIndex, GffNode* destNode){
+			destNode.m_type = GffType.Struct;
+
 			auto s = getStruct(structIndex);
 			destNode.structType = s.type;
 
@@ -645,6 +651,8 @@ private:
 		}
 
 		void buildNodeFromListInPlace(in size_t listIndex, GffNode* destList){
+			destList.m_type = GffType.List;
+
 			auto li = getListIndices(listIndex);
 			if(li.length>0){
 				immutable uint32_t* indices = &li.first_struct_index;

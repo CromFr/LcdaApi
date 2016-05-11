@@ -4,7 +4,7 @@ import vibe.d;
 import mysql : MySQLClient, MySQLRow;
 debug import std.stdio: writeln;
 
-import nwn2.character;
+import nwn.character;
 import api.api;
 
 class CharApi{

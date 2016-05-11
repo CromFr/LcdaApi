@@ -1,7 +1,8 @@
-module nwn2.twoda;
+module nwn.twoda;
 
 import std.string;
 import std.conv : to;
+debug import std.stdio: writeln;
 version(unittest) import std.exception: assertThrown, assertNotThrown;
 
 

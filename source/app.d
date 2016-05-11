@@ -2,7 +2,7 @@ import vibe.d;
 import mysql;
 import std.stdio;
 import resourcemanager;
-import nwn2.tlk;
+import nwn.tlk;
 import api.api;
 import config;
 
