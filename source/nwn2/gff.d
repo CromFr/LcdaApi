@@ -75,7 +75,6 @@ struct GffNode{
 			m_label = lbl;
 		}
 	}
-	package string m_label;
 	unittest{
 		assertThrown!GffValueSetException(GffNode(GffType.Struct, "ThisLabelIsLongerThan16Chars"));
 		auto node = GffNode(GffType.Struct, "labelok");
@@ -83,7 +82,6 @@ struct GffNode{
 	}
 
 	@property const GffType type(){return m_type;}
-	package GffType m_type = GffType.Invalid;
 
 	/// Access by reference the underlying data stored in the GffNode.
 	/// The type of this data is determined by gffTypeToNative.
@@ -467,6 +465,8 @@ struct GffNode{
 
 
 package:
+	GffType m_type = GffType.Invalid;
+	string m_label;
 	void[] rawContainer;
 	uint64_t simpleTypeContainer;
 	string stringContainer;
@@ -611,9 +611,6 @@ private:
 		version(gff_verbose) string gff_verbose_rtIndent;
 
 		void buildNodeFromStructInPlace(in size_t structIndex, GffNode* destNode){
-
-			destNode.m_type = GffType.Struct;
-
 			auto s = getStruct(structIndex);
 			destNode.structType = s.type;
 
@@ -647,6 +644,19 @@ private:
 			version(gff_verbose) gff_verbose_rtIndent = gff_verbose_rtIndent[0..$-4];
 		}
 
+		void buildNodeFromListInPlace(in size_t listIndex, GffNode* destList){
+			auto li = getListIndices(listIndex);
+			if(li.length>0){
+				immutable uint32_t* indices = &li.first_struct_index;
+
+				destList.aggrContainer.length = li.length;
+
+				foreach(i, ref structNode ; destList.aggrContainer){
+					buildNodeFromStructInPlace(indices[i], &structNode);
+				}
+			}
+		}
+
 
 		void buildNodeFromFieldInPlace(in size_t fieldIndex, GffNode* destField){
 			import std.typetuple: TypeTuple;
@@ -661,7 +671,7 @@ private:
 				immutable f = getField(fieldIndex);
 
 				destField.m_type = cast(GffType)f.type;
-				destField.label(parseLabel(f.label_index));
+				destField.label = parseLabel(f.label_index);
 
 				version(gff_verbose){
 					writeln(gff_verbose_rtIndent, "Parsing  field: '", destField.label,
@@ -735,16 +745,7 @@ private:
 						break;
 
 					case List:
-						auto li = getListIndices(f.data_or_data_offset);
-						if(li.length>0){
-							immutable uint32_t* indices = &li.first_struct_index;
-
-							immutable startIndex = destField.aggrContainer.length;
-							destField.aggrContainer.length += li.length;
-							foreach(i ; 0 .. li.length){
-								buildNodeFromStructInPlace(indices[i], &destField.aggrContainer[startIndex+i]);
-							}
-						}
+						buildNodeFromListInPlace(f.data_or_data_offset, destField);
 						break;
 				}
 				version(gff_verbose) gff_verbose_rtIndent = gff_verbose_rtIndent[0..$-4];
