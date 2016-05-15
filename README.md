@@ -1,4 +1,6 @@
-# LCDA Accounts Interface ![](https://travis-ci.org/CromFr/LcdaAccountManager.svg?branch=master)
+# LCDA Accounts Interface
+[![Build Status](https://travis-ci.org/CromFr/LcdaAccountManager.svg?branch=master)](https://travis-ci.org/CromFr/LcdaAccountManager)
+[![codecov](https://codecov.io/gh/CromFr/LcdaAccountManager/branch/master/graph/badge.svg)](https://codecov.io/gh/CromFr/LcdaAccountManager)
 
 Web interface for managing accounts & characters of "La Colère d'Aurile", a French Neverwinter Nights 2 Server (RPG)
 
