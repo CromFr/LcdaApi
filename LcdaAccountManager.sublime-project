@@ -22,19 +22,18 @@
 	[
 		{
 			"name": "Project",
-			"shell_cmd": "dub build -q --nodeps --compiler=dmd --vquiet",
-			"file_regex": "^([^\\(^\n]*?)(?:-mixin-[0-9]+)?\\(([0-9]+),([0-9]+)\\): ((Error|Warning|Deprecation):)? (.*)$",
-			"working_dir": "${project_path:${folder:${file_path}}}",
+			"working_dir": "${project_path}",
+			"shell_cmd": "dub build -q",
+			"syntax": "D-dmd.sublime-syntax",
+			"file_regex": "^(?:.*?@)?(?!\\?\\?:\\?)(.*?)(?:-mixin-\\d+)?[:\\(](\\d+)(?:,(\\d+))?\\)?:?\\s(.*)$",
 			"variants": [
 				{
 					"name": "Watch & build web files",
-					"shell_cmd": "npm start",
-					"working_dir": "${project_path}"
+					"shell_cmd": "npm start"
 				},
 				{
 					"name": "Run unittests & coverage",
-					"shell_cmd": "dub test -q --nodeps --vquiet --compiler=dmd --build=unittest-coverage",
-					"working_dir": "${project_path:${folder:${file_path}}}"
+					"shell_cmd": "dub test -q --build=unittest-coverage"
 				}
 			]
 		}
