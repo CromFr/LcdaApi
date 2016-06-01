@@ -50,18 +50,21 @@
 		//Keep empty for no sql execution
 		//  - $ACCOUNT: player account name
 		//  - $CHAR: character name
-		"on_delete": "",
+		// Multiple queries can be specified
+		"on_delete": [],
 
 		//Query executed when the player reactivates a deleted
 		//Keep empty for no sql execution
 		//  - $ACCOUNT: player account name
 		//  - $CHAR: character name
-		"on_activate": "",
+		// Multiple queries can be specified
+		"on_activate": [],
 
 		// Placeholders:
 		//  - $ACCOUNT: player account name
 		//  - $NEW_PASSWORD: player new unhashed password
-		"set_password": "UPDATE accounts SET password='$NEW_PASSWORD' WHERE name='$ACCOUNT'",
+		// Multiple queries can be specified
+		"set_password": ["UPDATE accounts SET password='$NEW_PASSWORD' WHERE name='$ACCOUNT'"],
 	},
 
 

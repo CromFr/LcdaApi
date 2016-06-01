@@ -162,6 +162,7 @@ class CharApi{
 
 		import std.file : exists, isFile, rename, mkdirRecurse;
 		import std.path : buildPath, baseName;
+		import sql: replacePlaceholders, SqlPlaceholder;
 
 		immutable charFile = getCharFile(_account, _char, false);
 		enforceHTTP(charFile.exists && charFile.isFile, HTTPStatus.notFound, "Character '"~_char~"' not found");
@@ -177,13 +178,15 @@ class CharApi{
 			target = buildPath(deletedVault, _char~"-"~(index++).to!string~".bic");
 		}while(target.exists);
 
-		if(auto query = api.cfg.sql_queries.on_delete.to!string){
-			import sql: replacePlaceholders, SqlPlaceholder;
-			api.mysqlConnection.execute(query
-				.replacePlaceholders(
+
+		auto queries = api.cfg.sql_queries.on_delete.get!(Json[]);
+		foreach(ref query ; queries){
+			api.mysqlConnection.execute(
+				query.to!string.replacePlaceholders(
 					SqlPlaceholder("ACCOUNT", _account),
 					SqlPlaceholder("CHAR", _char),
-				));
+				)
+			);
 		}
 
 		debug{
@@ -203,6 +206,7 @@ class CharApi{
 		import std.file : exists, isFile, rename, mkdirRecurse;
 		import std.path : buildPath, baseName;
 		import std.regex : matchFirst, ctRegex;
+		import sql: replacePlaceholders, SqlPlaceholder;
 
 		immutable charFile = getCharFile(_account, _char, true);
 		enforceHTTP(charFile.exists && charFile.isFile, HTTPStatus.notFound, "Character '"~_char~"' not found");
@@ -213,13 +217,14 @@ class CharApi{
 		immutable target = buildPath(accountVault, newName~".bic");
 		enforceHTTP(!target.exists, HTTPStatus.conflict, "An active character has the same name.");
 
-		if(auto query = api.cfg.sql_queries.on_activate.to!string){
-			import sql: replacePlaceholders, SqlPlaceholder;
-			api.mysqlConnection.execute(query
-				.replacePlaceholders(
+		auto queries = api.cfg.sql_queries.on_activate.get!(Json[]);
+		foreach(ref query ; queries){
+			api.mysqlConnection.execute(
+				query.to!string.replacePlaceholders(
 					SqlPlaceholder("ACCOUNT", _account),
 					SqlPlaceholder("CHAR", _char),
-				));
+				)
+			);
 		}
 
 		debug{

@@ -49,12 +49,15 @@ class AccountApi{
 		enforceHTTP(credsOK, HTTPStatus.conflict, "Old password is incorrect");
 
 
-		immutable setPasswdQuery = api.cfg.sql_queries.set_password.to!string
-			.replacePlaceholders(
-				SqlPlaceholder("ACCOUNT", _account),
-				SqlPlaceholder("NEW_PASSWORD", newPassword)
+		auto setPasswdQuery = api.cfg.sql_queries.set_password.get!(Json[]);
+		foreach(ref query ; setPasswdQuery){
+			api.mysqlConnection.execute(
+				query.to!string.replacePlaceholders(
+					SqlPlaceholder("ACCOUNT", _account),
+					SqlPlaceholder("NEW_PASSWORD", newPassword)
+				)
 			);
-		api.mysqlConnection.execute(setPasswdQuery);
+		}
 
 		enforceHTTP(false, HTTPStatus.ok);
 	}
