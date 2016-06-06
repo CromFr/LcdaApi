@@ -83,7 +83,7 @@
 								<td class="right">Mauvais - Bon</td>
 								<td>
 									<div class="progress char-alignment">
-										<div class="determinate" style="width: {{character?.alignment?.good_evil}}%"></div>
+										<div class="determinate" [style.width]="character?.alignment?.good_evil + '%'"></div>
 									</div>
 								</td>
 							</tr>
@@ -91,7 +91,7 @@
 								<td class="right">Chaotique - Loyal</td>
 								<td>
 									<div class="progress char-alignment">
-										<div class="determinate" style="width: {{character?.alignment?.law_chaos}}%"></div>
+										<div class="determinate" [style.width]="character?.alignment?.law_chaos + '%'"></div>
 									</div>
 								</td>
 							</tr>
