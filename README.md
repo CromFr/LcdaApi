@@ -37,9 +37,13 @@ Web interface for managing accounts & characters of "La Colère d'Aurile", a Fre
 # Build
 
 ```sh
+# Public files
 npm install
 npm run build:prod
 
+# Server
+git clone https://github.com/CromFr/nwn-lib-d.git ../nwn-lib-d
+dub add local ../nwn-lib-d
 dub build --build=release
 ```
 
