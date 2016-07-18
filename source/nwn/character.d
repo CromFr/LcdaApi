@@ -39,7 +39,7 @@ class Character{
 		}
 
 		//Race
-		auto raceId = gff["Subrace"].as!(GffType.Byte);
+		auto raceId = gff["Subrace"].as!GffByte;
 		race = strref[race2da.get!StrRef("Name", raceId)];
 
 		//Alignment
@@ -66,18 +66,18 @@ class Character{
 		immutable skillsCount = skills2da.rows;
 		uint[] skillRanks;
 		skillRanks.length = skillsCount;
-		foreach(lvlIndex, gffLvl ; gff["LvlStatList"].as!(GffType.List)){
+		foreach(lvlIndex, gffLvl ; gff["LvlStatList"].as!GffList){
 			Level lvl;
 			//name
-			lvl.className = strref[class2da.get!StrRef("Name", gffLvl["LvlStatClass"].as!(GffType.Byte))];
+			lvl.className = strref[class2da.get!StrRef("Name", gffLvl["LvlStatClass"].as!GffByte)];
 			//ability
 			if(lvlIndex%4 == 3){
-				lvl.ability = strref[abilities2da.get!StrRef("Name", gffLvl["LvlStatAbility"].as!(GffType.Byte))];
+				lvl.ability = strref[abilities2da.get!StrRef("Name", gffLvl["LvlStatAbility"].as!GffByte)];
 			}
 			//skills
 			lvl.skills.length = skillsCount;
-			foreach(i, gffSkill ; gffLvl["SkillList"].to!(GffNode[])){
-				auto earned = gffSkill["Rank"].as!(GffType.Byte);
+			foreach(i, gffSkill ; gffLvl["SkillList"].as!GffList){
+				auto earned = gffSkill["Rank"].as!GffByte;
 				auto skillName = skills2da.get!string("Name", cast(uint)i);
 				if(skillName!="***" && skillName!=""){
 					skillRanks[i] += earned;
@@ -89,8 +89,8 @@ class Character{
 				}
 			}
 			//feats
-			foreach(gffFeat ; gffLvl["FeatList"].to!(GffNode[])){
-				lvl.feats ~= strref[feats2da.get!StrRef("FEAT", gffFeat["Feat"].as!(GffType.Word))];
+			foreach(gffFeat ; gffLvl["FeatList"].as!GffList){
+				lvl.feats ~= strref[feats2da.get!StrRef("FEAT", gffFeat["Feat"].as!GffWord)];
 			}
 			leveling ~= lvl;
 		}
