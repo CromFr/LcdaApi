@@ -40,24 +40,33 @@ int main(string[] args){
 		cfg.paths.tlk_custom!=""? new Tlk(cfg.paths.tlk_custom.to!string) : null);
 	ResourceManager.store("resolver", strresolv);
 
-	if(cfg.database == "mysql"){
-		try{
-			auto client = new MySQLClient(
-				cfg.mysql.host.to!string,
-				cfg.mysql.port.to!ushort,
-				cfg.mysql.user.to!string,
-				cfg.mysql.password.to!string,
-				cfg.mysql.database.to!string,
-				);
-			ResourceManager.store("sql", client);
+	size_t cnt = 0;
+	while(cnt++<5){
+		if(cfg.database == "mysql"){
+			try{
+				auto client = new MySQLClient(
+					cfg.mysql.host.to!string,
+					cfg.mysql.port.to!ushort,
+					cfg.mysql.user.to!string,
+					cfg.mysql.password.to!string,
+					cfg.mysql.database.to!string,
+					);
+				ResourceManager.store("sql", client);
+				break;
+			}
+			catch(Exception e){
+				stderr.writeln("Could not connect to MySQL", e);
+			}
 		}
-		catch(Exception e){
-			throw new Exception("Could not connect to MySQL", e);
+		else{
+			assert(0, "Unsupported database type: '"~cfg.database.to!string~"'");
 		}
+
+		import core.thread: Thread, dur;
+		Thread.sleep(dur!"seconds"(2));
 	}
-	else{
-		assert(0, "Unsupported database type: '"~cfg.database.to!string~"'");
-	}
+	enforce(cnt<=5, "Could not connect to SQL database !");
+
 
 
 	auto settings = new HTTPServerSettings;
@@ -67,14 +76,24 @@ int main(string[] args){
 	settings.useCompressionIfPossible = cfg.server.compression.to!bool;
 	switch(cfg.server.session_store.to!string){
 		case "redis":
-			settings.sessionStore = new RedisSessionStore(
-				cfg.server.redis.host.to!string,
-				cfg.server.redis.database.to!long,
-				cfg.server.redis.port.to!ushort,
-				);
+			cnt = 0;
+			while(cnt++<5){
+				try{
+					settings.sessionStore = new RedisSessionStore(
+						cfg.server.redis.host.to!string,
+						cfg.server.redis.database.to!long,
+						cfg.server.redis.port.to!ushort,
+						);
 
-			auto sessionTest = settings.sessionStore.create();
-			settings.sessionStore.destroy(sessionTest.id);
+					auto sessionTest = settings.sessionStore.create();
+					settings.sessionStore.destroy(sessionTest.id);
+					break;
+				}
+				catch(Exception e){
+					stderr.writeln("Could not connect to Redis server", e);
+				}
+			}
+			enforce(cnt<=5, "Could not connect to Redis database !");
 			break;
 		case "memory":
 			settings.sessionStore = new MemorySessionStore;
