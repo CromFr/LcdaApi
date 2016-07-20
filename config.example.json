@@ -19,6 +19,9 @@
 		// The path is relative to the account folder in the servervault
 		// If the path is absolute, subfolders will be created for each account
 		"servervault_deleted": "disabled",
+
+		//Path to the module directory
+		"module": "C:\\Users\\Drizzt\\Documents\\Neverwinter Nights 2\\modules\\mymodule",
 	},
 
 	//Type of the database used. Currenty only MySQL
