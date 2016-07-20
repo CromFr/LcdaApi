@@ -1,162 +1,133 @@
 <loading [status]="loadingStatus"></loading>
 <div *ngIf="loadingStatus.isOk()">
 
-	<div class="row">
-		<h1 class="col s12 center" [class.grey-text]="isDeletedChar" [class.text-darken-1]="isDeletedChar">
+
+	<h1 class="col s12 center" [class.grey-text]="isDeletedChar" [class.text-darken-1]="isDeletedChar">
 			{{character?.name}}
 			<span class="flow-text" style="vertical-align: middle">{{isDeletedChar? "(Supprimé)" : ""}}</span>
-		</h1>
-	</div>
-
-	<hr class="row">
+	</h1>
 
 	<div class="row">
-		<div class="col s10 offset-s1 m4">
-			<div class="z-depth-1">
-				<nav>
-					<div class="nav-wrapper brown">
-						<span class="title-padding brand-logo">Caracs</span>
-					</div>
-				</nav>
-				<div class="small-padding">
-					<table class="bordered condensed">
-						<tbody>
-							<tr *ngFor="let ability of character?.abilities">
-								<td class="flow-text">{{ability.label}}</td>
-								<td class="flow-text">{{ability.value}}</td>
-								<td class="center">{{abilityModifier(ability.value)}}</td>
-							</tr>
-						</tbody>
-					</table>
-				</div>
-			</div>
-		</div>
-		<div class="col s12 m8">
-			<div class="z-depth-1">
-				<nav>
-					<div class="nav-wrapper teal">
-						<span class="title-padding brand-logo">Niveau {{character?.lvl}}</span>
-						<ul class="right">
-							<li><a class="modal-trigger" data-target="leveling-details" materialize="leanModal">Détails<i class="material-icons right">format_list_numbered</i></a></li>
-						</ul>
-
-					</div>
-				</nav>
-				<div class="small-padding">
-					<table class="bordered flow-text">
-						<tbody>
-							<tr *ngFor="let c of character?.classes">
-								<td>{{c.name}}</td>
-								<td class="center"><strong>{{c.lvl}}</strong></td>
-							</tr>
-						</tbody>
-					</table>
-				</div>
-			</div>
-		</div>
-	</div>
-
-	<div class="row">
-		<div class="col s12">
-			<div class="z-depth-1">
-				<nav>
-					<div class="nav-wrapper blue-grey lighten-2">
-						<span class="title-padding brand-logo">Divers</span>
-					</div>
-				</nav>
-				<div class="small-padding">
-					<table class="flow-text">
-						<tbody>
-							<tr>
-								<td>Race</td>
-								<td>{{character?.race}}</td>
-							</tr>
-							<tr>
-								<td>Dieu</td>
-								<td>{{character?.god}}</td>
-							</tr>
-							<tr>
-								<td>Alignement</td>
-								<td>{{character?.alignment?.name}}</td>
-							</tr>
-							<tr class="condensed">
-								<td class="right">Mauvais - Bon</td>
-								<td>
-									<div class="progress char-alignment">
-										<div class="determinate" [style.width]="character?.alignment?.good_evil + '%'"></div>
-									</div>
-								</td>
-							</tr>
-							<tr class="condensed">
-								<td class="right">Chaotique - Loyal</td>
-								<td>
-									<div class="progress char-alignment">
-										<div class="determinate" [style.width]="character?.alignment?.law_chaos + '%'"></div>
-									</div>
-								</td>
-							</tr>
-						</tbody>
-					</table>
-				</div>
-			</div>
-		</div>
-	</div>
-	<div class="row">
-		<div class="col s12">
-			<div class="z-depth-1">
-				<nav>
-					<div class="nav-wrapper brown lighten-2">
-						<span class="title-padding brand-logo">Journal de quêtes</span>
-					</div>
-				</nav>
-				<div class="small-padding">
-					<ul class="collapsible" data-collapsible="expandable" materialize="collapsible">
-						<li *ngFor="let quest of character?.journal | orderBy: ['name']">
-							<div class="collapsible-header" [style.color]="quest.state===2? '#999' : ''">
-								<i class="material-icons">{{quest.state===0? "help_outline" : quest.state===1? "clear" : "done"}}</i>{{quest.name}}
+		<ul class="tabs" materialize="tabs">
+			<li class="tab"><a href="#details-general">Général</a></li>
+			<li class="tab"><a href="#details-build">Build</a></li>
+			<li class="tab"><a href="#details-quests">Quêtes</a></li>
+		</ul>
+		<!-- =================================================== -->
+		<div id="details-general">
+			<div class="row"></div>
+			<div class="row">
+				<div class="col s10 offset-s1 m4">
+					<div class="z-depth-1">
+						<nav>
+							<div class="nav-wrapper brown">
+								<span class="title-padding brand-logo">Caracs</span>
 							</div>
-							<div class="collapsible-body"><p>{{quest.description}}</p></div>
-						</li>
-					</ul>
+						</nav>
+						<div class="small-padding">
+							<table class="bordered condensed">
+								<tbody>
+									<tr *ngFor="let ability of character?.abilities">
+										<td class="flow-text">{{ability.label}}</td>
+										<td class="flow-text">{{ability.value}}</td>
+										<td class="center">{{abilityModifier(ability.value)}}</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+				<div class="col s12 m8">
+					<div class="z-depth-1">
+						<nav>
+							<div class="nav-wrapper teal">
+								<span class="title-padding brand-logo">Niveau {{character?.lvl}}</span>
+							</div>
+						</nav>
+						<div class="small-padding">
+							<table class="bordered flow-text">
+								<tbody>
+									<tr *ngFor="let c of character?.classes">
+										<td>{{c.name}}</td>
+										<td class="center"><strong>{{c.lvl}}</strong></td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="col s12">
+					<div class="z-depth-1">
+						<nav>
+							<div class="nav-wrapper blue-grey lighten-2">
+								<span class="title-padding brand-logo">Divers</span>
+							</div>
+						</nav>
+						<div class="small-padding">
+							<table class="flow-text">
+								<tbody>
+									<tr>
+										<td>Race</td>
+										<td>{{character?.race}}</td>
+									</tr>
+									<tr>
+										<td>Dieu</td>
+										<td>{{character?.god}}</td>
+									</tr>
+									<tr>
+										<td>Alignement</td>
+										<td>{{character?.alignment?.name}}</td>
+									</tr>
+									<tr class="condensed">
+										<td class="right">Mauvais - Bon</td>
+										<td>
+											<div class="progress char-alignment">
+												<div class="determinate" [style.width]="character?.alignment?.good_evil + '%'"></div>
+											</div>
+										</td>
+									</tr>
+									<tr class="condensed">
+										<td class="right">Chaotique - Loyal</td>
+										<td>
+											<div class="progress char-alignment">
+												<div class="determinate" [style.width]="character?.alignment?.law_chaos + '%'"></div>
+											</div>
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="row">
+					<a href="{{downloadLink()}}" download="{{character.bicFileName}}.bic" class="btn-large waves-effect waves-light">
+						<i class="material-icons left">get_app</i>
+						<span>Télécharger le fichier de personnage</span>
+					</a>
+				</div>
+				<div *ngIf="!isDeletedChar" class="row">
+					<a (click)="deleteChar()" class="btn-large waves-effect waves-light red darken-4 text-white">
+						<i class="material-icons left">delete</i>
+						<span><strong>Supprimer</strong> le personnage</span>
+					</a>
+				</div>
+				<div *ngIf="isDeletedChar" class="row">
+					<a  (click)="activateChar()" class="btn-large waves-effect waves-light yellow darken-4 text-white">
+						<i class="material-icons left">input</i>
+						<span><strong>Réactiver</strong> le personnage</span>
+					</a>
+					<span class="red-text">{{activateErrorMsg}}</span>
 				</div>
 			</div>
 		</div>
-	</div>
-
-	<hr class="row">
-
-	<div class="row">
-		<h3>Actions</h3>
-		<div class="row">
-			<a href="{{downloadLink()}}" download="{{character.bicFileName}}.bic" class="btn-large waves-effect waves-light">
-				<i class="material-icons left">get_app</i>
-				<span>Télécharger le fichier de personnage</span>
-			</a>
-		</div>
-		<div *ngIf="!isDeletedChar" class="row">
-			<a (click)="deleteChar()" class="btn-large waves-effect waves-light red darken-4 text-white">
-				<i class="material-icons left">delete</i>
-				<span><strong>Supprimer</strong> le personnage</span>
-			</a>
-		</div>
-		<div *ngIf="isDeletedChar" class="row">
-			<a  (click)="activateChar()" class="btn-large waves-effect waves-light yellow darken-4 text-white">
-				<i class="material-icons left">input</i>
-				<span><strong>Réactiver</strong> le personnage</span>
-			</a>
-			<span class="red-text">{{activateErrorMsg}}</span>
-		</div>
-
-	</div>
-
-
-
-
-
-
-
-	<div id="leveling-details" class="modal">
-		<div class="modal-content">
+		<!-- =================================================== -->
+		<div id="details-build">
 			<table class="striped">
 				<thead>
 					<tr>
@@ -191,6 +162,17 @@
 					</tr>
 				</tbody>
 			</table>
+		</div>
+		<!-- =================================================== -->
+		<div id="details-quests">
+			<ul class="modal-content collapsible" data-collapsible="expandable" materialize="collapsible">
+				<li *ngFor="let quest of character?.journal | orderBy: ['name']">
+					<div class="collapsible-header" [style.color]="quest.state===2? '#999' : ''">
+						<i class="material-icons">{{quest.state===0? "help_outline" : quest.state===1? "clear" : "done"}}</i>{{quest.name}}
+					</div>
+					<div class="collapsible-body"><p>{{quest.description}}</p></div>
+				</li>
+			</ul>
 		</div>
 	</div>
 </div>
