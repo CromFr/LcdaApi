@@ -4,12 +4,13 @@ import {MaterializeDirective} from "angular2-materialize";
 
 import {CharsService}   from "./chars.service";
 import {LoadingComponent, LoadingStatus}   from "../loading.component";
-
+import {OrderBy}   from "../orderBy";
 
 @Component({
     template:    require("./details.template")(),
     directives:  [LoadingComponent, MaterializeDirective],
-    providers:   [CharsService]
+    providers:   [CharsService],
+    pipes: [OrderBy]
 })
 export class CharDetailsComponent implements OnInit {
     constructor(private _charsService: CharsService, private _router: Router, private _data: RouteData, private _routeParams: RouteParams) {

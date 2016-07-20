@@ -21,10 +21,10 @@
 				<div class="small-padding">
 					<table class="bordered condensed">
 						<tbody>
-							<tr *ngFor="#a of character?.abilities">
-								<td class="flow-text">{{a.label}}</td>
-								<td class="flow-text">{{a.value}}</td>
-								<td class="center">{{abilityModifier(a.value)}}</td>
+							<tr *ngFor="let ability of character?.abilities">
+								<td class="flow-text">{{ability.label}}</td>
+								<td class="flow-text">{{ability.value}}</td>
+								<td class="center">{{abilityModifier(ability.value)}}</td>
 							</tr>
 						</tbody>
 					</table>
@@ -45,7 +45,7 @@
 				<div class="small-padding">
 					<table class="bordered flow-text">
 						<tbody>
-							<tr *ngFor="#c of character?.classes">
+							<tr *ngFor="let c of character?.classes">
 								<td>{{c.name}}</td>
 								<td class="center"><strong>{{c.lvl}}</strong></td>
 							</tr>
@@ -101,6 +101,27 @@
 			</div>
 		</div>
 	</div>
+	<div class="row">
+		<div class="col s12">
+			<div class="z-depth-1">
+				<nav>
+					<div class="nav-wrapper brown lighten-2">
+						<span class="title-padding brand-logo">Journal ({{character?.journal.length}} quêtes)</span>
+					</div>
+				</nav>
+				<div class="small-padding">
+					<ul class="collapsible" data-collapsible="expandable" materialize="collapsible">
+						<li *ngFor="let quest of character?.journal | orderBy: ['name']">
+							<div class="collapsible-header" [style.color]="quest.finished===1? '#999' : ''">
+								<i class="material-icons">{{quest.finished===1? "done" : "clear"}}</i>{{quest.name}}
+							</div>
+							<div class="collapsible-body"><p>{{quest.description}}</p></div>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+	</div>
 
 	<hr class="row">
 
@@ -128,6 +149,12 @@
 
 	</div>
 
+
+
+
+
+
+
 	<div id="leveling-details" class="modal">
 		<div class="modal-content">
 			<table class="striped">
@@ -141,13 +168,13 @@
 					</tr>
 				</thead>
 				<tbody>
-					<tr *ngFor="#lvl of character?.leveling; #i = index">
+					<tr *ngFor="let lvl of character?.leveling; #i = index">
 						<td>{{i+1}}</td>
 						<td>{{lvl.className}}</td>
 						<td>{{lvl.ability!==""? "+1 "+lvl.ability : ""}}</td>
 						<td>
 							<ul>
-								<li *ngFor="#skill of lvl.skills">
+								<li *ngFor="let skill of lvl.skills">
 									<span *ngIf="skill.valueDiff !== 0">
 										+{{skill.valueDiff}} {{skill.name}} ({{skill.value}})
 									</span>
@@ -156,7 +183,7 @@
 						</td>
 						<td>
 							<ul>
-								<li *ngFor="#feat of lvl.feats">
+								<li *ngFor="let feat of lvl.feats">
 									{{feat}}
 								</li>
 							</ul>
