@@ -111,15 +111,15 @@ class Character{
 
 		GffNode* journalNodrop;
 		foreach(ref item ; gff["ItemList"].as!GffList){
-			import std.stdio; writeln(item["Tag"].to!string); stdout.flush();
 			if(item["Tag"].to!string == "journalNODROP"){
 				journalNodrop = &item;
 				break;
 			}
 		}
+
+		int[string] questEntryIds;
 		if(journalNodrop){
 			//ignore chars without journal
-			import std.stdio; writeln("====================> journalNODROP on "~bicFile); stdout.flush();
 			foreach(ref var ; (*journalNodrop)["VarTable"].as!GffList){
 				immutable name = var["Name"].to!string;
 				string questTag;
@@ -140,21 +140,29 @@ class Character{
 				}
 
 				if(questTag !is null){
-					const quest = questTag in jrl;
-					if(quest){
-						const entryId = var["Value"].to!int;
-						if(entryId > 0){
-							const entry = entryId in *quest;
-							if(entry){
-								journal ~= JournalEntry(
-									quest.name,
-									entry.end,
-									quest.priority,
-									entry.description);
-							}
-						}
-					}
+					questEntryIds[questTag] = var["Value"].to!int;
 				}
+			}
+		}
+
+		foreach(ref questTag, ref quest ; jrl){
+			auto entryId = questTag in questEntryIds;
+			if(entryId && *entryId>0){
+				const entry = *entryId in quest;
+				if(entry){
+					journal ~= JournalEntry(
+						quest.name,
+						entry.end+1,
+						quest.priority,
+						entry.description);
+				}
+			}
+			else{
+				journal ~= JournalEntry(
+					quest.name,
+					0,
+					quest.priority,
+					"Quête non découverte");
 			}
 		}
 	}
@@ -199,7 +207,7 @@ class Character{
 
 	static struct JournalEntry{
 		string name;
-		uint finished;
+		uint state;
 		uint priority;
 		string description;
 	}

@@ -92,6 +92,12 @@
 
 		//The server can gzip sent files to minimize network load
 		"compression": true
+	},
+
+	"journal":{
+		"hidden_quests": [
+			"reglesserveur"
+		]
 	}
 
 

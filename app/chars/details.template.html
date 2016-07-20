@@ -106,14 +106,14 @@
 			<div class="z-depth-1">
 				<nav>
 					<div class="nav-wrapper brown lighten-2">
-						<span class="title-padding brand-logo">Journal ({{character?.journal.length}} quêtes)</span>
+						<span class="title-padding brand-logo">Journal de quêtes</span>
 					</div>
 				</nav>
 				<div class="small-padding">
 					<ul class="collapsible" data-collapsible="expandable" materialize="collapsible">
 						<li *ngFor="let quest of character?.journal | orderBy: ['name']">
-							<div class="collapsible-header" [style.color]="quest.finished===1? '#999' : ''">
-								<i class="material-icons">{{quest.finished===1? "done" : "clear"}}</i>{{quest.name}}
+							<div class="collapsible-header" [style.color]="quest.state===2? '#999' : ''">
+								<i class="material-icons">{{quest.state===0? "help_outline" : quest.state===1? "clear" : "done"}}</i>{{quest.name}}
 							</div>
 							<div class="collapsible-body"><p>{{quest.description}}</p></div>
 						</li>
