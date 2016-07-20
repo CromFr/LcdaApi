@@ -168,7 +168,7 @@
 			<ul class="modal-content collapsible" data-collapsible="expandable" materialize="collapsible">
 				<li *ngFor="let quest of character?.journal | orderBy: ['name']">
 					<div class="collapsible-header" [style.color]="quest.state===2? '#999' : ''">
-						<i class="material-icons">{{quest.state===0? "help_outline" : quest.state===1? "clear" : "done"}}</i>{{quest.name}}
+						<i class="material-icons">{{quest.state===0? "clear" : quest.state===1? "directions_run" : "done"}}</i>{{quest.name}}
 					</div>
 					<div class="collapsible-body"><p>{{quest.description}}</p></div>
 				</li>
