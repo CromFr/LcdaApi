@@ -58,8 +58,7 @@ class CharApi{
 		cache.hash = hash;
 		cache.data = vaultPath
 			.dirEntries("*.bic", SpanMode.shallow)
-			.map!(a => new Character(a))
-			.map!(a => LightCharacter(a.name,a.race,a.lvl,a.classes,a.bicFileName))
+			.map!(a => new LightCharacter(a))
 			.array
 			.sort!"a.name<b.name"
 			.array
@@ -108,8 +107,7 @@ class CharApi{
 			cache.hash = hash;
 			cache.data = deletedVaultPath
 				.dirEntries("*.bic", SpanMode.shallow)
-				.map!(a => new Character(a))
-				.map!(a => LightCharacter(a.name,a.race,a.lvl,a.classes,a.bicFileName))
+				.map!(a => new LightCharacter(a))
 				.array
 				.sort!"a.name<b.name"
 				.array
@@ -234,15 +232,6 @@ class CharApi{
 		rename(charFile, target);
 
 		return Json(["newBicFile": Json(baseName(target, ".bic"))]);
-	}
-
-	//Should be private
-	struct LightCharacter{
-		string name;
-		string race;
-		int lvl;
-		Character.Class[] classes;
-		string bicFileName;
 	}
 
 
