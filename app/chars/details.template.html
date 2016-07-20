@@ -139,7 +139,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					<tr *ngFor="let lvl of character?.leveling; #i = index">
+					<tr *ngFor="let lvl of character?.leveling; let i = index">
 						<td>{{i+1}}</td>
 						<td>{{lvl.className}}</td>
 						<td>{{lvl.ability!==""? "+1 "+lvl.ability : ""}}</td>

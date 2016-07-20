@@ -16,12 +16,12 @@
 				</tr>
 			</thead>
 			<tbody>
-				<tr *ngFor="#c of activeChars">
-					<td class="flow-text"><a (click)="gotoHeroDetails(c, false)">{{c.name}}</a></td>
-					<td>{{c.race}}</td>
-					<td>{{c.lvl}}</td>
+				<tr *ngFor="let character of activeChars">
+					<td class="flow-text"><a (click)="gotoHeroDetails(character, false)">{{character.name}}</a></td>
+					<td>{{character.race}}</td>
+					<td>{{character.lvl}}</td>
 					<td>
-						<span *ngFor="#cl of c.classes">
+						<span *ngFor="let cl of character.classes">
 							{{cl.name}} ({{cl.lvl}})
 						</span>
 					</td>
@@ -48,12 +48,12 @@
 				</tr>
 			</thead>
 			<tbody>
-				<tr *ngFor="#c of deletedChars">
-					<td class="flow-text"><a (click)="gotoHeroDetails(c, true)">{{c.name}}</a></td>
-					<td>{{c.race}}</td>
-					<td>{{c.lvl}}</td>
+				<tr *ngFor="let character of deletedChars">
+					<td class="flow-text"><a (click)="gotoHeroDetails(character, true)">{{character.name}}</a></td>
+					<td>{{character.race}}</td>
+					<td>{{character.lvl}}</td>
 					<td>
-						<span *ngFor="#cl of c.classes">
+						<span *ngFor="let cl of character.classes">
 							{{cl.name}} ({{cl.lvl}})
 						</span>
 					</td>
