@@ -63,7 +63,7 @@ export class AppComponent implements OnInit {
                     this.accountToBrowse = session.account;
                     $("#modal-login").closeModal();
                     this.loginErrorMsg = "";
-                    updatePage();
+                    this.updatePage();
                 },
                 error => {
                     console.error("submitLoginForm() error: ", <any>error);
