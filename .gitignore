@@ -1,8 +1,8 @@
 
 #DUB & Dlang related
 .dub/
-LcdaAccountManager
-LcdaAccountManager.exe
+lcdaaccountmanager
+lcdaaccountmanager.exe
 *.dll
 
 #Unittests, coverage & profiling

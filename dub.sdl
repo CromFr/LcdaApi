@@ -1,10 +1,9 @@
-name "lcda-accountmanager"
+name "lcdaaccountmanager"
 description "Manage NWN2 accounts"
 copyright "Copyright © 2016, crom"
 authors "crom"
 license "GPL-3.0"
 
-targetName "LcdaAccountManager"
 dependency "vibe-d"  version="~>0.7.29-alpha.2"
 dependency "mysql-lited" version="~>0.3.5"
 dependency "nwn-lib-d" version="*"
