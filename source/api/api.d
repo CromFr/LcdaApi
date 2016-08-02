@@ -18,13 +18,18 @@ class Api{
 		cfg = ResourceManager.get!Config("cfg");
 		mysqlConnection = ResourceManager.getMut!MySQLClient("sql").lockConnection();
 
-		charApi = new CharApi(this);
+		charApi = new CharApi!false(this);
+		deletedCharApi = new CharApi!true(this);
 		accountApi = new AccountApi(this);
 	}
 
 	@path("/:account/characters/")
 	auto forwardCharApi(){
 		return charApi;
+	}
+	@path("/:account/characters/deleted/")
+	auto forwardDeletedCharApi(){
+		return deletedCharApi;
 	}
 
 	@path("/:account/account/")
@@ -82,7 +87,8 @@ package:
 	MySQLClient.LockedConnection mysqlConnection;
 
 private:
-	CharApi charApi;
+	CharApi!false charApi;
+	CharApi!true deletedCharApi;
 	AccountApi accountApi;
 
 

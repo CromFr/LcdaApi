@@ -7,20 +7,19 @@ debug import std.stdio: writeln;
 import nwn.character;
 import api.api;
 
-class CharApi{
+class CharApi(bool deletedChar){
 	this(Api api){
 		this.api = api;
 
 	}
 
-	//Should be private
-	class CharListCache{
+	private static class CharListCache{
 		ulong hash;
 		Json data;
 	}
 
 	@path("/")
-	Json getCharList(string _account){
+	Json getList(string _account){
 		enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
 		enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
 
@@ -31,7 +30,6 @@ class CharApi{
 
 		immutable vaultPath = getVaultPath(_account);
 
-		//TODO: implement a class for resource caching
 		CharListCache cache;
 		auto hash = vaultPath
 			.dirEntries("*.bic", SpanMode.shallow)
@@ -45,14 +43,14 @@ class CharApi{
 			.hashOf;
 
 		try{
-			cache = ResourceManager.getMut!CharListCache("cache/"~_account);
+			cache = ResourceManager.getMut!CharListCache("cache/"~(deletedChar? "deleted/" : null)~_account);
 			if(hash == cache.hash){
 				return cache.data;
 			}
 		}
 		catch(ResourceException){
 			cache = new CharListCache;
-			ResourceManager.store("cache/"~_account, cache);
+			ResourceManager.store("cache/"~(deletedChar? "deleted/" : null)~_account, cache);
 		}
 
 		cache.hash = hash;
@@ -66,63 +64,24 @@ class CharApi{
 
 		return cache.data;
 	}
-	@path("/deleted/")
-	Json getDeletedCharList(string _account){
-		enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
-		enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
 
-		import std.file : dirEntries, SpanMode, exists, isDir, getTimes;
-		import std.algorithm : sort, map;
-		import std.array : array;
-		import resourcemanager : ResourceManager, ResourceException;
-
-		immutable deletedVaultPath = getDeletedVaultPath(_account);
-
-		if(deletedVaultPath.exists && deletedVaultPath.isDir){
-
-			CharListCache cache;
-			auto hash = deletedVaultPath
-				.dirEntries("*.bic", SpanMode.shallow)
-				.map!((file){
-					import std.conv: to;
-					SysTime acc, mod;
-					file.getTimes(acc, mod);
-					return file.name~"="~acc.to!string;
-				})
-				.join(":")
-				.hashOf;
-
-			try{
-				cache = ResourceManager.getMut!CharListCache("cache/"~_account~"/deleted");
-				if(hash == cache.hash){
-					return cache.data;
-				}
-			}
-			catch(ResourceException){
-				cache = new CharListCache;
-				ResourceManager.store("cache/"~_account~"/deleted", cache);
-			}
-
-
-			cache.hash = hash;
-			cache.data = deletedVaultPath
-				.dirEntries("*.bic", SpanMode.shallow)
-				.map!(a => new LightCharacter(a))
-				.array
-				.sort!"a.name<b.name"
-				.array
-				.serializeToJson;
-
-			return cache.data;
+	@path("/:char")
+	Json getActiveCharInfo(string _account, string _char){
+		if(!getMetaData(_account, _char).isPublic){
+			enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
+			enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
 		}
-		return Json.emptyArray;
+
+		return getChar(_account, _char).serializeToJson;
 	}
 
 
 	@path("/:char/download")
-	auto getCharacterDownload(string _account, string _char, HTTPServerRequest req, HTTPServerResponse res){
-		enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
-		enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
+	auto getDownload(string _account, string _char, HTTPServerRequest req, HTTPServerResponse res){
+		if(!getMetaData(_account, _char).isPublic){
+			enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
+			enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
+		}
 
 		import std.file: exists, isFile;
 		immutable charFile = getCharFile(_account, _char);
@@ -132,145 +91,176 @@ class CharApi{
 		return serveStaticFile(charFile)(req, res);
 	}
 
+	static if(!deletedChar){
+		///Moves the character to the deleted vault
+		/// The new file name will be oldName~"-"~index~".bic" with index starting from 0
+		///Returns the new bic file name
+		@path("/:char/delete")
+		Json postDeleteChar(string _account, string _char){
+			enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
+			enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
 
-	@path("/:char")
-	Json getActiveCharInfo(string _account, string _char){
-		enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
-		enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
+			import std.file : exists, isFile, rename, mkdirRecurse;
+			import std.path : buildPath, baseName;
+			import sql: replacePlaceholders, SqlPlaceholder;
 
-		return getChar(_account, _char, false).serializeToJson;
-	}
-	@path("/deleted/:char")
-	Json getDeletedCharInfo(string _account, string _char){
-		enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
-		enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
+			immutable charFile = getCharFile(_account, _char);
+			enforceHTTP(charFile.exists && charFile.isFile, HTTPStatus.notFound, "Character '"~_char~"' not found");
 
-		return getChar(_account, _char, true).serializeToJson;
-	}
+			immutable deletedVault = getVaultPath(_account);
+			if(!deletedVault.exists){
+				mkdirRecurse(deletedVault);
+			}
+
+			string target;
+			int index = 0;
+			do{
+				target = buildPath(deletedVault, _char~"-"~(index++).to!string~".bic");
+			}while(target.exists);
 
 
+			auto queries = api.cfg.sql_queries.on_delete.get!(Json[]);
+			foreach(ref query ; queries){
+				api.mysqlConnection.execute(
+					query.to!string.replacePlaceholders(
+						SqlPlaceholder("ACCOUNT", _account),
+						SqlPlaceholder("CHAR", _char),
+					)
+				);
+			}
 
-	///Moves the character to the deleted vault
-	/// The new file name will be oldName~"-"~index~".bic" with index starting from 0
-	///Returns the new bic file name
-	@path("/:char/delete")
-	Json postDeleteChar(string _account, string _char){
-		enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
-		enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
+			debug{
+				import std.stdio : writeln;
+				writeln("Renaming '",charFile,"' to '",target,"'");
+			}
+			charFile.rename(target);
+			if((charFile~".meta").exists){
+				(charFile~".meta").rename(target~".meta");
+			}
 
-		import std.file : exists, isFile, rename, mkdirRecurse;
-		import std.path : buildPath, baseName;
-		import sql: replacePlaceholders, SqlPlaceholder;
-
-		immutable charFile = getCharFile(_account, _char, false);
-		enforceHTTP(charFile.exists && charFile.isFile, HTTPStatus.notFound, "Character '"~_char~"' not found");
-
-		immutable deletedVault = getDeletedVaultPath(_account);
-		if(!deletedVault.exists){
-			mkdirRecurse(deletedVault);
+			return Json(["newBicFile": Json(baseName(target, ".bic"))]);
 		}
-
-		string target;
-		int index = 0;
-		do{
-			target = buildPath(deletedVault, _char~"-"~(index++).to!string~".bic");
-		}while(target.exists);
-
-
-		auto queries = api.cfg.sql_queries.on_delete.get!(Json[]);
-		foreach(ref query ; queries){
-			api.mysqlConnection.execute(
-				query.to!string.replacePlaceholders(
-					SqlPlaceholder("ACCOUNT", _account),
-					SqlPlaceholder("CHAR", _char),
-				)
-			);
-		}
-
-		debug{
-			import std.stdio : writeln;
-			writeln("Renaming '",charFile,"' to '",target,"'");
-		}
-		rename(charFile, target);
-
-		return Json(["newBicFile": Json(baseName(target, ".bic"))]);
 	}
 
-	@path("/deleted/:char/activate")
-	Json postActivateChar(string _account, string _char){
-		enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
-		enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
+	static if(deletedChar){
+		@path("/:char/activate")
+		Json postActivateChar(string _account, string _char){
+			enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
+			enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
 
-		import std.file : exists, isFile, rename, mkdirRecurse;
-		import std.path : buildPath, baseName;
-		import std.regex : matchFirst, ctRegex;
-		import sql: replacePlaceholders, SqlPlaceholder;
+			import std.file : exists, isFile, rename, mkdirRecurse;
+			import std.path : buildPath, baseName;
+			import std.regex : matchFirst, ctRegex;
+			import sql: replacePlaceholders, SqlPlaceholder;
 
-		immutable charFile = getCharFile(_account, _char, true);
-		enforceHTTP(charFile.exists && charFile.isFile, HTTPStatus.notFound, "Character '"~_char~"' not found");
+			immutable charFile = getCharFile(_account, _char);
+			enforceHTTP(charFile.exists && charFile.isFile, HTTPStatus.notFound, "Character '"~_char~"' not found");
 
-		immutable accountVault = getVaultPath(_account);
-		immutable newName = _char.matchFirst(ctRegex!r"^(.+?)-\d+$")[1];
+			immutable accountVault = getVaultPath(_account);
+			immutable newName = _char.matchFirst(ctRegex!r"^(.+?)-\d+$")[1];
 
-		immutable target = buildPath(accountVault, newName~".bic");
-		enforceHTTP(!target.exists, HTTPStatus.conflict, "An active character has the same name.");
+			immutable target = buildPath(accountVault, newName~".bic");
+			enforceHTTP(!target.exists, HTTPStatus.conflict, "An active character has the same name.");
 
-		auto queries = api.cfg.sql_queries.on_activate.get!(Json[]);
-		foreach(ref query ; queries){
-			api.mysqlConnection.execute(
-				query.to!string.replacePlaceholders(
-					SqlPlaceholder("ACCOUNT", _account),
-					SqlPlaceholder("CHAR", _char),
-				)
-			);
+			auto queries = api.cfg.sql_queries.on_activate.get!(Json[]);
+			foreach(ref query ; queries){
+				api.mysqlConnection.execute(
+					query.to!string.replacePlaceholders(
+						SqlPlaceholder("ACCOUNT", _account),
+						SqlPlaceholder("CHAR", _char),
+					)
+				);
+			}
+
+			debug{
+				import std.stdio : writeln;
+				writeln("Renaming '",charFile,"' to '",target,"'");
+			}
+			charFile.rename(target);
+			if((charFile~".meta").exists){
+				(charFile~".meta").rename(target~".meta");
+			}
+
+			return Json(["newBicFile": Json(baseName(target, ".bic"))]);
 		}
+	}
 
-		debug{
-			import std.stdio : writeln;
-			writeln("Renaming '",charFile,"' to '",target,"'");
+
+
+	@path("/:char/meta"){
+		void setCharMetaData(string _account, string _char, Json metadata){
+			enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
+			enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
+			setMetadata(_account, _char, metadata);
 		}
-		rename(charFile, target);
-
-		return Json(["newBicFile": Json(baseName(target, ".bic"))]);
+		Json getCharMetaData(string _account, string _char){
+			return getMetaData(_account, _char).serializeToJson;
+		}
 	}
 
 
 private:
 	Api api;
 
-	Character getChar(in string account, in string bicName, bool deleted=false){
+
+	Character getChar(in string account, in string bicName){
 		import std.file : DirEntry, exists, isFile;
 
-		immutable path = getCharFile(account, bicName, deleted);
+		immutable path = getCharFile(account, bicName);
 		enforceHTTP(path.exists && path.isFile, HTTPStatus.notFound, "Character '"~bicName~"' not found");
 		return new Character(DirEntry(path));
 	}
 
-	auto ref getVaultPath(in string accountName){
-		import std.path : buildNormalizedPath, baseName;
-		assert(accountName.baseName == accountName, "account name should not be a path");
-		return buildNormalizedPath(api.cfg.paths.servervault.to!string, accountName);
-	}
-
-	auto ref getDeletedVaultPath(in string accountName){
-		import std.path : buildNormalizedPath, baseName, isAbsolute;
-		assert(accountName.baseName == accountName, "account name should not be a path");
-
-		immutable deletedVault = api.cfg.paths.servervault_deleted.to!string;
-		if(deletedVault.isAbsolute)
-			return buildNormalizedPath(deletedVault, accountName);
-		else
-			return buildNormalizedPath(api.cfg.paths.servervault.to!string, accountName, deletedVault);
-	}
-
-	auto ref getCharFile(in string accountName, in string bicFile, bool deleted=false){
+	auto ref getCharFile(in string accountName, in string bicFile){
 		import std.path : buildNormalizedPath, baseName;
 		assert(accountName.baseName == accountName, "account name should not be a path");
 		assert(bicFile.baseName == bicFile, "bic file name should not be a path");
 
-		if(deleted)
-			return buildNormalizedPath(getDeletedVaultPath(accountName), bicFile~".bic");
-		return buildNormalizedPath(api.cfg.paths.servervault.to!string, accountName, bicFile~".bic");
+		return buildNormalizedPath(getVaultPath(accountName), bicFile~".bic");
+	}
+
+	auto ref getVaultPath(in string accountName){
+		import std.path : buildNormalizedPath, baseName, isAbsolute;
+		assert(accountName.baseName == accountName, "account name should not be a path");
+
+		static if(!deletedChar){
+			return buildNormalizedPath(api.cfg.paths.servervault.to!string, accountName);
+		}
+		else{
+			immutable deletedVault = api.cfg.paths.servervault_deleted.to!string;
+			if(deletedVault.isAbsolute)
+				return buildNormalizedPath(deletedVault, accountName);
+			else
+				return buildNormalizedPath(api.cfg.paths.servervault.to!string, accountName, deletedVault);
+		}
+
+	}
+
+
+	//Metadata
+	static struct CharacterMetadata{
+	@optional:
+		@name("public") bool isPublic = false;
+	}
+	void setMetadata(string account, string character, Json metadata){
+		auto md = metadata.deserializeJson!CharacterMetadata;
+
+		immutable charMetaPath = getCharFile(account, character)~".meta";
+		charMetaPath.writeFile(cast(ubyte[])md.serializeToJsonString);
+	}
+	CharacterMetadata getMetaData(string account, string character){
+		import std.file : exists, readText;
+
+		CharacterMetadata metadata;
+
+		immutable charMetaPath = getCharFile(account, character)~".meta";
+		if(charMetaPath.exists){
+			metadata = charMetaPath
+				.readText
+				.deserializeJson!CharacterMetadata;
+		}
+
+		return metadata;
 	}
 
 }
