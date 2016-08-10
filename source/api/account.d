@@ -17,7 +17,7 @@ class AccountApi{
 
 		import std.path : buildPath, exists, isDir;
 		immutable accountPath = buildPath(
-			api.cfg.paths.servervault.to!string,
+			api.cfg["paths"]["servervault"].to!string,
 			_account);
 
 		return Json(accountPath.exists && accountPath.isDir);
@@ -36,7 +36,7 @@ class AccountApi{
 		else
 			accountToCheck = _account;
 
-		immutable loginQuery = api.cfg.sql_queries.login.to!string
+		immutable loginQuery = api.cfg["sql_queries"]["login"].to!string
 			.replacePlaceholders(
 				SqlPlaceholder("ACCOUNT", accountToCheck),
 				SqlPlaceholder("PASSWORD", oldPassword)
@@ -49,7 +49,7 @@ class AccountApi{
 		enforceHTTP(credsOK, HTTPStatus.conflict, "Old password is incorrect");
 
 
-		auto setPasswdQuery = api.cfg.sql_queries.set_password.get!(Json[]);
+		auto setPasswdQuery = api.cfg["sql_queries"]["set_password"].get!(Json[]);
 		foreach(ref query ; setPasswdQuery){
 			api.mysqlConnection.execute(
 				query.to!string.replacePlaceholders(

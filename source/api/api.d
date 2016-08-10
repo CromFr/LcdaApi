@@ -40,7 +40,7 @@ class Api{
 	Json postLogin(string login, string password){
 		import sql: replacePlaceholders, SqlPlaceholder, MySQLRow;
 
-		immutable query = cfg.sql_queries.login.to!string
+		immutable query = cfg["sql_queries"]["login"].to!string
 			.replacePlaceholders(
 				SqlPlaceholder("ACCOUNT", login),
 				SqlPlaceholder("PASSWORD", password)
