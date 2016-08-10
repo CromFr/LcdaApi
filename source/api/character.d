@@ -7,15 +7,19 @@ debug import std.stdio: writeln;
 import nwn.character;
 import api.api;
 
+class CharListCache{
+	ulong hash;
+	Json data;
+}
+struct CharacterMetadata{
+@optional:
+	@name("public") bool isPublic = false;
+}
+
 class CharApi(bool deletedChar){
 	this(Api api){
 		this.api = api;
 
-	}
-
-	private static class CharListCache{
-		ulong hash;
-		Json data;
 	}
 
 	@path("/")
@@ -119,7 +123,7 @@ class CharApi(bool deletedChar){
 			}while(target.exists);
 
 
-			auto queries = api.cfg.sql_queries.on_delete.get!(Json[]);
+			auto queries = api.cfg["sql_queries"]["on_delete"].get!(Json[]);
 			foreach(ref query ; queries){
 				api.mysqlConnection.execute(
 					query.to!string.replacePlaceholders(
@@ -162,7 +166,7 @@ class CharApi(bool deletedChar){
 			immutable target = buildPath(accountVault, newName~".bic");
 			enforceHTTP(!target.exists, HTTPStatus.conflict, "An active character has the same name.");
 
-			auto queries = api.cfg.sql_queries.on_activate.get!(Json[]);
+			auto queries = api.cfg["sql_queries"]["on_activate"].get!(Json[]);
 			foreach(ref query ; queries){
 				api.mysqlConnection.execute(
 					query.to!string.replacePlaceholders(
@@ -188,13 +192,20 @@ class CharApi(bool deletedChar){
 
 
 	@path("/:char/meta"){
-		void setCharMetaData(string _account, string _char, Json metadata){
+		void setMeta(string _account, string _char, HTTPServerRequest req){
+
 			enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
 			enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
-			setMetadata(_account, _char, metadata);
+			setMetadata(_account, _char, req.json);
+			enforceHTTP(false, HTTPStatus.ok);//TODO: must be a better way
 		}
-		Json getCharMetaData(string _account, string _char){
-			return getMetaData(_account, _char).serializeToJson;
+		Json getMeta(string _account, string _char){
+			immutable meta = getMetaData(_account, _char);
+			if(!meta.isPublic){
+				enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
+				enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
+			}
+			return meta.serializeToJson;
 		}
 	}
 
@@ -224,24 +235,20 @@ private:
 		assert(accountName.baseName == accountName, "account name should not be a path");
 
 		static if(!deletedChar){
-			return buildNormalizedPath(api.cfg.paths.servervault.to!string, accountName);
+			return buildNormalizedPath(api.cfg["paths"]["servervault"].to!string, accountName);
 		}
 		else{
-			immutable deletedVault = api.cfg.paths.servervault_deleted.to!string;
+			immutable deletedVault = api.cfg["paths"]["servervault_deleted"].to!string;
 			if(deletedVault.isAbsolute)
 				return buildNormalizedPath(deletedVault, accountName);
 			else
-				return buildNormalizedPath(api.cfg.paths.servervault.to!string, accountName, deletedVault);
+				return buildNormalizedPath(api.cfg["paths"]["servervault"].to!string, accountName, deletedVault);
 		}
 
 	}
 
 
 	//Metadata
-	static struct CharacterMetadata{
-	@optional:
-		@name("public") bool isPublic = false;
-	}
 	void setMetadata(string account, string character, Json metadata){
 		auto md = metadata.deserializeJson!CharacterMetadata;
 

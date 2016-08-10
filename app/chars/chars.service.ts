@@ -1,5 +1,5 @@
 import {Injectable} from "angular2/core";
-import {Http, Response} from "angular2/http";
+import {Http, Response, Headers, RequestOptions} from "angular2/http";
 import {Observable}     from "rxjs/Observable";
 
 
@@ -38,6 +38,24 @@ export class CharsService {
         return this.http.post(path, null, null)
                    .map(res => <any>res.json())
                    .catch(this.handleError);
+    }
+
+    getMetadata(account: string, bicFileName: string, deleted: boolean) {
+        let path = "/api/" + account + "/characters/" + (deleted ? "deleted/" : "") + bicFileName + "/meta";
+
+        return this.http.get(path)
+                   .map(res => <any>res.json())
+                   .catch(this.handleError);
+    }
+    setMetadata(account: string, bicFileName: string, deleted: boolean, meta: any) {
+        let path = "/api/" + account + "/characters/" + (deleted ? "deleted/" : "") + bicFileName + "/meta";
+
+        let headers = new Headers({ 'Content-Type': 'application/json' });
+        let body = JSON.stringify(meta);
+        let options = new RequestOptions({ headers: headers });
+
+        return this.http.put(path, body, options)
+                        .catch(this.handleError);
     }
 
     private handleError (error: Response) {

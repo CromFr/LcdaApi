@@ -106,19 +106,29 @@
 
 			<div class="row">
 				<div class="row">
+					<a class="dropdown-button btn-large" [ngClass]="{disabled: controlsDisabled()}" href="#" data-activates="dropdown-public" materialize="dropdown">Visibilité:
+						<span *ngIf="meta?.public===false"><i class="material-icons left">lock</i> Privé</span>
+						<span *ngIf="meta?.public===true"><i class="material-icons left">public</i> Public</span>
+					</a>
+					<ul id="dropdown-public" class="dropdown-content">
+						<li><a (click)="controlsDisabled? null : setPublic(false)" class="tooltipped" materialize="tooltip" data-position="right" data-tooltip="Vous seul aurez accès à cette page (défaut)"><i class="material-icons left">lock</i> Privé</a></li>
+						<li><a (click)="controlsDisabled? null : setPublic(true)" class="tooltipped" materialize="tooltip" data-position="right" data-tooltip="Tout le monde aura accès à cette page via son adresse web"><i class="material-icons left">public</i> Public</a></li>
+					</ul>
+				</div>
+				<div class="row">
 					<a href="{{downloadLink()}}" download="{{character.bicFileName}}.bic" class="btn-large waves-effect waves-light">
 						<i class="material-icons left">get_app</i>
 						<span>Télécharger le fichier de personnage</span>
 					</a>
 				</div>
 				<div *ngIf="!isDeletedChar" class="row">
-					<a (click)="deleteChar()" class="btn-large waves-effect waves-light red darken-4 text-white">
+					<a (click)="controlsDisabled? null : deleteChar()" [ngClass]="{disabled: controlsDisabled()}" class="btn-large waves-effect waves-light red darken-4 text-white">
 						<i class="material-icons left">delete</i>
 						<span><strong>Supprimer</strong> le personnage</span>
 					</a>
 				</div>
 				<div *ngIf="isDeletedChar" class="row">
-					<a  (click)="activateChar()" class="btn-large waves-effect waves-light yellow darken-4 text-white">
+					<a (click)="controlsDisabled? null : activateChar()" [ngClass]="{disabled: controlsDisabled()}" class="btn-large waves-effect waves-light yellow darken-4 text-white">
 						<i class="material-icons left">input</i>
 						<span><strong>Réactiver</strong> le personnage</span>
 					</a>

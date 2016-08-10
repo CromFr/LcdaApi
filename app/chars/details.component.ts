@@ -3,17 +3,21 @@ import {Router, RouteParams, RouteData} from "angular2/router";
 import {MaterializeDirective} from "angular2-materialize";
 
 import {CharsService}   from "./chars.service";
+import {CredentialsService} from "../credentials.service";
 import {LoadingComponent, LoadingStatus}   from "../loading.component";
 import {OrderBy}   from "../orderBy";
+
+import {ToastService} from "../toast.service";
 
 @Component({
     template:    require("./details.template")(),
     directives:  [LoadingComponent, MaterializeDirective],
-    providers:   [CharsService],
+    providers:   [CharsService, CredentialsService, ToastService],
     pipes: [OrderBy]
 })
 export class CharDetailsComponent implements OnInit {
-    constructor(private _charsService: CharsService, private _router: Router, private _data: RouteData, private _routeParams: RouteParams) {
+    constructor(private _charsService: CharsService, private _credService: CredentialsService, private _toastService: ToastService,
+                private _router: Router, private _data: RouteData, private _routeParams: RouteParams) {
         let deleted: boolean = _data.get("deleted");
         if (deleted != null && deleted === true)
             this.isDeletedChar = true;
@@ -23,20 +27,43 @@ export class CharDetailsComponent implements OnInit {
     ngOnInit() {
         this._charsService.getChar(this._routeParams.get("account"), this._routeParams.get("char"), this.isDeletedChar)
             .subscribe(
-                c => {
-                    this.character = c;
-                    this.loadingStatus.setSuccess();
+                data => {
+                    this.character = data;
+                    if(this.meta != null)
+                        this.loadingStatus.setSuccess();
                 },
                 error => {
                     this.loadingStatus.setError(error.text());
                 }
             );
+        this._charsService.getMetadata(this._routeParams.get("account"), this._routeParams.get("char"), this.isDeletedChar)
+            .subscribe(
+                data => {
+                    this.meta = data;
+                    if(this.character != null)
+                        this.loadingStatus.setSuccess();
+                },
+                error => {
+                    this.loadingStatus.setError(error.text());
+                }
+            );
+
+        //TODO: use session object from AppComponent
+        this.session = this._credService.getSession()
+            .subscribe(
+                session => {
+                    this.session = session;
+                },
+                error => {
+                    console.error("getAccount() error:", <any>error);
+                });
     }
 
     public loadingStatus: LoadingStatus = new LoadingStatus();
 
     private isDeletedChar: boolean = false;
     public character: any;
+    public meta: any;
 
 
     private deleteErrorMsg: string;
@@ -54,7 +81,7 @@ export class CharDetailsComponent implements OnInit {
                     }]);
                 },
                 error => {
-                    this.deleteErrorMsg = "Erreur inconnue (" + error.status + ")";
+                    this._toastService.longError(error._body);
                     console.error(error);
                 }
             );
@@ -78,9 +105,24 @@ export class CharDetailsComponent implements OnInit {
                     if (error.status === 409) // conflict
                         this.activateErrorMsg = "Un personnage actif du même nom existe déja";
                     else {
-                        this.activateErrorMsg = "Erreur inconnue (" + error.status + ")";
+                        this._toastService.longError(error._body);
                         console.error(error);
                     }
+                }
+            );
+    }
+
+    public setPublic(state: boolean) {
+        this.meta.public = state;
+        this._charsService
+            .setMetadata(this._routeParams.get("account"), this._routeParams.get("char"), this.isDeletedChar, this.meta)
+            .subscribe(
+                c => {
+
+                },
+                error => {
+                    this._toastService.longError(error._body);
+                    console.error(error);
                 }
             );
     }
@@ -98,6 +140,16 @@ export class CharDetailsComponent implements OnInit {
     private abilityModifier(value: number): string {
         let mod = Math.floor(value / 2) - 5;
         return (mod >= 0 ? "+" : "") + String(mod);
+    }
+
+    private session = null;
+    private controlsDisabled(): boolean {
+
+        if(this.session.authenticated
+          && (this.session.admin || this._routeParams.get("account")==this.session.account)){
+            return false;
+        }
+        return true;
     }
 
 }
