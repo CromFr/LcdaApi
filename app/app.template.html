@@ -33,26 +33,26 @@
 	</li>
 	<li *ngIf="session.authenticated">
 		<a [routerLink]="['CharList',{account: accountToBrowse}]" (click)="closeSideNav()" class="activable">
-			<i class="material-icons left" style="line-height: 64px;">face</i>
+			<i class="material-icons left">face</i>
 			Personnages
 		</a>
 	</li>
 	<li *ngIf="session.authenticated">
 		<a [routerLink]="['Account',{account: accountToBrowse}]" (click)="closeSideNav()" class="activable">
-			<i class="material-icons left" style="line-height: 64px;">settings</i>
+			<i class="material-icons left">settings</i>
 			Mon compte
 		</a>
 	</li>
 	<li *ngIf="session.authenticated"><hr></li>
-	<li>
+	<li *ngIf="!session.authenticated">
 		<a [routerLink]="['NewAccount']" (click)="closeSideNav()" class="activable">
-			<i class="material-icons left" style="line-height: 64px;">add_circle_outline</i>
+			<i class="material-icons left">add_circle_outline</i>
 			Nouveau compte
 		</a>
 	</li>
 	<li>
 		<a href="http://lacoleredaurile.xooit.fr/" (click)="closeSideNav()" class="activable">
-			<i class="material-icons left" style="line-height: 64px;">forum</i>
+			<i class="material-icons left">forum</i>
 			Forum
 		</a>
 	</li>
