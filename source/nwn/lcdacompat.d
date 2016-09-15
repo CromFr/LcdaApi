@@ -64,7 +64,7 @@ string journalVarToTag(in string journalVar){
 		case "j60": return "quete_secrets_citadelle";
 		case "j61": return "quete_seigneur_damne";
 		case "j62": return "quete_taskylos";
-		case "j63": return "quete_illithids";
+		//case "j63": return "quete_illithids";
 		default: assert(0, "Unknown journal variable: '"~journalVar~"'");
 	}
 }

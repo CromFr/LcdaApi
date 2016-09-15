@@ -123,7 +123,7 @@ class Character{
 			foreach(ref var ; (*journalNodrop)["VarTable"].as!GffList){
 				immutable name = var["Name"].to!string;
 				string questTag;
-				if(name.length>1 && name[0]=='j'){
+				if(name.length>1 && name[0]=='j' && name!="j63"){
 					try{
 						name[1..$].to!int;
 						questTag = journalVarToTag(name);
@@ -137,6 +137,9 @@ class Character{
 					if(split.length==2){
 						questTag = split[1];
 					}
+				}
+				else if(name=="quete_illithids"){
+					questTag = name;
 				}
 
 				if(questTag !is null){
