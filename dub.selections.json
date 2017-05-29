@@ -1,12 +1,12 @@
 {
 	"fileVersion": 1,
 	"versions": {
-		"libasync": "0.7.9",
-		"libevent": "2.0.1+2.0.16",
-		"memutils": "0.4.6",
-		"mysql-lited": "0.3.9",
-		"nwn-lib-d": "~master",
-		"openssl": "1.1.4+1.0.1g",
-		"vibe-d": "0.7.30-alpha.2"
+		"libasync": "0.8.3",
+		"libevent": "2.0.2+2.0.16",
+		"memutils": "0.4.9",
+		"mysql-lited": "0.3.17",
+		"nwn-lib-d": "0.0.1+commit.63.g35ebb8f",
+		"openssl": "1.1.5+1.0.1g",
+		"vibe-d": "0.7.31"
 	}
 }
