@@ -1,5 +1,5 @@
-import {Component, OnInit} from "angular2/core";
-import {Router, RouteConfig, ROUTER_DIRECTIVES} from "angular2/router";
+import {Component, OnInit} from "@angular/core";
+import {Router, RouteConfig, ROUTER_DIRECTIVES} from "@angular/router";
 import {CredentialsService, Session} from "./credentials.service";
 import {CharListComponent} from "./chars/list.component";
 import {CharDetailsComponent} from "./chars/details.component";
@@ -7,16 +7,14 @@ import {HomeComponent} from "./home.component";
 import {NewAccountComponent} from "./newaccount.component";
 import {AccountComponent} from "./account/account.component";
 
-import {MaterializeDirective} from "angular2-materialize";
-
 
 @Component({
     selector:    "app",
-    directives:  [ROUTER_DIRECTIVES, MaterializeDirective],
+    directives:  [ROUTER_DIRECTIVES],
     providers: [
         CredentialsService
     ],
-    template: require("./app.template")()
+    template: require("./app.template")(),
 })
 @RouteConfig([
   {path: "/",                          name: "Home",        component: HomeComponent, useAsDefault: true},

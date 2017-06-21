@@ -1,6 +1,6 @@
-import {Component, Input, OnInit} from "angular2/core";
-import {Router, RouteParams, RouteData} from "angular2/router";
-import {MaterializeDirective} from "angular2-materialize";
+import {Component, Input, OnInit} from "@angular/core";
+import {Router, RouteParams, RouteData} from "@angular/router";
+// import {MaterializeDirective} from "angular2-materialize";
 
 import {CharsService}   from "./chars.service";
 import {CredentialsService} from "../credentials.service";

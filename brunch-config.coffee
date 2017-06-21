@@ -9,8 +9,11 @@ exports.config =
   files:
     javascripts:
       joinTo:
-        'vendor.js': /^(app\/vendor)|(node_modules)/
-        'main.js': /^app\/(?!vendor)/
+        'vendor.js': /^node_modules/
+        'main.js': /^app/
+      order:
+        after: [/\.html$/, /\.css$/]
+
     stylesheets:
       joinTo:
         'vendor.css': /^(app\/vendor)|(node_modules)/

@@ -1,5 +1,5 @@
-import {Component, Input, OnInit} from "angular2/core";
-import {Router, RouteParams} from "angular2/router";
+import {Component, Input, OnInit} from "@angular/core";
+import {Router, RouteParams} from "@angular/router";
 
 import {AccountService}   from "./account.service";
 import {LoadingComponent, LoadingStatus}   from "../loading.component";

@@ -1,5 +1,5 @@
-import {Component, OnInit} from "angular2/core";
-import {Router, RouteParams}       from "angular2/router";
+import {Component, OnInit} from "@angular/core";
+import {Router, RouteParams}       from "@angular/router";
 
 import {CharsService}   from "./chars.service";
 import {CharDetailsComponent}   from "./details.component";
