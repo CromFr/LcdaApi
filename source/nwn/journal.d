@@ -19,7 +19,7 @@ class Journal{
 
 		auto gff = new Gff(modulejrlPath);
 
-		foreach(ref gffQuest ; gff["Categories"].as!GffList){
+		foreach(ref gffQuest ; gff["Categories"].as!(GffType.List)){
 			immutable tag = gffQuest["Tag"].to!string;
 			if(tag !in hiddenQuests){
 				auto quest = Quest(
@@ -28,7 +28,7 @@ class Journal{
 						null
 					);
 
-				foreach(ref entry ; gffQuest["EntryList"].as!GffList){
+				foreach(ref entry ; gffQuest["EntryList"].as!(GffType.List)){
 					quest.entries[entry["ID"].to!uint] = Entry(
 						entry["Text"].to!string,
 						entry["End"].to!bool

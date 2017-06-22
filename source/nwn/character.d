@@ -43,7 +43,7 @@ class Character{
 		}
 
 		//Race
-		auto raceId = gff["Subrace"].as!GffByte;
+		auto raceId = gff["Subrace"].as!(GffType.Byte);
 		race = strref[race2da.get!StrRef("Name", raceId)];
 
 		//Alignment
@@ -70,18 +70,18 @@ class Character{
 		immutable skillsCount = skills2da.rows;
 		uint[] skillRanks;
 		skillRanks.length = skillsCount;
-		foreach(lvlIndex, gffLvl ; gff["LvlStatList"].as!GffList){
+		foreach(lvlIndex, gffLvl ; gff["LvlStatList"].as!(GffType.List)){
 			Level lvl;
 			//name
-			lvl.className = strref[class2da.get!StrRef("Name", gffLvl["LvlStatClass"].as!GffByte)];
+			lvl.className = strref[class2da.get!StrRef("Name", gffLvl["LvlStatClass"].as!(GffType.Byte))];
 			//ability
 			if(lvlIndex%4 == 3){
-				lvl.ability = strref[abilities2da.get!StrRef("Name", gffLvl["LvlStatAbility"].as!GffByte)];
+				lvl.ability = strref[abilities2da.get!StrRef("Name", gffLvl["LvlStatAbility"].as!(GffType.Byte))];
 			}
 			//skills
 			lvl.skills.length = skillsCount;
-			foreach(i, gffSkill ; gffLvl["SkillList"].as!GffList){
-				auto earned = gffSkill["Rank"].as!GffByte;
+			foreach(i, gffSkill ; gffLvl["SkillList"].as!(GffType.List)){
+				auto earned = gffSkill["Rank"].as!(GffType.Byte);
 				auto skillName = skills2da.get!string("Name", cast(uint)i);
 				if(skillName!="***" && skillName!=""){
 					skillRanks[i] += earned;
@@ -93,8 +93,8 @@ class Character{
 				}
 			}
 			//feats
-			foreach(gffFeat ; gffLvl["FeatList"].as!GffList){
-				lvl.feats ~= strref[feats2da.get!StrRef("FEAT", gffFeat["Feat"].as!GffWord)];
+			foreach(gffFeat ; gffLvl["FeatList"].as!(GffType.List)){
+				lvl.feats ~= strref[feats2da.get!StrRef("FEAT", gffFeat["Feat"].as!(GffType.Word))];
 			}
 			leveling ~= lvl;
 		}
@@ -110,7 +110,7 @@ class Character{
 		}
 
 		GffNode* journalNodrop;
-		foreach(ref item ; gff["ItemList"].as!GffList){
+		foreach(ref item ; gff["ItemList"].as!(GffType.List)){
 			if(item["Tag"].to!string == "journalNODROP"){
 				journalNodrop = &item;
 				break;
@@ -120,7 +120,7 @@ class Character{
 		int[string] questEntryIds;
 		if(journalNodrop){
 			//ignore chars without journal
-			foreach(ref var ; (*journalNodrop)["VarTable"].as!GffList){
+			foreach(ref var ; (*journalNodrop)["VarTable"].as!(GffType.List)){
 				immutable name = var["Name"].to!string;
 				string questTag;
 				if(name.length>1 && name[0]=='j' && name!="j63"){
@@ -253,7 +253,7 @@ class LightCharacter{
 		}
 
 		//Race
-		auto raceId = gff["Subrace"].as!GffByte;
+		auto raceId = gff["Subrace"].as!(GffType.Byte);
 		race = strref[race2da.get!StrRef("Name", raceId)];
 	}
 
