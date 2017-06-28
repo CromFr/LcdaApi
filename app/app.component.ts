@@ -19,12 +19,12 @@ import {MaterializeDirective} from "angular2-materialize";
     template: require("./app.template")()
 })
 @RouteConfig([
-  {path: "/",                          name: "Home",        component: HomeComponent, useAsDefault: true},
-  {path: "/newaccount",                name: "NewAccount",  component: NewAccountComponent},
-  {path: "/:account/account",          name: "Account",     component: AccountComponent},
-  {path: "/:account/characters",       name: "CharList",    component: CharListComponent},
-  {path: "/:account/characters/:char", name: "CharDetails", component: CharDetailsComponent},
-  {path: "/:account/characters/deleted/:char", name: "DeletedCharDetails", component: CharDetailsComponent, data: {deleted: true}},
+  {path: "/",                            name: "Home",        component: HomeComponent, useAsDefault: true},
+  {path: "/newaccount",                  name: "NewAccount",  component: NewAccountComponent},
+  {path: "/:account/account",            name: "Account",     component: AccountComponent},
+  {path: "/:account/characters",         name: "CharList",    component: CharListComponent},
+  {path: "/:account/characters/:char",   name: "CharDetails", component: CharDetailsComponent},
+  {path: "/:account/deletedchars/:char", name: "DeletedCharDetails", component: CharDetailsComponent, data: {deleted: true}},
 ])
 export class AppComponent implements OnInit {
     constructor(private _credService: CredentialsService, private _router: Router) {}

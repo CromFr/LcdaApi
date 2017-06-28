@@ -5,18 +5,16 @@ import {MaterializeDirective} from "angular2-materialize";
 import {CharsService}   from "./chars.service";
 import {CredentialsService} from "../credentials.service";
 import {LoadingComponent, LoadingStatus}   from "../loading.component";
-import {OrderBy}   from "../orderBy";
-
-import {ToastService} from "../toast.service";
+import {OrderBy}   from "../orderBy"
 
 @Component({
     template:    require("./details.template")(),
     directives:  [LoadingComponent, MaterializeDirective],
-    providers:   [CharsService, CredentialsService, ToastService],
+    providers:   [CharsService, CredentialsService],
     pipes: [OrderBy]
 })
 export class CharDetailsComponent implements OnInit {
-    constructor(private _charsService: CharsService, private _credService: CredentialsService, private _toastService: ToastService,
+    constructor(private _charsService: CharsService, private _credService: CredentialsService,
                 private _router: Router, private _data: RouteData, private _routeParams: RouteParams) {
         let deleted: boolean = _data.get("deleted");
         if (deleted != null && deleted === true)
@@ -81,7 +79,7 @@ export class CharDetailsComponent implements OnInit {
                     }]);
                 },
                 error => {
-                    this._toastService.longError(error._body);
+                    // this._toastService.longError(error._body);
                     console.error(error);
                 }
             );
@@ -105,7 +103,7 @@ export class CharDetailsComponent implements OnInit {
                     if (error.status === 409) // conflict
                         this.activateErrorMsg = "Un personnage actif du même nom existe déja";
                     else {
-                        this._toastService.longError(error._body);
+                        // this._toastService.longError(error._body);
                         console.error(error);
                     }
                 }
@@ -121,7 +119,7 @@ export class CharDetailsComponent implements OnInit {
 
                 },
                 error => {
-                    this._toastService.longError(error._body);
+                    // this._toastService.longError(error._body);
                     console.error(error);
                 }
             );

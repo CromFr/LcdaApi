@@ -27,7 +27,7 @@ class Api{
 	auto forwardCharApi(){
 		return charApi;
 	}
-	@path("/:account/characters/deleted/")
+	@path("/:account/deletedchars/")
 	auto forwardDeletedCharApi(){
 		return deletedCharApi;
 	}

@@ -13,13 +13,13 @@ export class CharsService {
                    .catch(this.handleError);
     }
     getDeletedList(account: string) {
-        return this.http.get("/api/" + account + "/characters/deleted/")
+        return this.http.get("/api/" + account + "/deletedchars/")
                    .map(res => <any> res.json())
                    .catch(this.handleError);
     }
 
     getChar(account: string, bicFileName: string, deleted: boolean) {
-        let path = "/api/" + account + "/characters/" + (deleted ? "deleted/" : "") + bicFileName;
+        let path = "/api/" + account + (deleted ? "/deletedchars/" : "/characters/") + bicFileName;
 
         return this.http.get(path)
                    .map(res => <any>res.json())
@@ -27,7 +27,7 @@ export class CharsService {
     }
 
     activateChar(account: string, bicFileName: string) {
-        let path = "/api/" + account + "/characters/deleted/" + bicFileName + "/activate";
+        let path = "/api/" + account + "/deletedchars/" + bicFileName + "/activate";
         return this.http.post(path, null, null)
                    .map(res => <any>res.json())
                    .catch(this.handleError);
@@ -41,14 +41,14 @@ export class CharsService {
     }
 
     getMetadata(account: string, bicFileName: string, deleted: boolean) {
-        let path = "/api/" + account + "/characters/" + (deleted ? "deleted/" : "") + bicFileName + "/meta";
+        let path = "/api/" + account + (deleted ? "/deletedchars/" : "/characters/") + bicFileName + "/meta";
 
         return this.http.get(path)
                    .map(res => <any>res.json())
                    .catch(this.handleError);
     }
     setMetadata(account: string, bicFileName: string, deleted: boolean, meta: any) {
-        let path = "/api/" + account + "/characters/" + (deleted ? "deleted/" : "") + bicFileName + "/meta";
+        let path = "/api/" + account + (deleted ? "/deletedchars/" : "/characters/") + bicFileName + "/meta";
 
         let headers = new Headers({ 'Content-Type': 'application/json' });
         let body = JSON.stringify(meta);
