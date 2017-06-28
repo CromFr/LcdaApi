@@ -92,27 +92,27 @@ package:
 			//Cookie auth
 			return AuthInfo(authenticated, admin, account);
 		}
-		else if(req.username !is null && req.password !is null){
-			// Basic auth
-			import sql;
-			immutable query = cfg["sql_queries"]["login"].to!string
-				.replacePlaceholders(
-					SqlPlaceholder("ACCOUNT", req.username),
-					SqlPlaceholder("PASSWORD", req.password)
-				);
+		//else if(req.username !is null && req.password !is null){
+		//	// Basic auth
+		//	import sql;
+		//	immutable query = cfg["sql_queries"]["login"].to!string
+		//		.replacePlaceholders(
+		//			SqlPlaceholder("ACCOUNT", req.username),
+		//			SqlPlaceholder("PASSWORD", req.password)
+		//		);
 
-			bool success = false, isAdmin;
-			mysqlConnection.execute(query, (MySQLRow row){
-				success = row.success.get!int == 1;
-				isAdmin = row.admin.get!int == 1;
-			});
+		//	bool success = false, isAdmin;
+		//	mysqlConnection.execute(query, (MySQLRow row){
+		//		success = row.success.get!int == 1;
+		//		isAdmin = row.admin.get!int == 1;
+		//	});
 
-			return AuthInfo(success, isAdmin, req.username);
-		}
+		//	return AuthInfo(success, isAdmin, req.username);
+		//}
 
 		auto token = "PRIVATE-TOKEN" in req.headers;
 		if(token is null)
-			token = "private-token" in req.params;
+			token = "private-token" in req.query;
 
 		if(token){
 			import sql;
