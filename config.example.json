@@ -49,6 +49,20 @@
 		//  - $PASSWORD: player unhashed password
 		"login": "SELECT password='$PASSWORD' as success, is_admin as admin FROM accounts WHERE name='$ACCOUNT'",
 
+		//Query to check auth token and retrieve associated account
+		//
+		// Must select:
+		//    account (string):
+		//    admin (bool): wether or not the user can do actions on other accounts
+		//
+		// Placeholders:
+		//  - $TOKEN: user's token
+		"check_token": "
+			SELECT `api_tokens`.`account` as `account`, `account`.`is_admin` as `admin`
+			FROM `api_tokens`
+			INNER JOIN `account` ON `account`.`name`=`api_tokens`.`account`
+			WHERE `token`='$TOKEN'",
+
 		//Query executed when the player deletes a character
 		//Keep empty for no sql execution
 		//  - $ACCOUNT: player account name
