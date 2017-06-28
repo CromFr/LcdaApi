@@ -23,9 +23,10 @@ class CharApi(bool deletedChar){
 	}
 
 	@path("/")
-	Json getList(string _account){
-		enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
-		enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
+	Json getList(string _account, HTTPServerRequest req){
+		auto auth = api.authenticate(req);
+		enforceHTTP(auth.authenticated, HTTPStatus.unauthorized);
+		enforceHTTP(auth.admin || _account==auth.account, HTTPStatus.forbidden);
 
 		import std.file: dirEntries, SpanMode, getTimes;
 		import std.algorithm: sort, map;
@@ -70,10 +71,11 @@ class CharApi(bool deletedChar){
 	}
 
 	@path("/:char")
-	Json getActiveCharInfo(string _account, string _char){
+	Json getActiveCharInfo(string _account, string _char, HTTPServerRequest req){
 		if(!getMetaData(_account, _char).isPublic){
-			enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
-			enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
+			auto auth = api.authenticate(req);
+			enforceHTTP(auth.authenticated, HTTPStatus.unauthorized);
+			enforceHTTP(auth.admin || _account==auth.account, HTTPStatus.forbidden);
 		}
 
 		return getChar(_account, _char).serializeToJson;
@@ -83,8 +85,9 @@ class CharApi(bool deletedChar){
 	@path("/:char/download")
 	auto getDownload(string _account, string _char, HTTPServerRequest req, HTTPServerResponse res){
 		if(!getMetaData(_account, _char).isPublic){
-			enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
-			enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
+			auto auth = api.authenticate(req);
+			enforceHTTP(auth.authenticated, HTTPStatus.unauthorized);
+			enforceHTTP(auth.admin || _account==auth.account, HTTPStatus.forbidden);
 		}
 
 		import std.file: exists, isFile;
@@ -100,9 +103,10 @@ class CharApi(bool deletedChar){
 		/// The new file name will be oldName~"-"~index~".bic" with index starting from 0
 		///Returns the new bic file name
 		@path("/:char/delete")
-		Json postDeleteChar(string _account, string _char){
-			enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
-			enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
+		Json postDeleteChar(string _account, string _char, HTTPServerRequest req){
+			auto auth = api.authenticate(req);
+			enforceHTTP(auth.authenticated, HTTPStatus.unauthorized);
+			enforceHTTP(auth.admin || _account==auth.account, HTTPStatus.forbidden);
 
 			import std.file : exists, isFile, rename, mkdirRecurse;
 			import std.path : buildPath, baseName;
@@ -148,9 +152,10 @@ class CharApi(bool deletedChar){
 
 	static if(deletedChar){
 		@path("/:char/activate")
-		Json postActivateChar(string _account, string _char){
-			enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
-			enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
+		Json postActivateChar(string _account, string _char, HTTPServerRequest req){
+			auto auth = api.authenticate(req);
+			enforceHTTP(auth.authenticated, HTTPStatus.unauthorized);
+			enforceHTTP(auth.admin || _account==auth.account, HTTPStatus.forbidden);
 
 			import std.file : exists, isFile, rename, mkdirRecurse;
 			import std.path : buildPath, baseName;
@@ -161,7 +166,7 @@ class CharApi(bool deletedChar){
 			enforceHTTP(charFile.exists && charFile.isFile, HTTPStatus.notFound, "Character '"~_char~"' not found");
 
 			immutable accountVault = getVaultPath(_account);
-			immutable newName = _char.matchFirst(ctRegex!r"^(.+?)-\d+$")[1];
+			immutable newName = _char.matchFirst(ctRegex!`^(.+?)-\d+$`)[1];
 
 			immutable target = buildPath(accountVault, newName~".bic");
 			enforceHTTP(!target.exists, HTTPStatus.conflict, "An active character has the same name.");
@@ -193,17 +198,19 @@ class CharApi(bool deletedChar){
 
 	@path("/:char/meta"){
 		void setMeta(string _account, string _char, HTTPServerRequest req){
+			auto auth = api.authenticate(req);
+			enforceHTTP(auth.authenticated, HTTPStatus.unauthorized);
+			enforceHTTP(auth.admin || _account==auth.account, HTTPStatus.forbidden);
 
-			enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
-			enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
 			setMetadata(_account, _char, req.json);
 			enforceHTTP(false, HTTPStatus.ok);//TODO: must be a better way
 		}
-		Json getMeta(string _account, string _char){
+		Json getMeta(string _account, string _char, HTTPServerRequest req){
 			immutable meta = getMetaData(_account, _char);
 			if(!meta.isPublic){
-				enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
-				enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
+				auto auth = api.authenticate(req);
+				enforceHTTP(auth.authenticated, HTTPStatus.unauthorized);
+				enforceHTTP(auth.admin || _account==auth.account, HTTPStatus.forbidden);
 			}
 			return meta.serializeToJson;
 		}

@@ -78,15 +78,66 @@ class Api{
 
 
 package:
+	immutable Config cfg;
+	MySQLClient.LockedConnection mysqlConnection;
+
+	struct AuthInfo{
+		bool authenticated;
+		bool admin;
+		string account;
+	}
+
+	AuthInfo authenticate(HTTPServerRequest req){
+		if(authenticated){
+			//Cookie auth
+			return AuthInfo(authenticated, admin, account);
+		}
+		else if(req.username !is null && req.password !is null){
+			// Basic auth
+			import sql;
+			immutable query = cfg["sql_queries"]["login"].to!string
+				.replacePlaceholders(
+					SqlPlaceholder("ACCOUNT", req.username),
+					SqlPlaceholder("PASSWORD", req.password)
+				);
+
+			bool success = false, isAdmin;
+			mysqlConnection.execute(query, (MySQLRow row){
+				success = row.success.get!int == 1;
+				isAdmin = row.admin.get!int == 1;
+			});
+
+			return AuthInfo(success, isAdmin, req.username);
+		}
+
+		auto token = "PRIVATE-TOKEN" in req.headers;
+		if(token is null)
+			token = "private-token" in req.params;
+
+		if(token){
+			import sql;
+			immutable query = cfg["sql_queries"]["check_token"].to!string
+				.replacePlaceholders(
+					SqlPlaceholder("TOKEN", *token)
+				);
+
+			auto res = AuthInfo(false, false, null);
+			mysqlConnection.execute(query, (MySQLRow row){
+				res.authenticated = true;
+				res.admin = row.admin.get!int == 1;
+				res.account = row.account.get!string;
+			});
+			return res;
+		}
+		return AuthInfo(false, false, null);
+	}
+
+private:
 	@("session"){
 		SessionVar!(bool, "authenticated") authenticated;
 		SessionVar!(bool, "admin") admin;
 		SessionVar!(string, "account") account;
 	}
-	immutable Config cfg;
-	MySQLClient.LockedConnection mysqlConnection;
-
-private:
 	CharApi!false charApi;
 	CharApi!true deletedCharApi;
 	AccountApi accountApi;

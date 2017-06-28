@@ -11,9 +11,10 @@ class AccountApi{
 	}
 
 	@path("/exists")
-	Json getExists(string _account){
-		enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
-		enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
+	Json getExists(string _account, HTTPServerRequest req){
+		auto auth = api.authenticate(req);
+		enforceHTTP(auth.authenticated, HTTPStatus.unauthorized);
+		enforceHTTP(auth.admin || _account==auth.account, HTTPStatus.forbidden);
 
 		import std.path : buildPath, exists, isDir;
 		immutable accountPath = buildPath(
@@ -24,15 +25,16 @@ class AccountApi{
 	}
 
 	@path("/password")
-	void postPassword(string _account, string oldPassword, string newPassword){
-		enforceHTTP(api.authenticated, HTTPStatus.unauthorized);
-		enforceHTTP(api.admin || _account==api.account, HTTPStatus.forbidden);
+	void postPassword(string _account, string oldPassword, string newPassword, HTTPServerRequest req){
+		auto auth = api.authenticate(req);
+		enforceHTTP(auth.authenticated, HTTPStatus.unauthorized);
+		enforceHTTP(auth.admin || _account==auth.account, HTTPStatus.forbidden);
 
 		import sql: replacePlaceholders, SqlPlaceholder, MySQLRow;
 
 		string accountToCheck;
-		if(api.admin)
-			accountToCheck = api.account;
+		if(auth.admin)
+			accountToCheck = auth.account;
 		else
 			accountToCheck = _account;
 
