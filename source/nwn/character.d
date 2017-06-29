@@ -30,7 +30,8 @@ class Character{
 		immutable feats2da = ResourceManager.fetchFile!TwoDA("feat.2da");
 
 		//Name
-		name = gff["FirstName"].to!string~" "~gff["LastName"].to!string;
+		immutable lastName = gff["LastName"].to!string;
+		name = gff["FirstName"].to!string~(lastName !is null ? (" "~lastName) : null);
 
 		//Level / classes
 		lvl = 0;
