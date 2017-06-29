@@ -10,7 +10,7 @@ import nwn.gff: GffNode;
 struct Dungeon{
 	string name;
 	string areaName;
-	int diffMax = 1;
+	int diffMax = 0;
 
 package:
 	string chestVar;
@@ -95,7 +95,7 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, in G
 			BiowareDB db;
 			try db = ResourceManager.getMut!BiowareDB(dbName);
 			catch(ResourceException e){
-				db = new BiowareDB(buildNormalizedPath(cfg["paths"]["database"].to!string, "quete"));
+				db = new BiowareDB(buildNormalizedPath(cfg["paths"]["database"].to!string, dbName));
 				ResourceManager.store(dbName, db);
 			}
 
@@ -120,9 +120,11 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, in G
 		status.areaName = dungeon.areaName;
 		status.diffMax = dungeon.diffMax;
 
-		foreach(i ; 0..dungeon.diffMax){
-			auto hasLootedChest = getVarValue(dungeon.chestVar, diffPrefix(i));
-			status.lootedChests ~= hasLootedChest.isNull? false : (hasLootedChest.get == 1);
+		foreach(i ; 0 .. dungeon.diffMax + 1){
+			if(dungeon.chestVar !is null){
+				auto hasLootedChest = getVarValue(dungeon.chestVar, diffPrefix(i));
+				status.lootedChests ~= hasLootedChest.isNull? false : (hasLootedChest.get == 1);
+			}
 
 			auto hasKilledBoss = getVarValue(dungeon.bossKilledVar, diffPrefix(i));
 			status.killedBoss ~= !hasKilledBoss.isNull;
