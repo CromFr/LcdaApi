@@ -68,3 +68,52 @@ string journalVarToTag(in string journalVar){
 		default: assert(0, "Unknown journal variable: '"~journalVar~"'");
 	}
 }
+
+
+
+private struct Dungeon{
+	string name;
+	string areaResref;
+	string bossKilledVar;//VARNAME for a journalNODROP var, or DBNAME.VARNAME for a campaign var
+	string chestVar;
+}
+
+enum Dungeons: Dungeon {
+	Rats           = Dungeon("Rats",                  "eauprofonde-souterrains",          "ROIRATS",                      "COFFRE_ROI_RATS"),
+	Gobelins       = Dungeon("Gobelins",              "eauprofonde-portes-gobelins",      "QUETE.ROIGOB",                 "QUETE.COFFREROIGOB"),
+	Contrebandiers = Dungeon("Contrebandiers",        "eauprofonde-anciennes_mines",      "QUETE.MORGANE",                "QUETE.COFFREMORGANE"),
+	Gnolls         = Dungeon("Gnolls",                "ravinyard",                        "QUETE.SYKHO",                  "QUETE.COFFREGNOLLS"),
+	Orcs           = Dungeon("Orcs",                  "lurkwood-fortin_orc",              "QUETE.GRAMSHH",                "QUETE.COFFREGRAMSHH"),
+	DesoCrypte     = Dungeon("Cimetière",             "desolation-crypte",                "QUETE.FARGOL",                 "QUETE.COFFRECIMETIERE"),
+	Elementaires   = Dungeon("Élémentaires d'eau",    "front_de_mer-caverne_innondee",    "QUETE.GOLGOTH",                "QUETE.COFFREGOLGOTH"),
+	Spectres       = Dungeon("Spectres",              "lurkwood-grotte_hantee",           "QUETE.ESPRITANTIQUE",          "QUETE.COFFREESPRITANTIQUE"),
+	Araignees      = Dungeon("Araignées",             "desolation-foret",                 "QUETE.ARAIGNEEBOSS",           "QUETE.COFFREARAIGNEE"),
+	Lezards        = Dungeon("Lézards",               "marais_du_lezard",                 "QUETE.SHALVA",                 "QUETE.COFFRESHALVA"),
+	DesoCollines   = Dungeon("Désolation - Collines", "desolation-collines",              "QUETE.LEVIATHAN",              "QUETE.COFFRECOLLINE"),
+	Ogres          = Dungeon("Ogres",                 "epinedorsale-galeries",            "QUETE.KAHRKMORT",              "QUETE.COFFREKAHRK"),
+	Wyvernes       = Dungeon("Wyvernes",              "epinedorsale-wivernes",            "QUETE.WIVERNECHEFMORT",        "QUETE.COFFREWIVERNE"),
+	Drows          = Dungeon("Drows",                 "ombreterre-forteresse_drow",       "QUETE.BOSSDROWMORT",           "QUETE.COFFREBOSSDROW"),
+	Fees           = Dungeon("Fées",                  "lurkwood-racines-niveau1",         "QUETE.FAFNER",                 "QUETE.COFFREFEES"),
+	IleMaudite     = Dungeon("Ile maudite",           "ile_maudite",                      "QUETE.ZHERGHUL",               "QUETE.COFFREZHERGHUL"),
+	DesertRuines   = Dungeon("Désert - Ruines",       "desert_anauroch-ruines",           "QUETE.MEPHOS",                 "QUETE.COFFREMEPHOS"),
+	Pirates        = Dungeon("Pirates",               "front_de_mer-antre_pirates",       "QUETE.BARBAROSSA",             "QUETE.COFFREPIRATES"),
+	Dorn           = Dungeon("Dorn",                  "ombreterre-dorn-hall",             "QUETE.DornChest_BossKilled",   "QUETE.DornChest_Looted"),
+	Dregs          = Dungeon("Dregs",                 "desert_anauroch_repaire_dreg",     "QUETE.BOSSDREGMORT",           "QUETE.COFFREBOSSDREG"),
+	Imaskari       = Dungeon("Imaskaris",             "lurkwood-atelier_imaskari",        "QUETE.CHOSEOUTREMONDEMORTE",   "QUETE.COFFRECHOSEOUTREMONDE"),
+	Illithids      = Dungeon("Illithids",             "marais-enclave_illithid",          "QUETE.GLANCEPHALEMORT",        "QUETE.COFFREGLANCEPHALE"),
+	SeigneurDamne  = Dungeon("Seigneur damné",        "ile_des_g-caverne_maudite",        "QUETE.SEIGNEURDAMNEMORT",      "QUETE.COFFRESEIGNEURDAMNE"),
+	Labyrinthe     = Dungeon("Labyrinthe",            "ile_des_g-etrange_grotte",         "QUETE.LABYRINTHEMORT",         "QUETE.COFFRELABYRINTHE"),
+	Driders        = Dungeon("Driders",               "ombreterre-taniere_driders",       "QUETE.BOSSDRIDERMORT",         "QUETE.COFFREBOSSDRIDER"),
+	Saisons        = Dungeon("Saisons",               "ile_saisons-temple_printemps-rdc", "QUETE.AVATARISHTARMORT",       "QUETE.COFFREAVATARISHTAR"),
+	Faconneur      = Dungeon("Façonneur",             "lurkwood-secret",                  "QUETE.BOSSSECRETLURKWOODMORT", "QUETE.COFFRELURKWOODSECRET"),
+	Geants         = Dungeon("Géants des glaces",     "epinedorsale-grotte_geant",        "HIRKA",                        "COFFRE_HIRKA"),
+	DragonBlanc    = Dungeon("Dragon blanc",          "ile_des_g-caverne_elhandir",       "QUETE.ELHANDIRMORT",           null),
+	Dedale         = Dungeon("Dédale",                "desert_anauroch-dedale_rdc",       "QUETE.BOSSDEDALEMORT",         "QUETE.COFFREBOSSDEDALE"),
+	Tyrannoeils    = Dungeon("Tyrannoeils",           "ombreterre-antre_tyrannoeils",     "QUETE.BOSSTYRANNOEILSMORT",    "QUETE.COFFREBOSSTYRANNOEILS"),
+	Mintarn        = Dungeon("Mintarn",               "citadelle-rez_de_chausse",         "QUETE.SEIGNEURKRANTARMORT",    "QUETE.COFFRESEIGNEURKRANTAR"),
+}
+
+string diffPrefix(uint i){
+	import std.conv: to;
+	return i==0? null : "d"~i.to!string~"_";
+}

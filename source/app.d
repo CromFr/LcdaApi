@@ -3,6 +3,7 @@ import mysql;
 import std.stdio;
 import resourcemanager;
 import nwn.tlk;
+import nwn.dungeons;
 import api.api;
 import config;
 
@@ -39,6 +40,9 @@ int main(string[] args){
 		new Tlk(cfg["paths"]["tlk"].to!string),
 		cfg["paths"]["tlk_custom"]!=""? new Tlk(cfg["paths"]["tlk_custom"].to!string) : null);
 	ResourceManager.store("resolver", strresolv);
+
+	writeln("Caching dungeon info");
+	initDungeonInfo();
 
 	size_t cnt = 0;
 	while(cnt++<5){

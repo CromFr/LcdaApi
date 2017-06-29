@@ -71,7 +71,7 @@ class CharApi(bool deletedChar){
 	}
 
 	@path("/:char")
-	Json getActiveCharInfo(string _account, string _char, HTTPServerRequest req){
+	Json getCharInfo(string _account, string _char, HTTPServerRequest req){
 		if(!getMetaData(_account, _char).isPublic){
 			auto auth = api.authenticate(req);
 			enforceHTTP(auth.authenticated, HTTPStatus.unauthorized);
@@ -226,7 +226,7 @@ private:
 
 		immutable path = getCharFile(account, bicName);
 		enforceHTTP(path.exists && path.isFile, HTTPStatus.notFound, "Character '"~bicName~"' not found");
-		return new Character(DirEntry(path));
+		return new Character(account, DirEntry(path), api.mysqlConnection);
 	}
 
 	auto ref getCharFile(in string accountName, in string bicFile){

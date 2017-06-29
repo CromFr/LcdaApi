@@ -22,6 +22,9 @@
 
 		//Path to the module directory
 		"module": "C:\\Users\\Drizzt\\Documents\\Neverwinter Nights 2\\modules\\mymodule",
+
+		//Path to the database directory
+		"database": "C:\\Users\\Drizzt\\Documents\\Neverwinter Nights 2\\database",
 	},
 
 	//Type of the database used. Currenty only MySQL

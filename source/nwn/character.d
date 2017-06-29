@@ -3,19 +3,20 @@ module nwn.character;
 import std.conv;
 import std.exception: enforce;
 
-
+import mysql : MySQLClient;
 
 class Character{
 
-	this(in string bicFile, bool isDeleted=false){
+	this(in string account, in string bicFile, ref MySQLClient.LockedConnection mysqlConnection){
 		import std.path : baseName;
 		import resourcemanager;
 		import nwn.gff;
 		import nwn.tlk;
 		import nwn.twoda;
 		import nwn.lcdacompat;
+		import nwn.dungeons;
 
-		deleted = isDeleted;
+		deleted = false;
 
 		this.bicFile = bicFile;
 		bicFileName = baseName(bicFile, ".bic");
@@ -110,18 +111,18 @@ class Character{
 			jrl = new Journal(buildPath(cfg["paths"]["module"].get!string, "module.jrl"));
 		}
 
-		GffNode* journalNodrop;
+		GffNode[] journalVarTable;
 		foreach(ref item ; gff["ItemList"].as!(GffType.List)){
 			if(item["Tag"].to!string == "journalNODROP"){
-				journalNodrop = &item;
+				journalVarTable = item["VarTable"].as!(GffType.List);
 				break;
 			}
 		}
 
 		int[string] questEntryIds;
-		if(journalNodrop){
+		if(journalVarTable !is null){
 			//ignore chars without journal
-			foreach(ref var ; (*journalNodrop)["VarTable"].as!(GffType.List)){
+			foreach(ref var ; journalVarTable){
 				immutable name = var["Name"].to!string;
 				string questTag;
 				if(name.length>1 && name[0]=='j' && name!="j63"){
@@ -169,6 +170,10 @@ class Character{
 					"Quête non découverte");
 			}
 		}
+
+
+		//dungeons status
+		dungeons = getDungeonStatus(account, name, journalVarTable, mysqlConnection);
 	}
 
 	bool deleted;
@@ -216,6 +221,9 @@ class Character{
 		string description;
 	}
 	JournalEntry[] journal;
+
+	import nwn.dungeons: DungeonStatus;
+	DungeonStatus[] dungeons;
 
 
 	string bicFile;
