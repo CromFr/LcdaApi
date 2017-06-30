@@ -33,7 +33,7 @@ class CharApi(bool deletedChar){
 		import std.array: array;
 		import resourcemanager: ResourceManager, ResourceException;
 
-		immutable vaultPath = getVaultPath(_account);
+		immutable vaultPath = getVaultPath(_account, deletedChar);
 
 		CharListCache cache;
 		auto hash = vaultPath
@@ -78,7 +78,7 @@ class CharApi(bool deletedChar){
 			enforceHTTP(auth.admin || _account==auth.account, HTTPStatus.forbidden);
 		}
 
-		return getChar(_account, _char).serializeToJson;
+		return getChar(_account, _char, deletedChar).serializeToJson;
 	}
 
 
@@ -91,7 +91,7 @@ class CharApi(bool deletedChar){
 		}
 
 		import std.file: exists, isFile;
-		immutable charFile = getCharFile(_account, _char);
+		immutable charFile = getCharFile(_account, _char, deletedChar);
 
 		enforceHTTP(charFile.exists && charFile.isFile, HTTPStatus.notFound, "Character '"~_char~"' not found");
 
@@ -112,10 +112,10 @@ class CharApi(bool deletedChar){
 			import std.path : buildPath, baseName;
 			import sql: replacePlaceholders, SqlPlaceholder;
 
-			immutable charFile = getCharFile(_account, _char);
+			immutable charFile = getCharFile(_account, _char, deletedChar);
 			enforceHTTP(charFile.exists && charFile.isFile, HTTPStatus.notFound, "Character '"~_char~"' not found");
 
-			immutable deletedVault = getVaultPath(_account);
+			immutable deletedVault = getVaultPath(_account, true);
 			if(!deletedVault.exists){
 				mkdirRecurse(deletedVault);
 			}
@@ -145,7 +145,6 @@ class CharApi(bool deletedChar){
 			if((charFile~".meta").exists){
 				(charFile~".meta").rename(target~".meta");
 			}
-
 			return Json(["newBicFile": Json(baseName(target, ".bic"))]);
 		}
 	}
@@ -162,10 +161,10 @@ class CharApi(bool deletedChar){
 			import std.regex : matchFirst, ctRegex;
 			import sql: replacePlaceholders, SqlPlaceholder;
 
-			immutable charFile = getCharFile(_account, _char);
+			immutable charFile = getCharFile(_account, _char, deletedChar);
 			enforceHTTP(charFile.exists && charFile.isFile, HTTPStatus.notFound, "Character '"~_char~"' not found");
 
-			immutable accountVault = getVaultPath(_account);
+			immutable accountVault = getVaultPath(_account, false);
 			immutable newName = _char.matchFirst(ctRegex!`^(.+?)-\d+$`)[1];
 
 			immutable target = buildPath(accountVault, newName~".bic");
@@ -221,27 +220,27 @@ private:
 	Api api;
 
 
-	Character getChar(in string account, in string bicName){
+	Character getChar(in string account, in string bicName, bool deleted){
 		import std.file : DirEntry, exists, isFile;
 
-		immutable path = getCharFile(account, bicName);
+		immutable path = getCharFile(account, bicName, deleted);
 		enforceHTTP(path.exists && path.isFile, HTTPStatus.notFound, "Character '"~bicName~"' not found");
 		return new Character(account, DirEntry(path), api.mysqlConnection);
 	}
 
-	auto ref getCharFile(in string accountName, in string bicFile){
+	auto ref getCharFile(in string accountName, in string bicFile, bool deleted){
 		import std.path : buildNormalizedPath, baseName;
 		assert(accountName.baseName == accountName, "account name should not be a path");
 		assert(bicFile.baseName == bicFile, "bic file name should not be a path");
 
-		return buildNormalizedPath(getVaultPath(accountName), bicFile~".bic");
+		return buildNormalizedPath(getVaultPath(accountName, deleted), bicFile~".bic");
 	}
 
-	auto ref getVaultPath(in string accountName){
+	auto ref getVaultPath(in string accountName, bool deleted){
 		import std.path : buildNormalizedPath, baseName, isAbsolute;
 		assert(accountName.baseName == accountName, "account name should not be a path");
 
-		static if(!deletedChar){
+		if(!deleted){
 			return buildNormalizedPath(api.cfg["paths"]["servervault"].to!string, accountName);
 		}
 		else{
@@ -259,7 +258,7 @@ private:
 	void setMetadata(string account, string character, Json metadata){
 		auto md = metadata.deserializeJson!CharacterMetadata;
 
-		immutable charMetaPath = getCharFile(account, character)~".meta";
+		immutable charMetaPath = getCharFile(account, character, deletedChar)~".meta";
 		charMetaPath.writeFile(cast(ubyte[])md.serializeToJsonString);
 	}
 	CharacterMetadata getMetaData(string account, string character){
@@ -267,7 +266,7 @@ private:
 
 		CharacterMetadata metadata;
 
-		immutable charMetaPath = getCharFile(account, character)~".meta";
+		immutable charMetaPath = getCharFile(account, character, deletedChar)~".meta";
 		if(charMetaPath.exists){
 			metadata = charMetaPath
 				.readText

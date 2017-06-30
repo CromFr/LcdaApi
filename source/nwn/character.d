@@ -16,8 +16,6 @@ class Character{
 		import nwn.lcdacompat;
 		import nwn.dungeons;
 
-		deleted = false;
-
 		this.bicFile = bicFile;
 		bicFileName = baseName(bicFile, ".bic");
 		auto gff = new Gff(bicFile);
@@ -180,8 +178,6 @@ class Character{
 		GC.collect();
 		GC.minimize();
 	}
-
-	bool deleted;
 
 	string name;
 
