@@ -174,6 +174,11 @@ class Character{
 
 		//dungeons status
 		dungeons = getDungeonStatus(account, name, journalVarTable, mysqlConnection);
+
+
+		import core.memory: GC;
+		GC.collect();
+		GC.minimize();
 	}
 
 	bool deleted;

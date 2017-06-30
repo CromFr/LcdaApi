@@ -44,6 +44,10 @@ int main(string[] args){
 	writeln("Caching dungeon info");
 	initDungeonInfo();
 
+	import core.memory: GC;
+	GC.collect();
+	GC.minimize();
+
 	size_t cnt = 0;
 	while(cnt++<5){
 		if(cfg["database"] == "mysql"){
