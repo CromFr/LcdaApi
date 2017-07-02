@@ -82,8 +82,9 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, in G
 	import nwn.biowaredb;
 
 	auto cfg = ResourceManager.get!Config("cfg");
+	immutable pcid = accountName ~ charName;
 
-	Nullable!(BDBVariable.Value) getVarValue(string var, string prefix){
+	Nullable!(const(NWInt)) getVarValue(string var, string prefix){
 		import std.string;
 
 		auto idx = var.indexOf('.');
@@ -99,19 +100,20 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, in G
 				ResourceManager.store(dbName, db);
 			}
 
-			return db.getVariableValue(accountName, charName, varName);
+			return db.getVariableValue!NWInt(pcid, varName);
 		}
 		else{
 			//Journal var
 			immutable varName = prefix ~ var;
 			foreach(const ref v ; journalVarTable){
 				if(v["Name"].to!string == varName){
-					return Nullable!(BDBVariable.Value)(BDBVariable.Value(cast(NWInt)v["Value"].to!NWInt));
+					return Nullable!(const(NWInt))(v["Value"].to!NWInt);
 				}
 			}
-			return Nullable!(BDBVariable.Value)();
+			return Nullable!(const(NWInt))();
 		}
 	}
+
 
 	DungeonStatus[] ret;
 	foreach(const ref dungeon ; dungeonList){
