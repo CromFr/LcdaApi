@@ -40,14 +40,14 @@ class Api{
 	Json postLogin(string login, string password, HTTPServerRequest req){
 		import sql: replacePlaceholders, SqlPlaceholder, MySQLRow;
 
-		immutable query = cfg["sql_queries"]["login"].to!string
+		immutable loginQuery = cfg["sql_queries"]["login"].to!string
 			.replacePlaceholders(
 				SqlPlaceholder("ACCOUNT", login),
 				SqlPlaceholder("PASSWORD", password)
 			);
 
 		bool credsOK = false, isAdmin;
-		mysqlConnection.execute(query, (MySQLRow row){
+		mysqlConnection.execute(loginQuery, (MySQLRow row){
 			credsOK = row.success.get!int == 1;
 			isAdmin = row.admin.get!int == 1;
 		});
@@ -58,7 +58,24 @@ class Api{
 		account = login;
 		admin = isAdmin;
 
-		return ["session": getSession(), "tokens": accountApi.getTokens(login, req)].serializeToJson;
+		string masterToken;
+		if(auto mt = "master" in accountApi.getTokens(login, req))
+			masterToken = mt.to!string;
+		else{
+			immutable insertQuery =
+				"INSERT INTO `api_tokens`
+				(`account_name`, `name`, `token`)
+				VALUES
+				('$ACCOUNT', 'master', SUBSTRING(MD5(RAND()), -32))"
+				.replacePlaceholders(
+					SqlPlaceholder("ACCOUNT", login),
+				);
+
+			mysqlConnection.execute(insertQuery);
+
+			masterToken = accountApi.getTokens(login, req)["master"].to!string;
+		}
+		return ["session": getSession(), "token": Json(masterToken)].serializeToJson;
 	}
 	Json getSession(){
 		import std.traits : hasUDA;
