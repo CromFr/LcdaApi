@@ -114,19 +114,7 @@ int main(string[] args){
 	immutable indexPath = buildNormalizedPath(publicPath, "index.html");
 
 	auto router = new URLRouter;
-
-	auto ifaceSettings = new WebInterfaceSettings;
-	ifaceSettings.urlPrefix = "/api/";
-	router.registerWebInterface(new Api, ifaceSettings);
-
-	router.get("*", (HTTPServerRequest req, HTTPServerResponse res){
-			import std.path : baseName, extension;
-			auto ext = req.path[$-1]!='/'? req.path.baseName.extension : null;
-			if(ext is null)
-				return serveStaticFile(indexPath)(req, res);
-			return serveStaticFiles(publicPath)(req, res);
-		});
-
+	router.registerWebInterface(new Api);
 	listenHTTP(settings, router);
 	runEventLoop();
 
