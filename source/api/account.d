@@ -24,6 +24,27 @@ class AccountApi{
 		return Json(accountPath.exists && accountPath.isDir);
 	}
 
+	@path("/tokens")
+	Json getTokens(string _account, HTTPServerRequest req){
+
+		auto auth = api.authenticate(req);
+		enforceHTTP(auth.authenticated, HTTPStatus.unauthorized);
+		enforceHTTP(auth.admin || _account==auth.account, HTTPStatus.forbidden);
+
+		import sql: replacePlaceholders, SqlPlaceholder, MySQLRow;
+		immutable query = "SELECT `name`, `token` FROM `api_tokens` WHERE `account_name`='$ACCOUNT'".to!string
+			.replacePlaceholders(
+				SqlPlaceholder("ACCOUNT", _account)
+			);
+
+		string[string] tokens;
+		api.mysqlConnection.execute(query, (MySQLRow row){
+			tokens[row.name.get!string] = row.token.get!string;
+		});
+
+		return tokens.serializeToJson();
+	}
+
 	@path("/password")
 	void postPassword(string _account, string oldPassword, string newPassword, HTTPServerRequest req){
 		auto auth = api.authenticate(req);

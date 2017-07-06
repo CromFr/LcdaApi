@@ -37,7 +37,7 @@ class Api{
 		return accountApi;
 	}
 
-	Json postLogin(string login, string password){
+	Json postLogin(string login, string password, HTTPServerRequest req){
 		import sql: replacePlaceholders, SqlPlaceholder, MySQLRow;
 
 		immutable query = cfg["sql_queries"]["login"].to!string
@@ -58,7 +58,7 @@ class Api{
 		account = login;
 		admin = isAdmin;
 
-		return getSession();
+		return ["session": getSession(), "tokens": accountApi.getTokens(login, req)].serializeToJson;
 	}
 	Json getSession(){
 		import std.traits : hasUDA;
