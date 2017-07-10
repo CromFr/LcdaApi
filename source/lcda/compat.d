@@ -96,7 +96,7 @@ enum Dungeons: Dungeon {
 	Fees           = Dungeon("Fées",                  "lurkwood-racines-niveau1",         "annexe.FAFNER",                "QUETE.COFFREFEES"),
 	IleMaudite     = Dungeon("Ile maudite",           "ile_maudite",                      "annexe.ZHERGHUL",              "QUETE.COFFREZHERGHUL"),
 	DesertRuines   = Dungeon("Désert - Ruines",       "desert_anauroch-ruines",           "QUETE.MEPHOS",                 "QUETE.COFFREMEPHOS"),
-	Pirates        = Dungeon("Pirates",               "front_de_mer-antre_pirates",       "annexe.BARBAROSSA",            "QUETE.COFFREPIRATES"),
+	Pirates        = Dungeon("Pirates",               "front_de_mer-galeries",            "annexe.BARBAROSSA",            "QUETE.COFFREPIRATES"),
 	Dorn           = Dungeon("Dorn",                  "ombreterre-dorn-hall",             "QUETE.DornChest_BossKilled",   "QUETE.DornChest_Looted"),
 	Dregs          = Dungeon("Dregs",                 "desert_anauroch_repaire_dreg",     "QUETE.BOSSDREGMORT",           "QUETE.COFFREBOSSDREG"),
 	Imaskari       = Dungeon("Imaskaris",             "lurkwood-atelier_imaskari",        "QUETE.CHOSEOUTREMONDEMORTE",   "QUETE.COFFRECHOSEOUTREMONDE"),
@@ -110,7 +110,7 @@ enum Dungeons: Dungeon {
 	DragonBlanc    = Dungeon("Dragon blanc",          "ile_des_g-caverne_elhandir",       "QUETE.ELHANDIRMORT",           null),
 	Dedale         = Dungeon("Dédale",                "desert_anauroch-dedale_rdc",       "QUETE.BOSSDEDALEMORT",         "QUETE.COFFREBOSSDEDALE"),
 	Tyrannoeils    = Dungeon("Tyrannoeils",           "ombreterre-antre_tyrannoeils",     "QUETE.BOSSTYRANNOEILSMORT",    "QUETE.COFFREBOSSTYRANNOEILS"),
-	Mintarn        = Dungeon("Mintarn",               "citadelle-rez_de_chausse",         "QUETE.SEIGNEURKRANTARMORT",    "QUETE.COFFRESEIGNEURKRANTAR"),
+	Mintarn        = Dungeon("Mintarn",               "citadelle-passage_souterrain",     "QUETE.SEIGNEURKRANTARMORT",    "QUETE.COFFRESEIGNEURKRANTAR"),
 }
 
 string diffPrefix(uint i){
