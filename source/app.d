@@ -3,7 +3,7 @@ import mysql;
 import std.stdio;
 import resourcemanager;
 import nwn.tlk;
-import nwn.dungeons;
+import lcda.dungeons;
 import api.api;
 import config;
 

@@ -4,7 +4,7 @@ import vibe.d;
 import mysql : MySQLClient, MySQLRow;
 debug import std.stdio: writeln;
 
-import nwn.character;
+import lcda.character;
 import api.api;
 
 class CharListCache{

@@ -11,7 +11,7 @@ class Config {
 	this(in string config){
 		import std.regex : replaceAll, ctRegex;
 		table = config
-			.replaceAll(ctRegex!(r"^\s*//.*?$","m"), "")
+			.replaceAll(ctRegex!(`^\s*//.*?$`,"m"), "")
 			.parseJsonString;
 	}
 
@@ -61,7 +61,6 @@ unittest{
 	import std.stdio;
 	import std.conv;
 	import std.algorithm;
-	writeln(__MODULE__);
 
 	enum baseConfig = `
 		{

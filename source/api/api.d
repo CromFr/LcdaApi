@@ -4,7 +4,7 @@ import vibe.d;
 debug import std.stdio : writeln;
 import mysql : MySQLClient;
 
-import nwn.character;
+import lcda.character;
 import config;
 
 
