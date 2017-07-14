@@ -171,7 +171,7 @@ class Character{
 
 
 		//dungeons status
-		dungeons = getDungeonStatus(account, name, journalVarTable, mysqlConnection);
+		//dungeons = getDungeonStatus(account, name, journalVarTable, mysqlConnection);
 
 
 		import core.memory: GC;

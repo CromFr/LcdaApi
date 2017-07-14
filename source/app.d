@@ -41,8 +41,8 @@ int main(string[] args){
 		cfg["paths"]["tlk_custom"]!=""? new Tlk(cfg["paths"]["tlk_custom"].to!string) : null);
 	ResourceManager.store("resolver", strresolv);
 
-	writeln("Caching dungeon info");
-	initDungeonInfo();
+	//writeln("Caching dungeon info");
+	//initDungeonInfo();
 
 	import core.memory: GC;
 	GC.collect();
