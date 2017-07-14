@@ -1,4 +1,4 @@
-module nwn.character;
+module lcda.character;
 
 import std.conv;
 import std.exception: enforce;
@@ -10,15 +10,15 @@ class Character{
 	this(in string account, in string bicFile, ref MySQLClient.LockedConnection mysqlConnection){
 		import std.path : baseName;
 		import resourcemanager;
-		import nwn.gff;
+		import nwn.fastgff;
 		import nwn.tlk;
 		import nwn.twoda;
-		import nwn.lcdacompat;
-		import nwn.dungeons;
+		import lcda.compat;
+		import lcda.dungeons;
 
 		this.bicFile = bicFile;
 		bicFileName = baseName(bicFile, ".bic");
-		auto gff = new Gff(bicFile);
+		auto gff = new FastGff(bicFile);
 
 		immutable strref = ResourceManager.get!StrRefResolver("resolver");
 		immutable class2da = ResourceManager.fetchFile!TwoDA("classes.2da");
@@ -29,40 +29,40 @@ class Character{
 		immutable feats2da = ResourceManager.fetchFile!TwoDA("feat.2da");
 
 		//Name
-		immutable lastName = gff["LastName"].to!string;
-		name = gff["FirstName"].to!string~(lastName !is null ? (" "~lastName) : null);
+		immutable lastName = gff["LastName"].get!GffLocString.resolve(strref);
+		name = gff["FirstName"].get!GffLocString.resolve(strref)~(lastName !is null ? (" "~lastName) : null);
 
 		//Level / classes
 		lvl = 0;
-		foreach(ref classStruct ; gff["ClassList"].as!(GffType.List)){
-			immutable classID = classStruct["Class"].as!(GffType.Int);
-			immutable classLvl = classStruct["ClassLevel"].as!(GffType.Short);
+		foreach(i, GffStruct classStruct ; gff["ClassList"].get!(GffList)){
+			immutable classID = classStruct["Class"].get!(GffInt);
+			immutable classLvl = classStruct["ClassLevel"].get!(GffShort);
 
 			lvl += classLvl;
 			classes ~= Class(strref[class2da.get!StrRef("Name", classID)], classLvl);
 		}
 
 		//Race
-		auto raceId = gff["Subrace"].as!(GffType.Byte);
+		auto raceId = gff["Subrace"].get!GffByte;
 		race = strref[race2da.get!StrRef("Name", raceId)];
 
 		//Alignment
-		alignment.good_evil = gff["GoodEvil"].as!(GffType.Byte);
-		alignment.law_chaos = gff["LawfulChaotic"].as!(GffType.Byte);
+		alignment.good_evil = gff["GoodEvil"].get!GffByte;
+		alignment.law_chaos = gff["LawfulChaotic"].get!GffByte;
 		alignment.id = 0;
 		alignment.id += alignment.good_evil>=75? 0 : alignment.good_evil>25? 1 : 2;
 		alignment.id += alignment.law_chaos>=75? 0 : alignment.law_chaos>25? 3 : 6;
 		alignment.name = strref[alignment2da.get!StrRef("Name", alignment.id)];
 
 		//God
-		god = gff["Deity"].as!(GffType.ExoString);
+		god = gff["Deity"].get!GffString;
 
 		//Abilities
 		foreach(i, abilityAdj ; ["StrAdjust","DexAdjust","ConAdjust","IntAdjust","WisAdjust","ChaAdjust"]){
 			immutable abilityLbl = abilities2da.get!string("Label", cast(uint)i);
 			abilities ~= Ability(
 				strref[abilities2da.get!StrRef("Name", cast(uint)i)],
-				gff[abilityLbl].as!(GffType.Byte) + race2da.get!int(abilityAdj, raceId)
+				gff[abilityLbl].get!GffByte + race2da.get!int(abilityAdj, raceId)
 			);
 		}
 
@@ -70,19 +70,19 @@ class Character{
 		immutable skillsCount = skills2da.rows;
 		uint[] skillRanks;
 		skillRanks.length = skillsCount;
-		foreach(lvlIndex, gffLvl ; gff["LvlStatList"].as!(GffType.List)){
+		foreach(lvlIndex, GffStruct gffLvl ; gff["LvlStatList"].get!GffList){
 			Level lvl;
 			//name
-			lvl.className = strref[class2da.get!StrRef("Name", gffLvl["LvlStatClass"].as!(GffType.Byte))];
+			lvl.className = strref[class2da.get!StrRef("Name", gffLvl["LvlStatClass"].get!GffByte)];
 			//ability
 			if(lvlIndex%4 == 3){
-				lvl.ability = strref[abilities2da.get!StrRef("Name", gffLvl["LvlStatAbility"].as!(GffType.Byte))];
+				lvl.ability = strref[abilities2da.get!StrRef("Name", gffLvl["LvlStatAbility"].get!GffByte)];
 			}
 			//skills
 			lvl.skills.length = skillsCount;
-			foreach(i, gffSkill ; gffLvl["SkillList"].as!(GffType.List)){
-				auto earned = gffSkill["Rank"].as!(GffType.Byte);
-				auto skillName = skills2da.get!string("Name", cast(uint)i);
+			foreach(i, GffStruct gffSkill ; gffLvl["SkillList"].get!GffList){
+				auto earned = gffSkill["Rank"].get!GffByte;
+				auto skillName = skills2da.get("Name", cast(StrRef)i);
 				if(skillName!="***" && skillName!=""){
 					skillRanks[i] += earned;
 					lvl.skills[i] = LevelingSkill(
@@ -93,14 +93,14 @@ class Character{
 				}
 			}
 			//feats
-			foreach(gffFeat ; gffLvl["FeatList"].as!(GffType.List)){
-				lvl.feats ~= strref[feats2da.get!StrRef("FEAT", gffFeat["Feat"].as!(GffType.Word))];
+			foreach(i, GffStruct gffFeat ; gffLvl["FeatList"].get!GffList){
+				lvl.feats ~= strref[feats2da.get!StrRef("FEAT", gffFeat["Feat"].get!GffWord)];
 			}
 			leveling ~= lvl;
 		}
 
 		//Journal
-		import nwn.journal: Journal;
+		import lcda.journal: Journal;
 		static Journal jrl;
 		if(jrl is null){
 			import config: Config;
@@ -109,19 +109,20 @@ class Character{
 			jrl = new Journal(buildPath(cfg["paths"]["module"].get!string, "module.jrl"));
 		}
 
-		GffNode[] journalVarTable;
-		foreach(ref item ; gff["ItemList"].as!(GffType.List)){
-			if(item["Tag"].to!string == "journalNODROP"){
-				journalVarTable = item["VarTable"].as!(GffType.List);
+
+		GffList journalVarTable;
+		foreach(i, GffStruct item ; gff["ItemList"].get!GffList){
+			if(item["Tag"].get!GffString == "journalNODROP"){
+				journalVarTable = item["VarTable"].get!GffList;
 				break;
 			}
 		}
 
 		int[string] questEntryIds;
-		if(journalVarTable !is null){
+		if(journalVarTable.length > 0){
 			//ignore chars without journal
-			foreach(ref var ; journalVarTable){
-				immutable name = var["Name"].to!string;
+			foreach(i, GffStruct var ; journalVarTable){
+				immutable name = var["Name"].get!GffString;
 				string questTag;
 				if(name.length>1 && name[0]=='j' && name!="j63"){
 					try{
@@ -143,7 +144,7 @@ class Character{
 				}
 
 				if(questTag !is null){
-					questEntryIds[questTag] = var["Value"].to!int;
+					questEntryIds[questTag] = var["Value"].get!GffInt;
 				}
 			}
 		}
@@ -172,11 +173,6 @@ class Character{
 
 		//dungeons status
 		//dungeons = getDungeonStatus(account, name, journalVarTable, mysqlConnection);
-
-
-		import core.memory: GC;
-		GC.collect();
-		GC.minimize();
 	}
 
 	string name;
@@ -223,7 +219,7 @@ class Character{
 	}
 	JournalEntry[] journal;
 
-	import nwn.dungeons: DungeonStatus;
+	import lcda.dungeons: DungeonStatus;
 	DungeonStatus[] dungeons;
 
 
@@ -236,13 +232,13 @@ class LightCharacter{
 	this(in string bicFile){
 		import std.path : baseName;
 		import resourcemanager;
-		import nwn.gff;
+		import nwn.fastgff;
 		import nwn.tlk;
 		import nwn.twoda;
-		import nwn.lcdacompat;
+		import lcda.compat;
 
 		bicFileName = baseName(bicFile, ".bic");
-		auto gff = new Gff(bicFile);
+		auto gff = new FastGff(bicFile);
 
 		immutable strref = ResourceManager.get!StrRefResolver("resolver");
 		immutable class2da = ResourceManager.fetchFile!TwoDA("classes.2da");
@@ -250,20 +246,20 @@ class LightCharacter{
 		immutable abilities2da = ResourceManager.fetchFile!TwoDA("iprp_abilities.2da");
 
 		//Name
-		name = gff["FirstName"].to!string~" "~gff["LastName"].to!string;
+		name = gff["FirstName"].get!GffLocString.resolve(strref)~" "~gff["LastName"].get!GffLocString.resolve(strref);
 
 		//Level / classes
 		lvl = 0;
-		foreach(ref classStruct ; gff["ClassList"].as!(GffType.List)){
-			immutable classID = classStruct["Class"].as!(GffType.Int);
-			immutable classLvl = classStruct["ClassLevel"].as!(GffType.Short);
+		foreach(i, GffStruct classStruct ; gff["ClassList"].get!GffList){
+			immutable classID = classStruct["Class"].get!GffInt;
+			immutable classLvl = classStruct["ClassLevel"].get!GffShort;
 
 			lvl += classLvl;
 			classes ~= Character.Class(strref[class2da.get!StrRef("Name", classID)], classLvl);
 		}
 
 		//Race
-		auto raceId = gff["Subrace"].as!(GffType.Byte);
+		auto raceId = gff["Subrace"].get!GffByte;
 		race = strref[race2da.get!StrRef("Name", raceId)];
 	}
 

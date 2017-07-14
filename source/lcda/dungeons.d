@@ -1,10 +1,10 @@
-module nwn.dungeons;
+module lcda.dungeons;
 
 import std.traits: EnumMembers;
 import std.path: buildNormalizedPath;
 
 import mysql : MySQLClient;
-import nwn.gff: GffNode;
+import nwn.fastgff: GffList;
 
 
 struct Dungeon{
@@ -23,10 +23,13 @@ Dungeon[] dungeonList;
 
 
 void initDungeonInfo(){
-	import nwn.lcdacompat;
-	import nwn.gff;
 	import resourcemanager;
 	import config;
+	import nwn.fastgff;
+	import nwn.tlk;
+	import lcda.compat;
+
+	immutable strref = ResourceManager.get!StrRefResolver("resolver");
 
 	auto cfg = ResourceManager.get!Config("cfg");
 	immutable modulePath = cfg["paths"]["module"].to!string;
@@ -39,24 +42,28 @@ void initDungeonInfo(){
 		dungeon.chestVar = d.chestVar;
 		dungeon.areaResref = d.areaResref;
 
-		auto areaARE = new Gff(buildNormalizedPath(modulePath, dungeon.areaResref~".are"));
-		dungeon.areaName = areaARE["Name"].to!string;
+		auto areaARE = new FastGff(buildNormalizedPath(modulePath, dungeon.areaResref~".are"));
+		dungeon.areaName = areaARE["Name"].get!GffLocString.resolve(strref);
 
-		auto areaGIT = new Gff(buildNormalizedPath(modulePath, dungeon.areaResref~".git"));
-		if(auto varTable = "VarTable" in areaGIT){
-			foreach(const ref varNode ; varTable.as!(GffType.List)){
-				switch(varNode["Name"].to!string){
+		auto areaGIT = new FastGff(buildNormalizedPath(modulePath, dungeon.areaResref~".git"));
+		auto varTable = "VarTable" in areaGIT.root;
+		if(!varTable.isNull){
+			foreach(i, GffStruct varNode ; varTable.get.get!GffList){
+				switch(varNode["Name"].get!GffString){
 					case "difficulty_name":
-						dungeon.diffName = varNode["Value"].to!string;
+						dungeon.diffName = varNode["Value"].get!GffString;
 						break;
 					case "difficulty_max":
-						dungeon.diffMax = varNode["Value"].to!int;
+						dungeon.diffMax = varNode["Value"].get!GffInt;
 						break;
 					default:
 						break;
 				}
 			}
 		}
+
+		areaARE = null;
+		areaGIT = null;
 
 		dungeonList ~= dungeon;
 	}
@@ -73,13 +80,13 @@ struct DungeonStatus{
 	int unlockedDiff = 0;
 }
 
-DungeonStatus[] getDungeonStatus(in string accountName, in string charName, in GffNode[] journalVarTable, ref MySQLClient.LockedConnection mysqlConnection){
+DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref GffList journalVarTable, ref MySQLClient.LockedConnection mysqlConnection){
 	import std.typecons: Nullable;
 	import resourcemanager;
 	import config;
-	import nwn.lcdacompat;
-	import nwn.gff;
+	import nwn.fastgff;
 	import nwn.biowaredb;
+	import lcda.compat;
 
 	auto cfg = ResourceManager.get!Config("cfg");
 	immutable pcid = accountName ~ charName;
@@ -105,9 +112,9 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, in G
 		else{
 			//Journal var
 			immutable varName = prefix ~ var;
-			foreach(const ref v ; journalVarTable){
-				if(v["Name"].to!string == varName){
-					return Nullable!(const(NWInt))(v["Value"].to!NWInt);
+			foreach(i, GffStruct v ; journalVarTable){
+				if(v["Name"].get!GffString == varName){
+					return Nullable!(const(NWInt))(v["Value"].get!GffInt);
 				}
 			}
 			return Nullable!(const(NWInt))();

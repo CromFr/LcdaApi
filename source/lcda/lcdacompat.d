@@ -1,4 +1,4 @@
-module nwn.lcdacompat;
+module lcda.compat;
 
 string journalVarToTag(in string journalVar){
 	switch(journalVar){

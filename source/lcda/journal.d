@@ -1,4 +1,4 @@
-module nwn.journal;
+module lcda.journal;
 import nwn.gff;
 
 class Journal{
