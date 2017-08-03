@@ -1,8 +1,8 @@
 
 #DUB & Dlang related
 .dub/
-lcdaaccountmanager
-lcdaaccountmanager.exe
+lcdaapi
+lcdaapi.exe
 *.dll
 
 #Unittests, coverage & profiling
@@ -11,13 +11,8 @@ __test__library__
 *.def
 *.log
 
-#Angular / Node
-node_modules/
-public/
-npm-debug.log.*
-
 #Project
-LcdaAccountManager.sublime-workspace
+*.sublime-workspace
 
 #Misc
 config.json
