@@ -1,8 +1,9 @@
 module lcda.dungeons;
 
 import std.traits: EnumMembers;
-import std.path: buildNormalizedPath;
+import std.path: buildPath;
 
+import utils: buildPathCI;
 import mysql : MySQLClient;
 import nwn.fastgff: GffList;
 
@@ -42,10 +43,10 @@ void initDungeonInfo(){
 		dungeon.chestVar = d.chestVar;
 		dungeon.areaResref = d.areaResref;
 
-		auto areaARE = new FastGff(buildNormalizedPath(modulePath, dungeon.areaResref~".are"));
+		auto areaARE = new FastGff(buildPathCI(modulePath, dungeon.areaResref~".are"));
 		dungeon.areaName = areaARE["Name"].get!GffLocString.resolve(strref);
 
-		auto areaGIT = new FastGff(buildNormalizedPath(modulePath, dungeon.areaResref~".git"));
+		auto areaGIT = new FastGff(buildPathCI(modulePath, dungeon.areaResref~".git"));
 		auto varTable = "VarTable" in areaGIT.root;
 		if(!varTable.isNull){
 			foreach(i, GffStruct varNode ; varTable.get.get!GffList){
@@ -103,7 +104,7 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 			BiowareDB db;
 			try db = ResourceManager.getMut!BiowareDB(dbName);
 			catch(ResourceException e){
-				db = new BiowareDB(buildNormalizedPath(cfg["paths"]["database"].to!string, dbName));
+				db = new BiowareDB(buildPath(cfg["paths"]["database"].to!string, dbName));
 				ResourceManager.store(dbName, db);
 			}
 
