@@ -23,6 +23,15 @@ class Api{
 		accountApi = new AccountApi(this);
 	}
 
+	@path("/")
+	auto getInfo(){
+		return [
+			"name": "lcdaapi",
+			"buildDate": __TIMESTAMP__,
+			"upstream": "https://github.com/CromFr/LcdaAccountManager",
+		].serializeToJson;
+	}
+
 	@path("/:account/characters/")
 	auto forwardCharApi(){
 		return charApi;
