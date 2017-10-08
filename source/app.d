@@ -15,12 +15,14 @@ int main(string[] args){
 	import std.array : array;
 
 	string cfgFile = "config.json";
+	ushort port = 0;
 	auto res = getopt(args,
-		"config", "Configuration file to use", &cfgFile
+		"config", "Configuration file to use", &cfgFile,
+		"p|port", "Override port setting in config", &port,
 		);
 
 	if(res.helpWanted){
-	    defaultGetoptPrinter("Some information about the program.",
+	    defaultGetoptPrinter("Usage: " ~ args[0] ~ " [args]",
 	        res.options);
 	    return 0;
 	}
@@ -80,7 +82,7 @@ int main(string[] args){
 	auto settings = new HTTPServerSettings;
 	settings.bindAddresses = cfg["server"]["addresses"][].map!(j => j.to!string).array;
 	settings.hostName = cfg["server"]["hostname"].to!string;
-	settings.port = cfg["server"]["port"].to!ushort;
+	settings.port = port != 0 ? port : cfg["server"]["port"].to!ushort;
 	settings.useCompressionIfPossible = cfg["server"]["compression"].to!bool;
 	switch(cfg["server"]["session_store"].to!string){
 		case "redis":
