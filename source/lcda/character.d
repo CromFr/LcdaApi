@@ -5,7 +5,7 @@ import std.exception: enforce;
 
 import mysql : MySQLClient;
 
-class Character{
+struct Character{
 	import lcda.dungeons: DungeonStatus;
 
 	this(in string account, in string bicFile, ref MySQLClient.LockedConnection mysqlConnection){
@@ -228,7 +228,7 @@ class Character{
 }
 
 
-class LightCharacter{
+struct LightCharacter{
 	this(in string bicFile){
 		import std.path : baseName;
 		import resourcemanager;
@@ -246,7 +246,8 @@ class LightCharacter{
 		immutable abilities2da = ResourceManager.fetchFile!TwoDA("iprp_abilities.2da");
 
 		//Name
-		name = gff["FirstName"].get!GffLocString.resolve(strref)~" "~gff["LastName"].get!GffLocString.resolve(strref);
+		immutable lastName = gff["LastName"].get!GffLocString.resolve(strref);
+		name = gff["FirstName"].get!GffLocString.resolve(strref)~(lastName !is null ? (" "~lastName) : null);
 
 		//Level / classes
 		lvl = 0;

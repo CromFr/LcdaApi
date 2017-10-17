@@ -1,7 +1,7 @@
 import vibe.d;
 import mysql;
 import std.stdio;
-import resourcemanager;
+import resourcemanager: ResourceManager;
 import nwn.tlk;
 import lcda.dungeons;
 import api.api;
@@ -116,7 +116,9 @@ int main(string[] args){
 	immutable indexPath = buildNormalizedPath(publicPath, "index.html");
 
 	auto router = new URLRouter;
-	router.registerWebInterface(new Api);
+	auto api = new Api;
+	ResourceManager.store!Api("api", api);
+	router.registerRestInterface(api);
 	listenHTTP(settings, router);
 	runEventLoop();
 
