@@ -28,12 +28,15 @@ class Api : IApi{
 	}
 
 	override{
-		ApiInfo getApiInfo(){
+		ApiInfo apiInfo(){
+			immutable apiUrl = cfg["server"]["api_url"].to!string;
 			return ApiInfo(
 				"LcdaApi",
+				apiUrl,
 				__TIMESTAMP__,
 				"https://github.com/CromFr/LcdaAccountManager",
 				"https://github.com/CromFr/LcdaAccountManager/blob/master/source/api/apidef.d",
+				apiUrl ~ (apiUrl[$-1] == '/'? null : "/") ~ "client.js",
 				);
 		}
 
@@ -47,13 +50,13 @@ class Api : IApi{
 			return accountApi;
 		}
 
-		UserInfo getUser(scope UserInfo user) @safe{
+		UserInfo user(scope UserInfo user) @safe{
 			return user;
 		}
 
 
 		UserInfo authenticate(scope HTTPServerRequest req, scope HTTPServerResponse res) @trusted{
-			auto ret = UserInfo(null, false);
+			UserInfo ret;
 
 			import vibe.http.auth.basic_auth: checkBasicAuth;
 			if(checkBasicAuth(req, (account, password){
@@ -84,6 +87,7 @@ class Api : IApi{
 						);
 
 					mysqlConnection.execute(query, (MySQLRow row){
+						ret.tokenName = row.token_name.get!string;
 						ret.account = row.account.get!string;
 					});
 				}

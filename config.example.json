@@ -90,6 +90,10 @@
 
 	//HTTP server options
 	"server": {
+		//API endpoint url (used for the generated JS client file)
+		"api_url": "http://127.0.0.1:8080",
+
+		//Interface binded by the HTTP server process
 		"addresses": ["::", "0.0.0.0"],
 		"hostname": "",
 		"port": 8080,

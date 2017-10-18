@@ -26,7 +26,7 @@ class Vault(bool deletedChar): IVault!deletedChar{
 		}
 
 
-		LightCharacter[] getCharList(string _account) @trusted{
+		LightCharacter[] list(string _account) @trusted{
 			import std.file: dirEntries, SpanMode, getTimes;
 			import std.algorithm: sort, map;
 			import std.array: array;
@@ -68,12 +68,12 @@ class Vault(bool deletedChar): IVault!deletedChar{
 			return cache.data;
 		}
 
-		Character charInfo(string _account, string _char) @trusted{
+		Character character(string _account, string _char) @trusted{
 			return getChar(_account, _char, deletedChar);
 		}
 
 
-		void download(string _account, string _char, HTTPServerRequest req, HTTPServerResponse res){
+		void downloadChar(string _account, string _char, HTTPServerRequest req, HTTPServerResponse res){
 			import std.file: exists, isFile;
 			immutable charFile = getCharFile(_account, _char, deletedChar);
 			serveStaticFile(charFile)(req, res);

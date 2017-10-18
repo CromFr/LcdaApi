@@ -28,10 +28,6 @@
 			"file_regex": "^(?:.*?@)?(?!\\?\\?:\\?)(.*?)(?:-mixin-\\d+)?[:\\(](\\d+)(?:,(\\d+))?\\)?:?\\s(.*)$",
 			"variants": [
 				{
-					"name": "Watch & build web files",
-					"shell_cmd": "npm start"
-				},
-				{
 					"name": "Run unittests & coverage",
 					"shell_cmd": "dub test -q --build=unittest-coverage"
 				}

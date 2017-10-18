@@ -1,4 +1,6 @@
+/// Public REST API Documentation
 module api.apidef;
+
 import vibe.d;
 import vibe.web.auth;
 
@@ -10,9 +12,17 @@ private auto getRes(HTTPServerRequest req, HTTPServerResponse res) @safe {
 	return res;
 }
 
+/// User information structure
 struct UserInfo{
+	import std.typecons: Nullable;
+
+	/// User account (Bioware account)
 	string account;
+	/// true if the user has admin privileges
 	bool isAdmin = false;
+	/// Used API token name (null if password authenticated)
+	Nullable!string tokenName;
+
 	bool isAccountAuthorized(string _account) @safe{
 		return account == _account || isAdmin;
 	}
@@ -21,6 +31,9 @@ struct UserInfo{
 	}
 	bool isBackupVaultCharPublic(string _account, string _char) @safe{
 		return isCharPublic!true(_account, _char);
+	}
+	bool isPasswordAuthenticated() @safe{
+		return tokenName is null;
 	}
 
 private:
@@ -36,8 +49,6 @@ private:
 	}
 }
 
-string getAccount(HTTPServerRequest req, HTTPServerResponse res){return "yolo";}
-
 /// REST Api root
 @requiresAuth
 interface IApi{
@@ -46,42 +57,59 @@ interface IApi{
 	static struct ApiInfo{
 		/// Name of the API endpoint
 		string name;
+		/// URL where the api is originally served (url used in the clientFile)
+		string apiUrl;
 		/// Build date in "www mmm dd hh:mm:ss yyyy" format
 		string buildDate;
-
-		string upstream;
-		string reference;
+		/// Git repository URL for the source code
+		string source;
+		/// API documentation
+		string documentation;
+		/// Client JS file URL to connect to the API
+		string clientFile;
 	}
 
 	/// Api "welcome page" containing basic info
 	@path("/")
+	@method(HTTPMethod.GET)
 	@noAuth
-	ApiInfo getApiInfo() @safe;
+	ApiInfo apiInfo() @safe;
 
+	/// Forward to vault API. All calls to the forwarded API will use @path as prefix.
 	@path("/vault/")
 	@noAuth
 	@property IVault!false vault() @safe;
 
+	/// Forward to backup vault API. All calls to the forwarded API will use @path as prefix.
 	@path("/backupvault/")
 	@noAuth
 	@property IVault!true backupVault() @safe;
 
+	/// Forward to account API. All calls to the forwarded API will use @path as prefix.
 	@path("/account/")
 	@noAuth
 	@property IAccount account() @safe;
 
-
+	/// Get the current user information.
+	///
+	/// Users can be authenticated using the following methods:
+	/// $(LI API token stored in request header `PRIVATE-TOKEN`)
+	/// $(LI API token stored as URL parameter `private-token`)
+	/// $(LI HTTPS basic auth with account name and password)
+	/// $(LI Session cookie obtained via POST `/auth/login?account=...&password=...`)
 	@path("/user")
+	@method(HTTPMethod.GET)
 	@anyAuth
-	UserInfo getUser(scope UserInfo user) @safe;
+	UserInfo user(scope UserInfo user) @safe;
 
 
 	@noRoute
 	UserInfo authenticate(scope HTTPServerRequest req, scope HTTPServerResponse res) @safe;
 }
 
+/// REST Api for managing the player servervault characters.
+/// Accessed with path prefix /vault/ or /backupvault/
 @requiresAuth
-@path("/:account/")
 interface IVault(bool deletedChar){
 	import lcda.character;
 
@@ -90,63 +118,77 @@ interface IVault(bool deletedChar){
 	else
 		private enum AuthIsCharPublic = Role.BackupVaultCharPublic;
 
-	@path("/")
+	/// Lists the characters owned by the player.
+	///
+	/// Character information is limited and not guaranteed to be up to date.
+	@path("/:account/")
 	@method(HTTPMethod.GET)
 	@auth(Role.AccountAuthorized)
-	LightCharacter[] getCharList(string _account) @safe;
+	LightCharacter[] list(string _account) @safe;
 
-	@path("/:char")
+	/// Get all information about a single character
+	@path("/:account/:char")
 	@method(HTTPMethod.GET)
 	@auth(Role.AccountAuthorized | AuthIsCharPublic)
-	Character charInfo(string _account, string _char) @safe;
+	Character character(string _account, string _char) @safe;
 
-
-	@path("/:char/download")
+	/// Download the character BIC file
+	@path("/:account/:char/download")
 	@method(HTTPMethod.GET)
 	@auth(Role.AccountAuthorized | AuthIsCharPublic)
 	@before!getReq("req") @before!getRes("res")
-	void download(string _account, string _char, HTTPServerRequest req, HTTPServerResponse res) @safe;
+	void downloadChar(string _account, string _char, HTTPServerRequest req, HTTPServerResponse res) @safe;
 
 
+	/// Information to keep track of a moved character
 	static struct MovedCharInfo{
+		this(string account, string bicFileName, bool isDisabled){
+			this.account = account;
+			this.bicFileName = bicFileName;
+			this.isDisabled = isDisabled;
+			path = (isDisabled? "/backupvault/" : "/vault/") ~ account ~ "/"  ~ bicFileName;
+		}
+		@disable this();
+
+		/// Owner account
 		string account;
 		/// New character file name
 		string bicFileName;
 		/// True if the character has been moved to the backup vault
 		bool isDisabled;
-
-		@property string path(){
-			return (isDisabled? "/backupvault/" : "/vault/") ~ account ~ "/"  ~ bicFileName;
-		}
+		/// New API path to the character
+		string path;
 	}
 
 	static if(deletedChar == false){
 		///Moves the character to the backupvault
 		/// The new file name will be oldName~"-"~index~".bic" with index starting from 0
-		///Returns the new bic file name
-		@path("/:char/delete")
+		@path("/:account/:char/delete")
 		@method(HTTPMethod.POST)
 		@auth(Role.AccountAuthorized)
 		MovedCharInfo deleteChar(string _account, string _char) @safe;
 	}
 	else{
-		@path("/:char/restore")
+		/// Moves the character to the active Vault, where the character can be selected in nwn2
+		@path("/:account/:char/restore")
 		@method(HTTPMethod.POST)
 		@auth(Role.AccountAuthorized)
 		MovedCharInfo restoreChar(string _account, string _char) @safe;
 	}
 
-
+	/// Character metadata (ex: is the character public)
 	static struct Metadata{
 	@optional:
 		@name("public") bool isPublic = false;
 	}
 
-	@path("/:char/meta"){
+	@path("/:account/:char/meta"){
+		/// Get character metadata
 		@method(HTTPMethod.GET)
 		@auth(Role.AccountAuthorized | AuthIsCharPublic)
 		Metadata meta(string _account, string _char) const @safe;
 
+		/// Set character metadata
 		@method(HTTPMethod.POST)
 		@auth(Role.AccountAuthorized)
 		void meta(string _account, string _char, Metadata metadata) @safe;
@@ -156,31 +198,43 @@ interface IVault(bool deletedChar){
 	UserInfo authenticate(scope HTTPServerRequest req, scope HTTPServerResponse res) @safe;
 }
 
+/// REST Api for managing the player account.
+/// Accessed with path prefix /account/
+@requiresAuth
 interface IAccount{
+	/// Check if account is registered
 	@path("/:account")
 	@method(HTTPMethod.GET)
+	@anyAuth
 	bool exists(string _account) @safe;
 
 
+	/// Change the user account password
+	///
+	/// Require old account password, or the authenticated admin user current password
 	@path("/password")
 	@method(HTTPMethod.POST)
+	@auth(Role.AccountAuthorized)
 	void changePassword(string _account, string oldPassword, string newPassword, UserInfo user) @safe;
 
 
 	/// Get the list of active tokens name
 	@path("/:account/token")
 	@method(HTTPMethod.GET)
+	@auth(Role.AccountAuthorized)
 	string[] tokenList(string _account) @safe;
 
 	/// Generate new auth token
 	/// Returns: The string
 	@path("/:account/token")
 	@method(HTTPMethod.POST)
+	@auth(Role.AccountAuthorized)
 	string newToken(string _account, string tokenName) @safe;
 
 	/// Remove an existing token
 	@path("/:account/token")
 	@method(HTTPMethod.DELETE)
+	@auth(Role.AccountAuthorized & Role.PasswordAuthenticated)
 	void deleteToken(string _account, string tokenName) @safe;
 
 

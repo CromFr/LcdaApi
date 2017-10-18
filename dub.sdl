@@ -12,3 +12,5 @@ versions "VibeNoSSL"
 
 //buildOptions "verbose"
 
+x:ddoxTool "scod"
+x:ddoxFilterArgs "--min-protection=Protected"
