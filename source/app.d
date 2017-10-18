@@ -13,12 +13,16 @@ int main(string[] args){
 	import std.path : buildNormalizedPath;
 	import std.algorithm : map;
 	import std.array : array;
+	import std.traits: EnumMembers;
+	import std.conv: to;
 
 	string cfgFile = "config.json";
 	ushort port = 0;
+	LogLevel logLevel = LogLevel.info;
 	auto res = getopt(args,
 		"config", "Configuration file to use", &cfgFile,
 		"p|port", "Override port setting in config", &port,
+		"loglevel", "Log level. Any of ("~EnumMembers!LogLevel.stringof[6..$-1]~"). Default: info", &logLevel
 		);
 
 	if(res.helpWanted){
@@ -26,6 +30,8 @@ int main(string[] args){
 	        res.options);
 	    return 0;
 	}
+
+	setLogLevel(logLevel);
 
 	writeln("Using config ",cfgFile);
 	auto cfg = new Config(readText(cfgFile));
