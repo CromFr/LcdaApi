@@ -6,6 +6,7 @@ import nwn.tlk;
 import lcda.dungeons;
 import api.api;
 import config;
+import auth;
 
 int main(string[] args){
 	import std.getopt : getopt, defaultGetoptPrinter;
@@ -125,6 +126,7 @@ int main(string[] args){
 	auto api = new Api;
 	ResourceManager.store!Api("api", api);
 	router.registerRestInterface(api);
+	router.registerWebInterface(new Authenticator);
 	listenHTTP(settings, router);
 	runEventLoop();
 
