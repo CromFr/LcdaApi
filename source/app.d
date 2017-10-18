@@ -127,6 +127,8 @@ int main(string[] args){
 	ResourceManager.store!Api("api", api);
 	router.registerRestInterface(api);
 	router.registerWebInterface(new Authenticator);
+	import api.apidef: IApi;
+	router.get("/client.js", serveRestJSClient!IApi(cfg["server"]["api_url"].to!string));
 	listenHTTP(settings, router);
 	runEventLoop();
 
