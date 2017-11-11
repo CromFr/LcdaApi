@@ -75,7 +75,9 @@ class Vault(bool deletedChar): IVault!deletedChar{
 
 		void downloadChar(string _account, string _char, HTTPServerRequest req, HTTPServerResponse res){
 			import std.file: exists, isFile;
+			import std.path : baseName;
 			immutable charFile = getCharFile(_account, _char, deletedChar);
+			res.headers["Content-Disposition"] = "filename=\"" ~ charFile.baseName ~ "\"";
 			serveStaticFile(charFile)(req, res);
 		}
 
