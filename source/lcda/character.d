@@ -50,10 +50,10 @@ struct Character{
 		//Alignment
 		alignment.good_evil = gff["GoodEvil"].get!GffByte;
 		alignment.law_chaos = gff["LawfulChaotic"].get!GffByte;
-		alignment.id = 0;
-		alignment.id += alignment.good_evil>=75? 0 : alignment.good_evil>25? 1 : 2;
-		alignment.id += alignment.law_chaos>=75? 0 : alignment.law_chaos>25? 3 : 6;
-		alignment.name = strref[alignment2da.get!StrRef("Name", alignment.id)];
+		uint alignmentId = 0;
+		alignmentId += alignment.good_evil>=75? 0 : alignment.good_evil>25? 1 : 2;
+		alignmentId += alignment.law_chaos>=75? 0 : alignment.law_chaos>25? 3 : 6;
+		alignment.name = strref[alignment2da.get!StrRef("Name", alignmentId)];
 
 		//God
 		god = gff["Deity"].get!GffString;
@@ -201,7 +201,6 @@ struct Character{
 	string race;
 
 	static struct Alignment{
-		uint id;
 		string name;
 		int good_evil;
 		int law_chaos;

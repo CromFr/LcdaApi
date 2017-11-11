@@ -218,24 +218,40 @@ interface IAccount{
 	void changePassword(string _account, string oldPassword, string newPassword, UserInfo user) @safe;
 
 
+	static struct Token{
+		size_t id;
+		string name;
+		enum Type{
+			admin = "admin", restricted = "restricted"
+		}
+		Type type;
+		DateTime lastUsed;
+	}
 	/// Get the list of active tokens name
-	@path("/:account/token")
+	@path("/:account/tokens")
 	@method(HTTPMethod.GET)
 	@auth(Role.AccountAuthorized)
-	string[] tokenList(string _account) @safe;
+	Token[] tokenList(string _account) @safe;
 
 	/// Generate new auth token
-	/// Returns: The string
-	@path("/:account/token")
+	/// Returns: the generated token
+	@noRoute
+	@path("/:account/tokens")
 	@method(HTTPMethod.POST)
 	@auth(Role.AccountAuthorized)
-	string newToken(string _account, string tokenName) @safe;
+	Token newToken(string _account, string tokenName, Token.Type tokenType) @safe;
+
+	/// Get info about a specific token
+	@path("/:account/tokens/:tokenId")
+	@method(HTTPMethod.GET)
+	@auth(Role.AccountAuthorized & Role.PasswordAuthenticated)
+	Token getToken(string _account, size_t _tokenId) @safe;
 
 	/// Remove an existing token
-	@path("/:account/token")
+	@path("/:account/tokens/:tokenId")
 	@method(HTTPMethod.DELETE)
 	@auth(Role.AccountAuthorized & Role.PasswordAuthenticated)
-	void deleteToken(string _account, string tokenName) @safe;
+	void deleteToken(string _account, size_t _tokenId) @safe;
 
 
 	@noRoute

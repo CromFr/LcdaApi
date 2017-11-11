@@ -14,7 +14,6 @@ class AccountApi: IAccount{
 	}
 
 	override {
-		@auth(Role.AccountAuthorized)
 		bool exists(string _account){
 			import std.path : buildPath, exists, isDir;
 			immutable accountPath = buildPath(
@@ -25,7 +24,6 @@ class AccountApi: IAccount{
 			return accountPath.exists && accountPath.isDir;
 		}
 
-		@auth(Role.AccountAuthorized)
 		void changePassword(string _account, string oldPassword, string newPassword, UserInfo user) @trusted{
 			import sql: replacePlaceholders, SqlPlaceholder, MySQLRow;
 
@@ -59,59 +57,79 @@ class AccountApi: IAccount{
 			}
 		}
 
-		@auth(Role.AccountAuthorized)
-		string[] tokenList(in string _account) @trusted{
+		Token[] tokenList(in string _account) @trusted{
 			import sql: replacePlaceholders, SqlPlaceholder, MySQLRow;
-			immutable query = "SELECT `name` FROM `api_tokens` WHERE `account_name`='$ACCOUNT'".to!string
+			immutable query = "
+				SELECT `id`, `name`, `type`, `last_used`
+				FROM `api_tokens` WHERE `account_name`='$ACCOUNT'"
 				.replacePlaceholders(
 					SqlPlaceholder("ACCOUNT", _account)
 				);
 
-			string[] ret;
+			Token[] ret;
 			api.mysqlConnection.execute(query, (MySQLRow row){
-				ret ~= row.name.get!string;
+				ret ~= Token(
+					row.id.get!size_t,
+					row.name.get!string,
+					row.type.get!string.to!(Token.Type),
+					row.last_used.get!DateTime);
 			});
 			return ret;
 		}
 
-		@auth(Role.AccountAuthorized)
-		string newToken(in string _account, in string tokenName) @trusted{
+		Token newToken(in string _account, in string tokenName, Token.Type tokenType) @trusted{
 			import sql: replacePlaceholders, SqlPlaceholder, MySQLRow;
 			immutable insertQuery = "
 				INSERT INTO `api_tokens`
-				(`account_name`, `name`, `token`)
+				(`account_name`, `name`, `type`, `token`)
 				VALUES
-				('$ACCOUNT', '$TOKENNAME', SUBSTRING(MD5(RAND()), -32))"
+				('$ACCOUNT', '$TOKENNAME', '$TYPE', SUBSTRING(MD5(RAND()), -32))"
 				.replacePlaceholders(
 					SqlPlaceholder("ACCOUNT", _account),
 					SqlPlaceholder("TOKENNAME", tokenName),
+					SqlPlaceholder("TYPE", tokenType),
 				);
 			bool bInserted = false;
 			api.mysqlConnection.execute(insertQuery, (MySQLRow row){
 				bInserted = true;
 			});
-			enforceHTTP(bInserted, HTTPStatus.notAcceptable, "Couldn't insert token");
+			enforceHTTP(bInserted, HTTPStatus.conflict, "Couldn't insert token");
 
-			immutable getQuery = "SELECT `token` FROM `api_tokens` WHERE `account_name`='$ACCOUNT' AND `name`='$TOKENNAME'"
+			return getToken(_account, api.mysqlConnection.insertID);
+		}
+
+		Token getToken(string _account, size_t _tokenId) @trusted{
+			import sql: replacePlaceholders, SqlPlaceholder, MySQLRow;
+			immutable query = "
+				SELECT `id`, `name`, `type`, `last_used`
+				FROM `api_tokens` WHERE `account_name`='$ACCOUNT' AND `id`=$TOKENID"
 				.replacePlaceholders(
 					SqlPlaceholder("ACCOUNT", _account),
-					SqlPlaceholder("TOKENNAME", tokenName),
+					SqlPlaceholder("TOKENID", _tokenId),
 				);
 
-			string ret;
-			api.mysqlConnection.execute(getQuery, (MySQLRow row){
-				ret = row.name.get!string;
+			bool found = false;
+			Token ret;
+			api.mysqlConnection.execute(query, (MySQLRow row){
+				ret = Token(
+					row.id.get!size_t,
+					row.name.get!string,
+					row.type.get!string.to!(Token.Type),
+					row.last_used.get!DateTime);
+				found = true;
 			});
+
+			enforceHTTP(found, HTTPStatus.notFound,
+				"Could not retrieve token ID=" ~ _tokenId.to!string ~ " on account '" ~ _account ~ "'");
 			return ret;
 		}
 
-		@auth(Role.AccountAuthorized)
-		void deleteToken(in string _account, in string tokenName) @trusted{
+		void deleteToken(in string _account, size_t _tokenId) @trusted{
 			import sql: replacePlaceholders, SqlPlaceholder, MySQLRow;
-			immutable getQuery = "DELETE FROM `api_tokens` WHERE `account_name`='$ACCOUNT' AND `name`='$TOKENNAME'"
+			immutable getQuery = "DELETE FROM `api_tokens` WHERE `account_name`='$ACCOUNT' AND `id`='$TOKENID'"
 				.replacePlaceholders(
 					SqlPlaceholder("ACCOUNT", _account),
-					SqlPlaceholder("TOKENNAME", tokenName),
+					SqlPlaceholder("TOKENID", _tokenId),
 				);
 
 			bool bDeleted = false;
@@ -119,7 +137,7 @@ class AccountApi: IAccount{
 				bDeleted = true;
 			});
 
-			enforceHTTP(bDeleted, HTTPStatus.notAcceptable, "Couldn't delete token");
+			enforceHTTP(bDeleted, HTTPStatus.notFound, "Couldn't delete token");
 		}
 
 	}
