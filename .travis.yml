@@ -1,18 +1,26 @@
 language: d
 d: dmd
 
+addons:
+  apt:
+    packages:
+      - pkg-config
+      - zlib1g-dev
+      - libevent-dev
+      - libssl-dev
+
 install:
-    - git clone https://github.com/CromFr/nwn-lib-d.git ../nwn-lib-d
-    - dub add-local ../nwn-lib-d
+  - git clone https://github.com/CromFr/nwn-lib-d.git ../nwn-lib-d
+  - dub add-local ../nwn-lib-d
 
 script:
-    - dub build --compiler=${DC} --build=release
-    - dub test --compiler=${DC} --build=unittest-cov --combined
-    # see https://github.com/rejectedsoftware/vibe.d/issues/767 for --combined
+  - dub build --compiler=${DC} --build=release
+  - dub test --compiler=${DC} --build=unittest-cov --combined
+  # see https://github.com/rejectedsoftware/vibe.d/issues/767 for --combined
 
 after_success:
-    - bash <(curl -s https://codecov.io/bash)
+  - bash <(curl -s https://codecov.io/bash)
 
 notifications:
-    email:
-        - cromfr@gmail.com
+  email:
+    - cromfr@gmail.com
