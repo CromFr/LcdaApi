@@ -10,15 +10,14 @@ class Authenticator{
 
 	/// Login page
 	void getLogin(scope HTTPServerRequest req, scope HTTPServerResponse res){
-		render!("login.dt")(res);
+		render!("login.dt", req)(res);
 	}
 
 	/// Login action
 	void postLogin(string account, string password, scope HTTPServerRequest req, scope HTTPServerResponse res){
-
 		this.account = account;
 
-		auto redirectTarget = req.params.get("redirect", "/user");
+		auto redirectTarget = req.query.get("redirect", "/user");
 		redirect(redirectTarget);
 	}
 
