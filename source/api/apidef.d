@@ -212,7 +212,7 @@ interface IAccount{
 	/// Change the user account password
 	///
 	/// Require old account password, or the authenticated admin user current password
-	@path("/password")
+	@path("/:account/password")
 	@method(HTTPMethod.POST)
 	@auth(Role.AccountAuthorized)
 	void changePassword(string _account, string oldPassword, string newPassword, UserInfo user) @safe;
