@@ -179,7 +179,9 @@ interface IVault(bool deletedChar){
 	/// Character metadata (ex: is the character public)
 	static struct Metadata{
 	@optional:
-		@name("public") bool isPublic = false;
+		bool isPublic = false;
+		string subTitle = null;
+		string notes = null;
 	}
 
 	@path("/:account/:char/meta"){

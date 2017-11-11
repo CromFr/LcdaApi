@@ -180,7 +180,7 @@ class Vault(bool deletedChar): IVault!deletedChar{
 
 		void meta(string _account, string _char, Metadata metadata){
 			immutable charMetaPath = getCharFile(_account, _char, deletedChar)~".meta";
-			charMetaPath.writeFile(metadata.serializeToJsonString.to!(ubyte[]));
+			charMetaPath.writeFile(cast(immutable ubyte[])metadata.serializeToJsonString);
 		}
 
 	}
