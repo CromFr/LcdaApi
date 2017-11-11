@@ -5,12 +5,10 @@ authors "Crom (Thibaut CHARLES)"
 license "GPL-3.0"
 
 dependency "vibe-d"  version="~>0.8.2-alpha"
-dependency "mysql-lited" version="~>0.3.5"
+dependency "mysql-native" version="~>1.1.2"
 dependency "nwn-lib-d" version="*"
 
 versions "VibeNoSSL"
-
-//buildOptions "verbose"
 
 x:ddoxTool "scod"
 x:ddoxFilterArgs "--min-protection=Protected"

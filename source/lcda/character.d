@@ -3,12 +3,10 @@ module lcda.character;
 import std.conv;
 import std.exception: enforce;
 
-import mysql : MySQLClient;
-
 struct Character{
 	import lcda.dungeons: DungeonStatus;
 
-	this(in string account, in string bicFile, ref MySQLClient.LockedConnection mysqlConnection){
+	this(in string account, in string bicFile){
 		import std.path : baseName;
 		import resourcemanager;
 		import nwn.fastgff;
@@ -173,7 +171,7 @@ struct Character{
 
 
 		//dungeons status
-		dungeons = getDungeonStatus(account, name, journalVarTable, mysqlConnection);
+		dungeons = getDungeonStatus(account, name, journalVarTable);
 	}
 
 	string name;

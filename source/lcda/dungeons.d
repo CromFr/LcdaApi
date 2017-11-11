@@ -4,8 +4,8 @@ import std.traits: EnumMembers;
 import std.path: buildPath;
 
 import utils: buildPathCI;
-import mysql : MySQLClient;
 import nwn.fastgff: GffList;
+import resourcemanager;
 
 
 struct Dungeon{
@@ -81,7 +81,7 @@ struct DungeonStatus{
 	int unlockedDiff = 0;
 }
 
-DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref GffList journalVarTable, ref MySQLClient.LockedConnection mysqlConnection){
+DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref GffList journalVarTable){
 	import std.typecons: Nullable;
 	import resourcemanager;
 	import config;
@@ -141,18 +141,25 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 
 		}
 
+
 		//Difficulty unlocked
-		import sql;
-		immutable query =
-			"SELECT difficulty FROM score_dungeons WHERE account_name='$ACCOUNT' AND character_name='$CHARACTER' AND dungeon='$DUNGEON'"
-			.replacePlaceholders(
-				SqlPlaceholder("ACCOUNT", accountName),
-				SqlPlaceholder("CHARACTER", charName),
-				SqlPlaceholder("DUNGEON", dungeon.diffName),
+		import sql: preparedStatement, Connection;
+		static Connection conn;
+		if(conn is null)
+			conn = ResourceManager.getMut!Connection("sql");
+
+		auto prepared = conn.preparedStatement("
+			SELECT difficulty
+			FROM score_dungeons
+			WHERE account_name=$ACCOUNT AND character_name=$CHARACTER AND dungeon=$DUNGEON",
+			"ACCOUNT", accountName,
+			"CHARACTER", charName,
+			"DUNGEON", dungeon.diffName,
 			);
-		mysqlConnection.execute(query, (MySQLRow row){
-			status.unlockedDiff = row.difficulty.get!int;
-		});
+
+		auto res = prepared.query();
+		if(!res.empty)
+			status.unlockedDiff = res.front[res.colNameIndicies["difficulty"]].get!int;
 
 		ret ~= status;
 	}

@@ -28,8 +28,8 @@
 			"file_regex": "^(?:.*?@)?(?!\\?\\?:\\?)(.*?)(?:-mixin-\\d+)?[:\\(](\\d+)(?:,(\\d+))?\\)?:?\\s(.*)$",
 			"variants": [
 				{
-					"name": "Run unittests & coverage",
-					"shell_cmd": "dub test -q --build=unittest-coverage"
+					"name": "Run unittests",
+					"shell_cmd": "dub test"
 				}
 			]
 		}

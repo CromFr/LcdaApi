@@ -3,7 +3,7 @@ module api.api;
 import vibe.d;
 import vibe.web.auth;
 debug import std.stdio : writeln;
-import mysql : MySQLClient;
+import mysql : Connection;
 
 import lcda.character;
 import config;
@@ -20,7 +20,7 @@ class Api : IApi{
 	this(){
 		import resourcemanager : ResourceManager;
 		cfg = ResourceManager.get!Config("cfg");
-		mysqlConnection = ResourceManager.getMut!MySQLClient("sql").lockConnection();
+		mysqlConnection = ResourceManager.getMut!Connection("sql");
 
 		vaultApi = new Vault!false(this);
 		backupVaultApi = new Vault!true(this);
@@ -80,61 +80,58 @@ class Api : IApi{
 					token = "private-token" in req.query;
 
 				if(token !is null){
-					import sql;
-					immutable query = cfg["sql_queries"]["check_token"].to!string
-						.replacePlaceholders(
-							SqlPlaceholder("TOKEN", *token)
+					import sql: preparedStatement;
+					auto prepared = mysqlConnection.preparedStatement(cfg["sql_queries"]["check_token"].get!string,
+						"TOKEN", *token,
 						);
+					auto result = prepared.query();
 
-					mysqlConnection.execute(query, (MySQLRow row){
-						ret.tokenName = row.token_name.get!string;
-						ret.account = row.account.get!string;
-					});
+					enforceHTTP(!result.empty, HTTPStatus.notFound,
+						"No matching token found");
+					ret.tokenName = result.front[result.colNameIndicies["token_name"]].get!string;
+					ret.account = result.front[result.colNameIndicies["account"]].get!string;
 				}
 			}
 
 			// GetUser additional info (admin state)
 			if(ret.account !is null){
-				import sql;
-				immutable userInfoQuery = "SELECT * FROM `account` WHERE `name`='$ACCOUNT'"
-					.replacePlaceholders(
-						SqlPlaceholder("ACCOUNT", ret.account)
+				import sql: preparedStatement;
+				auto prepared = mysqlConnection.preparedStatement("
+					SELECT isAdmin FROM `account` WHERE `name`=$ACCOUNT",
+					"ACCOUNT", ret.account,
 					);
-
-				mysqlConnection.execute(userInfoQuery, (MySQLRow row){
-					ret.isAdmin = row.admin.get!int == 1;
-				});
+				auto result = prepared.query();
+				ret.isAdmin = result.front[result.colNameIndicies["isAdmin"]].get!int > 0;
 			}
 
-			if(ret.account !is null) logInfo("authenticated user: %s", ret);
+			debug if(ret.account !is null){
+				logInfo("authenticated user: %s%s",
+					ret.account, ret.isAdmin? " (admin)" : "");
+			}
 			return ret;
+
 		}
 	}
 
 package:
 	immutable Config cfg;
-	MySQLClient.LockedConnection mysqlConnection;
+	Connection mysqlConnection;
+
+	bool passwordAuth(string account, string password) @trusted{
+		import sql: preparedStatement;
+		auto prepared = mysqlConnection.preparedStatement(cfg["sql_queries"]["login"].get!string,
+			"ACCOUNT", account,
+			"PASSWORD", password,
+			);
+
+		auto res = prepared.query();
+
+		return !res.empty && res.front[res.colNameIndicies["success"]].get!int == 1;
+	}
 
 private:
 	Vault!false vaultApi;
 	Vault!true backupVaultApi;
 	AccountApi accountApi;
 
-	bool passwordAuth(string account, string password) @trusted{
-		import sql: replacePlaceholders, SqlPlaceholder, MySQLRow;
-
-		//Login check
-		immutable loginQuery = cfg["sql_queries"]["login"].to!string
-			.replacePlaceholders(
-				SqlPlaceholder("ACCOUNT", account),
-				SqlPlaceholder("PASSWORD", password)
-			);
-
-		bool credsOK = false;
-		mysqlConnection.execute(loginQuery, (MySQLRow row){
-			credsOK = row.success.get!int == 1;
-		});
-
-		return credsOK;
-	}
 }

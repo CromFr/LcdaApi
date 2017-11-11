@@ -50,7 +50,7 @@
 		// Placeholders:
 		//  - $ACCOUNT: player account name
 		//  - $PASSWORD: player unhashed password
-		"login": "SELECT password='$PASSWORD' as success, is_admin as admin FROM accounts WHERE name='$ACCOUNT'",
+		"login": "SELECT password=$PASSWORD as success, is_admin as admin FROM accounts WHERE name=$ACCOUNT",
 
 		//Query to check auth token and retrieve associated account
 		//
@@ -64,7 +64,7 @@
 			SELECT `api_tokens`.`account` as `account`, `account`.`is_admin` as `admin`
 			FROM `api_tokens`
 			INNER JOIN `account` ON `account`.`name`=`api_tokens`.`account`
-			WHERE `token`='$TOKEN'",
+			WHERE `token`=$TOKEN",
 
 		//Query executed when the player deletes a character
 		//Keep empty for no sql execution
@@ -84,7 +84,7 @@
 		//  - $ACCOUNT: player account name
 		//  - $NEW_PASSWORD: player new unhashed password
 		// Multiple queries can be specified
-		"set_password": ["UPDATE accounts SET password='$NEW_PASSWORD' WHERE name='$ACCOUNT'"],
+		"set_password": ["UPDATE accounts SET password=$NEW_PASSWORD WHERE name=$ACCOUNT"],
 	},
 
 

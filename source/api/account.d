@@ -25,7 +25,7 @@ class AccountApi: IAccount{
 		}
 
 		void changePassword(string _account, string oldPassword, string newPassword, UserInfo user) @trusted{
-			import sql: replacePlaceholders, SqlPlaceholder, MySQLRow;
+			import sql: preparedStatement;
 
 			string accountToCheck;
 			if(user.isAdmin)
@@ -33,111 +33,90 @@ class AccountApi: IAccount{
 			else
 				accountToCheck = _account;
 
-			immutable loginQuery = api.cfg["sql_queries"]["login"].to!string
-				.replacePlaceholders(
-					SqlPlaceholder("ACCOUNT", accountToCheck),
-					SqlPlaceholder("PASSWORD", oldPassword)
-				);
-
-			bool credsOK = false;
-			api.mysqlConnection.execute(loginQuery, (MySQLRow row){
-				credsOK = row.success.get!int == 1;
-			});
-			enforceHTTP(credsOK, HTTPStatus.conflict, "Old password is incorrect");
-
+			enforceHTTP(api.passwordAuth(accountToCheck, oldPassword), HTTPStatus.conflict,
+				"Old password is incorrect");
 
 			auto setPasswdQuery = api.cfg["sql_queries"]["set_password"].get!(Json[]);
 			foreach(ref query ; setPasswdQuery){
-				api.mysqlConnection.execute(
-					query.to!string.replacePlaceholders(
-						SqlPlaceholder("ACCOUNT", _account),
-						SqlPlaceholder("NEW_PASSWORD", newPassword)
-					)
-				);
+
+				auto prepared = api.mysqlConnection.preparedStatement(query.get!string,
+					"ACCOUNT", _account,
+					"NEW_PASSWORD", newPassword,
+					);
+
+				enforceHTTP(prepared.exec(), HTTPStatus.notFound,
+					"Could not set password (probably account not found)");
 			}
 		}
 
 		Token[] tokenList(in string _account) @trusted{
-			import sql: replacePlaceholders, SqlPlaceholder, MySQLRow;
-			immutable query = "
+			import sql: preparedStatement;
+			auto prepared = api.mysqlConnection.preparedStatement("
 				SELECT `id`, `name`, `type`, `last_used`
-				FROM `api_tokens` WHERE `account_name`='$ACCOUNT'"
-				.replacePlaceholders(
-					SqlPlaceholder("ACCOUNT", _account)
+				FROM `api_tokens` WHERE `account_name`=$ACCOUNT",
+				"ACCOUNT", _account,
 				);
 
 			Token[] ret;
-			api.mysqlConnection.execute(query, (MySQLRow row){
+
+			auto res = prepared.query();
+			foreach(ref row ; res){
 				ret ~= Token(
-					row.id.get!size_t,
-					row.name.get!string,
-					row.type.get!string.to!(Token.Type),
-					row.last_used.get!DateTime);
-			});
+					row[res.colNameIndicies["id"]].get!size_t,
+					row[res.colNameIndicies["name"]].get!string,
+					row[res.colNameIndicies["type"]].get!string.to!(Token.Type),
+					row[res.colNameIndicies["last_used"]].get!DateTime);
+			}
 			return ret;
 		}
 
 		Token newToken(in string _account, in string tokenName, Token.Type tokenType) @trusted{
-			import sql: replacePlaceholders, SqlPlaceholder, MySQLRow;
-			immutable insertQuery = "
+			import sql: preparedStatement;
+			auto prepared = api.mysqlConnection.preparedStatement("
 				INSERT INTO `api_tokens`
 				(`account_name`, `name`, `type`, `token`)
-				VALUES
-				('$ACCOUNT', '$TOKENNAME', '$TYPE', SUBSTRING(MD5(RAND()), -32))"
-				.replacePlaceholders(
-					SqlPlaceholder("ACCOUNT", _account),
-					SqlPlaceholder("TOKENNAME", tokenName),
-					SqlPlaceholder("TYPE", tokenType),
+				VALUES ($ACCOUNT, $TOKENNAME, $TYPE, SUBSTRING(MD5(RAND()), -32))",
+				"ACCOUNT", _account,
+				"TOKENNAME", tokenName,
+				"TYPE", tokenType,
 				);
-			bool bInserted = false;
-			api.mysqlConnection.execute(insertQuery, (MySQLRow row){
-				bInserted = true;
-			});
-			enforceHTTP(bInserted, HTTPStatus.conflict, "Couldn't insert token");
+			enforceHTTP(prepared.exec(), HTTPStatus.conflict, "Couldn't insert token");
 
-			return getToken(_account, api.mysqlConnection.insertID);
+			return getToken(_account, api.mysqlConnection.lastInsertID);
 		}
 
 		Token getToken(string _account, size_t _tokenId) @trusted{
-			import sql: replacePlaceholders, SqlPlaceholder, MySQLRow;
-			immutable query = "
+
+			import sql: preparedStatement;
+			auto prepared = api.mysqlConnection.preparedStatement("
 				SELECT `id`, `name`, `type`, `last_used`
-				FROM `api_tokens` WHERE `account_name`='$ACCOUNT' AND `id`=$TOKENID"
-				.replacePlaceholders(
-					SqlPlaceholder("ACCOUNT", _account),
-					SqlPlaceholder("TOKENID", _tokenId),
+				FROM `api_tokens` WHERE `account_name`=$ACCOUNT AND `id`=$TOKENID",
+				"ACCOUNT", _account,
+				"TOKENID", _tokenId,
 				);
 
-			bool found = false;
-			Token ret;
-			api.mysqlConnection.execute(query, (MySQLRow row){
-				ret = Token(
-					row.id.get!size_t,
-					row.name.get!string,
-					row.type.get!string.to!(Token.Type),
-					row.last_used.get!DateTime);
-				found = true;
-			});
+			auto res = prepared.query();
 
-			enforceHTTP(found, HTTPStatus.notFound,
+			enforceHTTP(!res.empty, HTTPStatus.notFound,
 				"Could not retrieve token ID=" ~ _tokenId.to!string ~ " on account '" ~ _account ~ "'");
-			return ret;
+
+			return Token(
+				res.front[res.colNameIndicies["id"]].get!size_t,
+				res.front[res.colNameIndicies["name"]].get!string,
+				res.front[res.colNameIndicies["type"]].get!string.to!(Token.Type),
+				res.front[res.colNameIndicies["last_used"]].get!DateTime);
 		}
 
 		void deleteToken(in string _account, size_t _tokenId) @trusted{
-			import sql: replacePlaceholders, SqlPlaceholder, MySQLRow;
-			immutable getQuery = "DELETE FROM `api_tokens` WHERE `account_name`='$ACCOUNT' AND `id`='$TOKENID'"
-				.replacePlaceholders(
-					SqlPlaceholder("ACCOUNT", _account),
-					SqlPlaceholder("TOKENID", _tokenId),
+			import sql: preparedStatement;
+			auto prepared = api.mysqlConnection.preparedStatement("
+				DELETE FROM `api_tokens`
+				WHERE `account_name`=$ACCOUNT AND `id`=$TOKENID",
+				"ACCOUNT", _account,
+				"TOKENID", _tokenId,
 				);
-
-			bool bDeleted = false;
-			api.mysqlConnection.execute(getQuery, (MySQLRow row){
-				bDeleted = true;
-			});
-
-			enforceHTTP(bDeleted, HTTPStatus.notFound, "Couldn't delete token");
+			enforceHTTP(prepared.exec(), HTTPStatus.notFound,
+				"Could not delete token ID=" ~ _tokenId.to!string ~ " on account '" ~ _account ~ "'");
 		}
 
 	}

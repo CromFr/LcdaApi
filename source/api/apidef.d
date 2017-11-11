@@ -33,7 +33,7 @@ struct UserInfo{
 		return isCharPublic!true(_account, _char);
 	}
 	bool isPasswordAuthenticated() @safe{
-		return tokenName is null;
+		return tokenName.isNull;
 	}
 
 private:

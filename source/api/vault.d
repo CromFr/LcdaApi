@@ -1,7 +1,6 @@
 module api.vault;
 
 import vibe.d;
-import mysql : MySQLClient, MySQLRow;
 debug import std.stdio: writeln;
 
 import lcda.character;
@@ -85,7 +84,6 @@ class Vault(bool deletedChar): IVault!deletedChar{
 			MovedCharInfo deleteChar(string _account, string _char) @trusted{
 				import std.file : exists, isFile, rename, mkdirRecurse;
 				import std.path : buildPath, baseName;
-				import sql: replacePlaceholders, SqlPlaceholder;
 
 				immutable charFile = getCharFile(_account, _char, deletedChar);
 				enforceHTTP(charFile.exists && charFile.isFile, HTTPStatus.notFound, "Character '"~_char~"' not found");
@@ -104,12 +102,12 @@ class Vault(bool deletedChar): IVault!deletedChar{
 
 				auto queries = api.cfg["sql_queries"]["on_delete"].get!(Json[]);
 				foreach(ref query ; queries){
-					api.mysqlConnection.execute(
-						query.to!string.replacePlaceholders(
-							SqlPlaceholder("ACCOUNT", _account),
-							SqlPlaceholder("CHAR", _char),
-						)
-					);
+					import sql: preparedStatement;
+					auto prepared = api.mysqlConnection.preparedStatement(query.get!string,
+						"ACCOUNT", _account,
+						"CHAR", _char,
+						);
+					prepared.exec();
 				}
 
 				debug{
@@ -129,7 +127,7 @@ class Vault(bool deletedChar): IVault!deletedChar{
 				import std.file : exists, isFile, rename, mkdirRecurse;
 				import std.path : buildPath, baseName;
 				import std.regex : matchFirst, ctRegex;
-				import sql: replacePlaceholders, SqlPlaceholder;
+				//import sql: replacePlaceholders, SqlPlaceholder;
 
 				immutable charFile = getCharFile(_account, _char, deletedChar);
 				enforceHTTP(charFile.exists && charFile.isFile, HTTPStatus.notFound, "Character '"~_char~"' not found");
@@ -140,14 +138,15 @@ class Vault(bool deletedChar): IVault!deletedChar{
 				immutable target = buildPath(accountVault, newName~".bic");
 				enforceHTTP(!target.exists, HTTPStatus.conflict, "An active character has the same name.");
 
+
 				auto queries = api.cfg["sql_queries"]["on_activate"].get!(Json[]);
 				foreach(ref query ; queries){
-					api.mysqlConnection.execute(
-						query.to!string.replacePlaceholders(
-							SqlPlaceholder("ACCOUNT", _account),
-							SqlPlaceholder("CHAR", _char),
-						)
-					);
+					import sql: preparedStatement;
+					auto prepared = api.mysqlConnection.preparedStatement(query.get!string,
+						"ACCOUNT", _account,
+						"CHAR", _char,
+						);
+					prepared.exec();
 				}
 
 				debug{
@@ -195,7 +194,7 @@ private:
 
 		immutable path = getCharFile(account, bicName, deleted);
 		enforceHTTP(path.exists && path.isFile, HTTPStatus.notFound, "Character '"~bicName~"' not found");
-		return Character(account, DirEntry(path), api.mysqlConnection);
+		return Character(account, DirEntry(path));
 	}
 
 	string getCharFile(in string accountName, in string bicFile, bool deleted) const{

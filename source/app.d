@@ -1,5 +1,4 @@
 import vibe.d;
-import mysql;
 import std.stdio;
 import resourcemanager: ResourceManager;
 import nwn.tlk;
@@ -60,15 +59,16 @@ int main(string[] args){
 	size_t cnt = 0;
 	while(cnt++<5){
 		if(cfg["database"] == "mysql"){
+			import mysql.connection: Connection;
 			try{
-				auto client = new MySQLClient(
+				auto connection = new Connection(
 					cfg["mysql"]["host"].to!string,
-					cfg["mysql"]["port"].to!ushort,
 					cfg["mysql"]["user"].to!string,
 					cfg["mysql"]["password"].to!string,
 					cfg["mysql"]["database"].to!string,
+					cfg["mysql"]["port"].to!ushort,
 					);
-				ResourceManager.store("sql", client);
+				ResourceManager.store("sql", connection);
 				break;
 			}
 			catch(Exception e){
