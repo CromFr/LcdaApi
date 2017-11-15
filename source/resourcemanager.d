@@ -14,6 +14,7 @@ class ResourceException : Exception{
 	}
 }
 
+/// Garbage class, ugly as sh**, totally unsafe, barely working. Please look somewhere else
 class ResourceManager{
 __gshared static:
 
@@ -30,6 +31,11 @@ __gshared static:
 	void store(T)(in string name, auto ref immutable(T) data){
 		//writeln("Immutable: ",name," = ",T.stringof);
 		storeResource(name, cast(T)data, Flags.IMMUTABLE);
+	}
+
+
+	void replace(T)(in string name, auto ref T data) if(isMutable!T){
+		storeResource!(T, true)(name, data, Flags.NONE);
 	}
 
 	///Construct a resource and store it in the registry as mutable.
@@ -203,9 +209,11 @@ private:
 		throw new ResourceException("Resource type '"~T.stringof~"' not found in registry");
 	}
 
-	void storeResource(T)(in string name, auto ref T res, Flags flags){
-		if(typeid(T) in resources && name in resources[typeid(T)])
-			throw new ResourceException("A resource '"~name~"' of type '"~T.stringof~"' already exists in registry");
+	void storeResource(T, bool replace = false)(in string name, auto ref T res, Flags flags){
+		static if(replace == false){
+			if(typeid(T) in resources && name in resources[typeid(T)])
+				throw new ResourceException("A resource '"~name~"' of type '"~T.stringof~"' already exists in registry");
+		}
 
 		static if(is(T==class)){
 			//Store object directly

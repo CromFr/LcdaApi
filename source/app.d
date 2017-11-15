@@ -1,7 +1,7 @@
 import vibe.d;
 import std.stdio;
 
-import resourcemanager: ResourceManager;
+import resourcemanager: ResourceManager, ResourceException;
 import nwn.tlk;
 import lcda.dungeons;
 import config;
@@ -56,6 +56,27 @@ int main(string[] args){
 
 	writeln("Caching dungeon info");
 	initDungeonInfo();
+
+	writeln("Start thread to reload important Bioware databases");
+	import core.thread: Thread;
+	with(new Thread({
+		import nwn.biowaredb: BiowareDB;
+		immutable dbPath = cfg["paths"]["database"].to!string;
+		while(1){
+			foreach(dbName ; ["annexe", "quete"]){
+				import std.path: buildPath;
+
+				auto db = new BiowareDB(buildPath(dbPath, dbName));
+				ResourceManager.replace(dbName, db);
+			}
+			Thread.sleep(dur!"seconds"(60));
+		}
+	})){
+		isDaemon = true;
+		start();
+	}
+
+
 
 	import core.memory: GC;
 	GC.collect();
