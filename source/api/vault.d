@@ -59,7 +59,7 @@ class Vault(bool deletedChar): IVault!deletedChar{
 			cache.hash = hash;
 			cache.data = vaultPath
 				.dirEntries("*.bic", SpanMode.shallow)
-				.map!(a => LightCharacter(a))
+				.map!(a => LightCharacter(a, true))
 				.array
 				.sort!"a.name<b.name"
 				.array;

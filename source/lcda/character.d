@@ -2,6 +2,7 @@ module lcda.character;
 
 import std.conv;
 import std.exception: enforce;
+import std.typecons: Nullable;
 import nwn.fastgff;
 
 struct Character{
@@ -213,10 +214,29 @@ struct Character{
 
 
 struct LightCharacter{
-	this(in string bicFile){
+	import api.apidef: IVault;
+	alias Metadata = IVault!false.Metadata;
+
+	this(in string bicFile, bool parseMetadata = false){
 		auto gff = new FastGff(bicFile);
 
 		fillLightCharacterProperties(gff, bicFile, this);
+
+		if(parseMetadata){
+			import std.file : exists, readText;
+			import vibe.d: deserializeJson;
+
+			immutable charMetaPath = bicFile ~ ".meta";
+			if(charMetaPath.exists){
+				metadata = charMetaPath
+					.readText
+					.deserializeJson!Metadata;
+			}
+			else{
+				metadata = Metadata();
+			}
+
+		}
 	}
 
 	string name;
@@ -224,6 +244,8 @@ struct LightCharacter{
 	int lvl;
 	Character.Class[] classes;
 	string bicFileName;
+
+	Nullable!Metadata metadata;
 }
 
 
