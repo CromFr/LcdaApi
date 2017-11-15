@@ -5,6 +5,10 @@ lcdaapi
 lcdaapi.exe
 *.dll
 
+#Doc
+docs/
+docs.json
+
 #Unittests, coverage & profiling
 __test__library__
 *.lst
