@@ -20,8 +20,9 @@ struct UserInfo{
 	string account;
 	/// true if the user has admin privileges
 	bool isAdmin = false;
-	/// Used API token name (null if password authenticated)
-	Nullable!string tokenName;
+	/// Used API token (null if password authenticated)
+	Nullable!Token token;
+
 
 	bool isAccountAuthorized(string _account) @safe{
 		return account == _account || isAdmin;
@@ -33,7 +34,10 @@ struct UserInfo{
 		return isCharPublic!true(_account, _char);
 	}
 	bool isPasswordAuthenticated() @safe{
-		return tokenName.isNull;
+		return token.isNull;
+	}
+	bool isAdminToken() @safe{
+		return !token.isNull && token.type == Token.Type.admin;
 	}
 
 private:
@@ -47,6 +51,22 @@ private:
 			auto metadata = api.backupVault.meta(_account, _char);
 		return metadata.isPublic;
 	}
+}
+
+
+struct Token{
+	size_t id;
+	string name;
+	enum Type{
+		admin = "admin", restricted = "restricted"
+	}
+	Type type;
+	DateTime lastUsed;
+}
+struct TokenWithValue{
+	Token info;
+	alias info this;
+	string value;
 }
 
 /// REST Api root
@@ -207,7 +227,7 @@ interface IAccount{
 	/// Check if account is registered
 	@path("/:account")
 	@method(HTTPMethod.GET)
-	@anyAuth
+	@auth(Role.AccountAuthorized)
 	bool exists(string _account) @safe;
 
 
@@ -216,45 +236,37 @@ interface IAccount{
 	/// Require old account password, or the authenticated admin user current password
 	@path("/:account/password")
 	@method(HTTPMethod.POST)
-	@auth(Role.AccountAuthorized)
+	@auth(Role.AccountAuthorized & (Role.PasswordAuthenticated | Role.AdminToken))
 	void changePassword(string _account, string oldPassword, string newPassword, UserInfo user) @safe;
 
 
-	static struct Token{
-		size_t id;
-		string name;
-		enum Type{
-			admin = "admin", restricted = "restricted"
-		}
-		Type type;
-		DateTime lastUsed;
-	}
 	/// Get the list of active tokens name
 	@path("/:account/tokens")
 	@method(HTTPMethod.GET)
-	@auth(Role.AccountAuthorized)
+	@auth(Role.AccountAuthorized & (Role.PasswordAuthenticated | Role.AdminToken))
 	Token[] tokenList(string _account) @safe;
 
 	/// Generate new auth token
-	/// Returns: the generated token
+	/// Returns: the generated token random
 	@noRoute
 	@path("/:account/tokens")
 	@method(HTTPMethod.POST)
-	@auth(Role.AccountAuthorized)
-	Token newToken(string _account, string tokenName, Token.Type tokenType) @safe;
+	@auth(Role.AccountAuthorized & (Role.PasswordAuthenticated | Role.AdminToken))
+	TokenWithValue newToken(string _account, string tokenName, Token.Type tokenType) @safe;
 
 	/// Get info about a specific token
 	@path("/:account/tokens/:tokenId")
 	@method(HTTPMethod.GET)
-	@auth(Role.AccountAuthorized & Role.PasswordAuthenticated)
+	@auth(Role.AccountAuthorized & (Role.PasswordAuthenticated | Role.AdminToken))
 	Token getToken(string _account, size_t _tokenId) @safe;
 
 	/// Remove an existing token
+	///
+	/// TODO: allow to remove current token without an admin token
 	@path("/:account/tokens/:tokenId")
 	@method(HTTPMethod.DELETE)
-	@auth(Role.AccountAuthorized & Role.PasswordAuthenticated)
+	@auth(Role.AccountAuthorized & (Role.PasswordAuthenticated | Role.AdminToken))
 	void deleteToken(string _account, size_t _tokenId) @safe;
-
 
 	@noRoute
 	UserInfo authenticate(scope HTTPServerRequest req, scope HTTPServerResponse res) @safe;

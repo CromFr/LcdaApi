@@ -143,12 +143,13 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 
 
 		//Difficulty unlocked
-		import sql: preparedStatement, Connection;
-		static Connection conn;
-		if(conn is null)
-			conn = ResourceManager.getMut!Connection("sql");
+		import sql: preparedStatement, MySQLPool;
+		static MySQLPool connPool;
+		if(connPool is null)
+			connPool = ResourceManager.getMut!MySQLPool("sql");
 
-		auto prepared = conn.preparedStatement("
+		auto conn = connPool.lockConnection();
+		auto prep = conn.preparedStatement("
 			SELECT difficulty
 			FROM score_dungeons
 			WHERE account_name=$ACCOUNT AND character_name=$CHARACTER AND dungeon=$DUNGEON",
@@ -156,10 +157,11 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 			"CHARACTER", charName,
 			"DUNGEON", dungeon.diffName,
 			);
+		auto result = prep.query();
+		scope(exit) result.close();
 
-		auto res = prepared.query();
-		if(!res.empty)
-			status.unlockedDiff = res.front[res.colNameIndicies["difficulty"]].get!int;
+		if(!result.empty)
+			status.unlockedDiff = result.front[result.colNameIndicies["difficulty"]].get!int;
 
 		ret ~= status;
 	}

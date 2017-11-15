@@ -26,6 +26,7 @@ class AccountApi: IAccount{
 
 		void changePassword(string _account, string oldPassword, string newPassword, UserInfo user) @trusted{
 			import sql: preparedStatement;
+			auto conn = api.mysqlConnPool.lockConnection();
 
 			string accountToCheck;
 			if(user.isAdmin)
@@ -39,83 +40,110 @@ class AccountApi: IAccount{
 			auto setPasswdQuery = api.cfg["sql_queries"]["set_password"].get!(Json[]);
 			foreach(ref query ; setPasswdQuery){
 
-				auto prepared = api.mysqlConnection.preparedStatement(query.get!string,
+				auto affectedRows = conn.preparedStatement(query.get!string,
 					"ACCOUNT", _account,
 					"NEW_PASSWORD", newPassword,
-					);
+					).exec();
 
-				enforceHTTP(prepared.exec(), HTTPStatus.notFound,
+				enforceHTTP(affectedRows > 0, HTTPStatus.notFound,
 					"Could not set password (probably account not found)");
 			}
 		}
 
 		Token[] tokenList(in string _account) @trusted{
+			Token[] ret;
+
 			import sql: preparedStatement;
-			auto prepared = api.mysqlConnection.preparedStatement("
+			auto conn = api.mysqlConnPool.lockConnection();
+			auto prep = conn.preparedStatement("
 				SELECT `id`, `name`, `type`, `last_used`
 				FROM `api_tokens` WHERE `account_name`=$ACCOUNT",
 				"ACCOUNT", _account,
 				);
+			auto result = prep.query();
+			scope(exit) result.close();
 
-			Token[] ret;
-
-			auto res = prepared.query();
-			foreach(ref row ; res){
+			foreach(ref row ; result){
 				ret ~= Token(
-					row[res.colNameIndicies["id"]].get!size_t,
-					row[res.colNameIndicies["name"]].get!string,
-					row[res.colNameIndicies["type"]].get!string.to!(Token.Type),
-					row[res.colNameIndicies["last_used"]].get!DateTime);
+					row[result.colNameIndicies["id"]].get!size_t,
+					row[result.colNameIndicies["name"]].get!string,
+					row[result.colNameIndicies["type"]].get!string.to!(Token.Type),
+					row[result.colNameIndicies["last_used"]].get!DateTime);
 			}
 			return ret;
 		}
 
-		Token newToken(in string _account, in string tokenName, Token.Type tokenType) @trusted{
+		TokenWithValue newToken(in string _account, in string tokenName, Token.Type tokenType) @trusted{
 			import sql: preparedStatement;
-			auto prepared = api.mysqlConnection.preparedStatement("
-				INSERT INTO `api_tokens`
-				(`account_name`, `name`, `type`, `token`)
-				VALUES ($ACCOUNT, $TOKENNAME, $TYPE, SUBSTRING(MD5(RAND()), -32))",
-				"ACCOUNT", _account,
-				"TOKENNAME", tokenName,
-				"TYPE", tokenType,
-				);
-			enforceHTTP(prepared.exec(), HTTPStatus.conflict, "Couldn't insert token");
+			auto conn = api.mysqlConnPool.lockConnection();
 
-			return getToken(_account, api.mysqlConnection.lastInsertID);
+			size_t tokenId;
+			{
+				auto affectedRows = conn.preparedStatement("
+					INSERT INTO `api_tokens`
+					(`account_name`, `name`, `type`, `token`)
+					VALUES ($ACCOUNT, $TOKENNAME, $TYPE, SUBSTRING(MD5(RAND()), -32))",
+					"ACCOUNT", _account,
+					"TOKENNAME", tokenName,
+					"TYPE", cast(string)tokenType,
+					).exec();
+
+				enforceHTTP(affectedRows, HTTPStatus.conflict, "Couldn't insert token");
+				tokenId = conn.lastInsertID;
+			}
+			string tokenValue;
+			{
+				auto prep = conn.preparedStatement("
+					SELECT `token`
+					FROM `api_tokens` WHERE `account_name`=$ACCOUNT AND `id`=$TOKENID",
+					"ACCOUNT", _account,
+					"TOKENID", tokenId,
+					);
+				auto result = prep.query();
+				scope(exit) result.close();
+
+				enforceHTTP(!result.empty, HTTPStatus.notFound,
+					"Could not retrieve token ID=" ~ tokenId.to!string ~ " on account '" ~ _account ~ "'");
+
+				tokenValue = result.front[result.colNameIndicies["token"]].get!string;
+			}
+
+			return TokenWithValue(getToken(_account, tokenId), tokenValue);
 		}
 
 		Token getToken(string _account, size_t _tokenId) @trusted{
 
 			import sql: preparedStatement;
-			auto prepared = api.mysqlConnection.preparedStatement("
+			auto conn = api.mysqlConnPool.lockConnection();
+			auto prep = conn.preparedStatement("
 				SELECT `id`, `name`, `type`, `last_used`
 				FROM `api_tokens` WHERE `account_name`=$ACCOUNT AND `id`=$TOKENID",
 				"ACCOUNT", _account,
 				"TOKENID", _tokenId,
 				);
+			auto result = prep.query();
+			scope(exit) result.close();
 
-			auto res = prepared.query();
-
-			enforceHTTP(!res.empty, HTTPStatus.notFound,
+			enforceHTTP(!result.empty, HTTPStatus.notFound,
 				"Could not retrieve token ID=" ~ _tokenId.to!string ~ " on account '" ~ _account ~ "'");
 
 			return Token(
-				res.front[res.colNameIndicies["id"]].get!size_t,
-				res.front[res.colNameIndicies["name"]].get!string,
-				res.front[res.colNameIndicies["type"]].get!string.to!(Token.Type),
-				res.front[res.colNameIndicies["last_used"]].get!DateTime);
+				result.front[result.colNameIndicies["id"]].get!size_t,
+				result.front[result.colNameIndicies["name"]].get!string,
+				result.front[result.colNameIndicies["type"]].get!string.to!(Token.Type),
+				result.front[result.colNameIndicies["last_used"]].get!DateTime);
 		}
 
 		void deleteToken(in string _account, size_t _tokenId) @trusted{
 			import sql: preparedStatement;
-			auto prepared = api.mysqlConnection.preparedStatement("
+			auto conn = api.mysqlConnPool.lockConnection();
+			auto affectedRows = conn.preparedStatement("
 				DELETE FROM `api_tokens`
 				WHERE `account_name`=$ACCOUNT AND `id`=$TOKENID",
 				"ACCOUNT", _account,
 				"TOKENID", _tokenId,
-				);
-			enforceHTTP(prepared.exec(), HTTPStatus.notFound,
+				).exec();
+			enforceHTTP(affectedRows > 0, HTTPStatus.notFound,
 				"Could not delete token ID=" ~ _tokenId.to!string ~ " on account '" ~ _account ~ "'");
 		}
 

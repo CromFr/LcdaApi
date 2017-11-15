@@ -103,11 +103,11 @@ class Vault(bool deletedChar): IVault!deletedChar{
 				auto queries = api.cfg["sql_queries"]["on_delete"].get!(Json[]);
 				foreach(ref query ; queries){
 					import sql: preparedStatement;
-					auto prepared = api.mysqlConnection.preparedStatement(query.get!string,
+					auto conn = api.mysqlConnPool.lockConnection();
+					conn.preparedStatement(query.get!string,
 						"ACCOUNT", _account,
 						"CHAR", _char,
-						);
-					prepared.exec();
+						).exec();
 				}
 
 				debug{
@@ -142,11 +142,11 @@ class Vault(bool deletedChar): IVault!deletedChar{
 				auto queries = api.cfg["sql_queries"]["on_activate"].get!(Json[]);
 				foreach(ref query ; queries){
 					import sql: preparedStatement;
-					auto prepared = api.mysqlConnection.preparedStatement(query.get!string,
+					auto conn = api.mysqlConnPool.lockConnection();
+					conn.preparedStatement(query.get!string,
 						"ACCOUNT", _account,
 						"CHAR", _char,
-						);
-					prepared.exec();
+						).exec();
 				}
 
 				debug{

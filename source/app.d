@@ -61,34 +61,27 @@ int main(string[] args){
 	GC.collect();
 	GC.minimize();
 
-	size_t cnt = 0;
-	while(cnt++<5){
-		if(cfg["database"] == "mysql"){
-			import mysql.connection: Connection;
-			try{
-				auto connection = new Connection(
-					cfg["mysql"]["host"].to!string,
-					cfg["mysql"]["user"].to!string,
-					cfg["mysql"]["password"].to!string,
-					cfg["mysql"]["database"].to!string,
-					cfg["mysql"]["port"].to!ushort,
-					);
-				ResourceManager.store("sql", connection);
-				break;
-			}
-			catch(Exception e){
-				stderr.writeln("Could not connect to MySQL", e);
-			}
-		}
-		else{
-			assert(0, "Unsupported database type: '"~cfg["database"].to!string~"'");
-		}
+	if(cfg["database"] == "mysql"){
+		import mysql.pool: MySQLPool;
+		auto sqlPool = new MySQLPool(
+			cfg["mysql"]["host"].to!string,
+			cfg["mysql"]["user"].to!string,
+			cfg["mysql"]["password"].to!string,
+			cfg["mysql"]["database"].to!string,
+			cfg["mysql"]["port"].to!ushort,
+			);
+		ResourceManager.store("sql", sqlPool);
 
-		import core.thread: Thread, dur;
-		Thread.sleep(dur!"seconds"(2));
+		//test connection
+		try sqlPool.lockConnection();
+		catch(Exception e){
+			stderr.writeln("Could not connect to MySQL server: ", e.msg);
+			return 1;
+		}
 	}
-	enforce(cnt<=5, "Could not connect to SQL database !");
-
+	else{
+		assert(0, "Unsupported database type: '"~cfg["database"].to!string~"'");
+	}
 
 
 	auto settings = new HTTPServerSettings;
@@ -98,24 +91,20 @@ int main(string[] args){
 	settings.useCompressionIfPossible = cfg["server"]["compression"].to!bool;
 	switch(cfg["server"]["session_store"].to!string){
 		case "redis":
-			cnt = 0;
-			while(cnt++<5){
-				try{
-					settings.sessionStore = new RedisSessionStore(
-						cfg["server"]["redis"]["host"].to!string,
-						cfg["server"]["redis"]["database"].to!long,
-						cfg["server"]["redis"]["port"].to!ushort,
-						);
+			settings.sessionStore = new RedisSessionStore(
+				cfg["server"]["redis"]["host"].to!string,
+				cfg["server"]["redis"]["database"].to!long,
+				cfg["server"]["redis"]["port"].to!ushort,
+				);
 
-					auto sessionTest = settings.sessionStore.create();
-					settings.sessionStore.destroy(sessionTest.id);
-					break;
-				}
-				catch(Exception e){
-					stderr.writeln("Could not connect to Redis server", e);
-				}
+			try{
+				auto sessionTest = settings.sessionStore.create();
+				settings.sessionStore.destroy(sessionTest.id);
 			}
-			enforce(cnt<=5, "Could not connect to Redis database !");
+			catch(Exception e){
+				stderr.writeln("Could not connect to Redis server: ", e.msg);
+				return 1;
+			}
 			break;
 		case "memory":
 			settings.sessionStore = new MemorySessionStore;
