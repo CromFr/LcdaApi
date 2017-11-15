@@ -31,6 +31,10 @@ struct Character{
 
 		fillLightCharacterProperties(gff, bicFile, this);
 		auto raceId = gff["Subrace"].get!GffByte;
+		size_t[size_t] classLookupMap;
+		foreach(i, const ref cl ; classes){
+			classLookupMap[cl.id] = i;
+		}
 
 
 		//Alignment
@@ -53,14 +57,55 @@ struct Character{
 			);
 		}
 
+		//Feats
+		size_t[size_t] featLookupMap;
+		foreach(i, GffStruct gffFeat ; gff["FeatList"].get!GffList){
+			immutable id = gffFeat["Feat"].get!GffWord;
+			immutable name = strref[feats2da.get!StrRef("FEAT", id)];
+			immutable icon = feats2da.get!string("ICON", id);
+			immutable category = feats2da.get!string("FeatCategory", id);
+
+			featLookupMap[id] = feats.length;
+			feats ~= Feat(id, name, category, icon);
+		}
+
+		//Skills
+		size_t[size_t] skillLookupMap;
+		foreach(id, GffStruct gffFeat ; gff["SkillList"].get!GffList){
+			if(skills2da.get!int("REMOVED", id) > 0)
+				continue;
+
+			immutable name = strref[skills2da.get!StrRef("Name", id)];
+			immutable icon = skills2da.get!string("Icon", id);
+			immutable rank = gffFeat["Rank"].get!GffByte;
+
+			size_t abilityIndex;
+			switch(skills2da.get!string("KeyAbility", id)){
+				case "STR": abilityIndex = 0; break;
+				case "DEX": abilityIndex = 1; break;
+				case "CON": abilityIndex = 2; break;
+				case "INT": abilityIndex = 3; break;
+				case "WIS": abilityIndex = 4; break;
+				case "CHA": abilityIndex = 5; break;
+				default: assert(0, "Invalid KeyAbility value in skills.2da");
+			}
+
+			skillLookupMap[id] = skills.length;
+			skills ~= Skill(id, name, icon, rank, abilityIndex);
+		}
+
+
+
+
 		//Leveling
 		immutable skillsCount = skills2da.rows;
 		uint[] skillRanks;
 		skillRanks.length = skillsCount;
 		foreach(lvlIndex, GffStruct gffLvl ; gff["LvlStatList"].get!GffList){
 			Level lvl;
-			//name
-			lvl.className = strref[class2da.get!StrRef("Name", gffLvl["LvlStatClass"].get!GffByte)];
+			//class
+			lvl.classIndex = classLookupMap[gffLvl["LvlStatClass"].get!GffByte];
+
 			//ability
 			if(lvlIndex%4 == 3){
 				lvl.ability = strref[abilities2da.get!StrRef("Name", gffLvl["LvlStatAbility"].get!GffByte)];
@@ -69,11 +114,10 @@ struct Character{
 			lvl.skills.length = skillsCount;
 			foreach(i, GffStruct gffSkill ; gffLvl["SkillList"].get!GffList){
 				auto earned = gffSkill["Rank"].get!GffByte;
-				auto skillName = skills2da.get("Name", cast(StrRef)i);
-				if(skillName!="***" && skillName!=""){
+				if(auto skillIndex = i in skillLookupMap){
 					skillRanks[i] += earned;
 					lvl.skills[i] = LevelingSkill(
-						strref[skillName.to!StrRef],
+						*skillIndex,
 						skillRanks[i],
 						earned
 						);
@@ -81,7 +125,7 @@ struct Character{
 			}
 			//feats
 			foreach(i, GffStruct gffFeat ; gffLvl["FeatList"].get!GffList){
-				lvl.feats ~= strref[feats2da.get!StrRef("FEAT", gffFeat["Feat"].get!GffWord)];
+				lvl.featIndices ~= featLookupMap[gffFeat["Feat"].get!GffWord];
 			}
 			leveling ~= lvl;
 		}
@@ -166,21 +210,40 @@ struct Character{
 
 	int lvl;
 	static struct Class{
+		package size_t id;
 		string name;
 		int lvl;
+		string icon;
 	}
 	Class[] classes;
 
-	static struct LevelingSkill{
+	static struct Feat{
+		package size_t id;
 		string name;
+		string category;
+		string icon;
+	}
+	Feat[] feats;
+
+	static struct Skill{
+		package size_t id;
+		string name;
+		string icon;
+		ubyte rank;
+		size_t abilityIndex;
+	}
+	Skill[] skills;
+
+	static struct LevelingSkill{
+		size_t skillIndex;
 		uint value;
 		int valueDiff;
 	}
 	static struct Level{
-		string className;
+		size_t classIndex;
 		string ability;
 		LevelingSkill[] skills;
-		string[] feats;
+		size_t[] featIndices;//Index in feats array
 	}
 	Level[] leveling;
 
@@ -260,7 +323,6 @@ private void fillLightCharacterProperties(T)(FastGff gff, in string fileName, re
 	immutable strref = ResourceManager.get!StrRefResolver("resolver");
 	immutable class2da = ResourceManager.fetchFile!TwoDA("classes.2da");
 	immutable race2da = ResourceManager.fetchFile!TwoDA("racialsubtypes.2da");
-	immutable abilities2da = ResourceManager.fetchFile!TwoDA("iprp_abilities.2da");
 
 	with(character){
 		bicFileName = baseName(fileName, ".bic");
@@ -274,9 +336,11 @@ private void fillLightCharacterProperties(T)(FastGff gff, in string fileName, re
 		foreach(i, GffStruct classStruct ; gff["ClassList"].get!GffList){
 			immutable classID = classStruct["Class"].get!GffInt;
 			immutable classLvl = classStruct["ClassLevel"].get!GffShort;
+			immutable className = strref[class2da.get!StrRef("Name", classID)];
+			immutable classIcon = class2da.get!string("Icon", classID);
 
 			lvl += classLvl;
-			classes ~= Character.Class(strref[class2da.get!StrRef("Name", classID)], classLvl);
+			classes ~= Character.Class(classID, className, classLvl, classIcon);
 		}
 
 		//Race
