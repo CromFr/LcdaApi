@@ -34,8 +34,8 @@ class Api : IApi{
 				"LcdaApi",
 				apiUrl,
 				__TIMESTAMP__,
-				"https://github.com/CromFr/LcdaAccountManager",
-				"https://github.com/CromFr/LcdaAccountManager/blob/master/source/api/apidef.d",
+				"https://github.com/CromFr/LcdaApi",
+				"https://github.com/CromFr/LcdaApi/blob/master/source/api/apidef.d",
 				apiUrl ~ (apiUrl[$-1] == '/'? null : "/") ~ "client.js",
 				);
 		}

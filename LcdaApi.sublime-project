@@ -8,8 +8,8 @@
 				"*-.dub-packages-*.lst",
 				"*-dub_test_root-*.lst",
 
-				"LcdaAccountManager",
-				"LcdaAccountManager.exe",
+				"LcdaApi",
+				"LcdaApi.exe",
 				"__test__library__",
 			],
 			"folder_exclude_patterns": [
