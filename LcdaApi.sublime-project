@@ -8,8 +8,8 @@
 				"*-.dub-packages-*.lst",
 				"*-dub_test_root-*.lst",
 
-				"LcdaAccountManager",
-				"LcdaAccountManager.exe",
+				"LcdaApi",
+				"LcdaApi.exe",
 				"__test__library__",
 			],
 			"folder_exclude_patterns": [
@@ -28,12 +28,8 @@
 			"file_regex": "^(?:.*?@)?(?!\\?\\?:\\?)(.*?)(?:-mixin-\\d+)?[:\\(](\\d+)(?:,(\\d+))?\\)?:?\\s(.*)$",
 			"variants": [
 				{
-					"name": "Watch & build web files",
-					"shell_cmd": "npm start"
-				},
-				{
-					"name": "Run unittests & coverage",
-					"shell_cmd": "dub test -q --build=unittest-coverage"
+					"name": "Run unittests",
+					"shell_cmd": "dub test"
 				}
 			]
 		}

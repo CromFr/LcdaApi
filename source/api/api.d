@@ -1,146 +1,153 @@
 module api.api;
 
 import vibe.d;
+import vibe.web.auth;
 debug import std.stdio : writeln;
-import mysql : MySQLClient;
+import mysql : MySQLPool;
 
 import lcda.character;
 import config;
 
+import api.apidef;
 
-class Api{
-	import vibe.web.common : PathAttribute;
-	import api.character : CharApi;
+
+
+
+class Api : IApi{
+	import api.vault : Vault;
 	import api.account : AccountApi;
 
 	this(){
 		import resourcemanager : ResourceManager;
 		cfg = ResourceManager.get!Config("cfg");
-		mysqlConnection = ResourceManager.getMut!MySQLClient("sql").lockConnection();
+		mysqlConnPool = ResourceManager.getMut!MySQLPool("sql");
 
-		charApi = new CharApi!false(this);
-		deletedCharApi = new CharApi!true(this);
+		vaultApi = new Vault!false(this);
+		backupVaultApi = new Vault!true(this);
 		accountApi = new AccountApi(this);
 	}
 
-	@path("/:account/characters/")
-	auto forwardCharApi(){
-		return charApi;
-	}
-	@path("/:account/deletedchars/")
-	auto forwardDeletedCharApi(){
-		return deletedCharApi;
-	}
-
-	@path("/:account/account/")
-	auto forwardAccountApi(){
-		return accountApi;
-	}
-
-	Json postLogin(string login, string password){
-		import sql: replacePlaceholders, SqlPlaceholder, MySQLRow;
-
-		immutable query = cfg["sql_queries"]["login"].to!string
-			.replacePlaceholders(
-				SqlPlaceholder("ACCOUNT", login),
-				SqlPlaceholder("PASSWORD", password)
-			);
-
-		bool credsOK = false, isAdmin;
-		mysqlConnection.execute(query, (MySQLRow row){
-			credsOK = row.success.get!int == 1;
-			isAdmin = row.admin.get!int == 1;
-		});
-
-		enforceHTTP(credsOK, HTTPStatus.unauthorized);
-
-		authenticated = true;
-		account = login;
-		admin = isAdmin;
-
-		return getSession();
-	}
-	Json getSession(){
-		import std.traits : hasUDA;
-
-		auto ret = Json.emptyObject;
-		foreach(member ; __traits(allMembers, Api)){
-			static if(hasUDA!(mixin("Api."~member), "session")){
-				ret[member] = mixin(member~".value");
-			}
+	override{
+		ApiInfo apiInfo(){
+			immutable apiUrl = cfg["server"]["api_url"].to!string;
+			return ApiInfo(
+				"LcdaApi",
+				apiUrl,
+				__TIMESTAMP__,
+				"https://github.com/CromFr/LcdaApi",
+				"https://github.com/CromFr/LcdaApi/blob/master/source/api/apidef.d",
+				apiUrl ~ (apiUrl[$-1] == '/'? null : "/") ~ "client.js",
+				);
 		}
-		return ret;
-	}
-	void postLogout(){
-		terminateSession();
-		enforceHTTP(false, HTTPStatus.ok);
-	}
 
+		IVault!false vault(){
+			return vaultApi;
+		}
+		IVault!true backupVault(){
+			return backupVaultApi;
+		}
+		IAccount account(){
+			return accountApi;
+		}
+
+		UserInfo user(scope UserInfo user) @safe{
+			return user;
+		}
+
+
+		UserInfo authenticate(scope HTTPServerRequest req, scope HTTPServerResponse res) @trusted{
+			import sql: preparedStatement, exec;
+			auto conn = mysqlConnPool.lockConnection();
+
+			UserInfo ret;
+
+			import vibe.http.auth.basic_auth: checkBasicAuth;
+			if(checkBasicAuth(req, (account, password){
+					if(passwordAuth(account, password)){
+						ret.account = account;
+						return true;
+					}
+					return false;
+				})){
+				//Nothing to do
+			}
+			else if(req.session){
+				//Cookie auth
+				ret.account = req.session.get!string("account", null);
+			}
+			else{
+				//Token auth
+
+				auto token = "PRIVATE-TOKEN" in req.headers;
+				if(token is null)
+					token = "private-token" in req.query;
+
+				if(token !is null){
+					auto prep = conn.preparedStatement("
+						SELECT `id`, `account_name`, `name`, `type`, `last_used`
+						FROM `api_tokens`
+						WHERE `token`=$TOKEN",
+						"TOKEN", *token,
+						);
+					auto result = prep.query();
+
+					enforceHTTP(!result.empty, HTTPStatus.notFound, "No matching token found");
+
+					ret.token = Token(
+						result.front[result.colNameIndicies["id"]].get!size_t,
+						result.front[result.colNameIndicies["name"]].get!string,
+						result.front[result.colNameIndicies["type"]].get!string.to!(Token.Type),
+						result.front[result.colNameIndicies["last_used"]].get!DateTime,
+						);
+					ret.account = result.front[result.colNameIndicies["account_name"]].get!string;
+					result.close();
+
+					//Update last used date
+					conn.exec("UPDATE `api_tokens` SET `last_used`=NOW() WHERE `id`=" ~ ret.token.id.to!string);
+				}
+			}
+
+			// GetUser additional info (admin state)
+			if(ret.account !is null){
+				auto prep = conn.preparedStatement("
+					SELECT admin FROM `account` WHERE `name`=$ACCOUNT",
+					"ACCOUNT", ret.account,
+					);
+				auto result = prep.query();
+				scope(exit) result.close();
+				ret.isAdmin = result.front[result.colNameIndicies["admin"]].get!int > 0;
+			}
+
+			//debug if(ret.account !is null){
+			//	logInfo("authenticated user: %s%s",
+			//		ret.account, ret.isAdmin? " (admin)" : "");
+			//}
+			return ret;
+
+		}
+	}
 
 package:
 	immutable Config cfg;
-	MySQLClient.LockedConnection mysqlConnection;
+	MySQLPool mysqlConnPool;
 
-	struct AuthInfo{
-		bool authenticated;
-		bool admin;
-		string account;
-	}
-
-	AuthInfo authenticate(HTTPServerRequest req){
-		if(authenticated){
-			//Cookie auth
-			return AuthInfo(authenticated, admin, account);
-		}
-		//else if(req.username !is null && req.password !is null){
-		//	// Basic auth
-		//	import sql;
-		//	immutable query = cfg["sql_queries"]["login"].to!string
-		//		.replacePlaceholders(
-		//			SqlPlaceholder("ACCOUNT", req.username),
-		//			SqlPlaceholder("PASSWORD", req.password)
-		//		);
-
-		//	bool success = false, isAdmin;
-		//	mysqlConnection.execute(query, (MySQLRow row){
-		//		success = row.success.get!int == 1;
-		//		isAdmin = row.admin.get!int == 1;
-		//	});
-
-		//	return AuthInfo(success, isAdmin, req.username);
-		//}
-
-		auto token = "PRIVATE-TOKEN" in req.headers;
-		if(token is null)
-			token = "private-token" in req.query;
-
-		if(token){
-			import sql;
-			immutable query = cfg["sql_queries"]["check_token"].to!string
-				.replacePlaceholders(
-					SqlPlaceholder("TOKEN", *token)
-				);
-
-			auto res = AuthInfo(false, false, null);
-			mysqlConnection.execute(query, (MySQLRow row){
-				res.authenticated = true;
-				res.admin = row.admin.get!int == 1;
-				res.account = row.account.get!string;
-			});
-			return res;
-		}
-		return AuthInfo(false, false, null);
-	}
-
-private:
-	@("session"){
-		SessionVar!(bool, "authenticated") authenticated;
-		SessionVar!(bool, "admin") admin;
-		SessionVar!(string, "account") account;
-	}
-	CharApi!false charApi;
-	CharApi!true deletedCharApi;
+	Vault!false vaultApi;
+	Vault!true backupVaultApi;
 	AccountApi accountApi;
+
+	bool passwordAuth(string account, string password) @trusted{
+		import sql: preparedStatement;
+		auto conn = mysqlConnPool.lockConnection();
+
+		auto prep = conn.preparedStatement(cfg["sql_queries"]["login"].get!string,
+			"ACCOUNT", account,
+			"PASSWORD", password,
+			);
+		auto result = prep.query();
+		scope(exit) result.close();
+
+		return !result.empty && result.front[result.colNameIndicies["success"]] == 1;
+	}
 
 
 }

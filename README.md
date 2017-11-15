@@ -1,32 +1,28 @@
-# LCDA Accounts Interface
+# LCDA REST API
 [![Build Status](https://travis-ci.org/CromFr/LcdaAccountManager.svg?branch=master)](https://travis-ci.org/CromFr/LcdaAccountManager)
 [![codecov](https://codecov.io/gh/CromFr/LcdaAccountManager/branch/master/graph/badge.svg)](https://codecov.io/gh/CromFr/LcdaAccountManager)
 
-Web interface for managing accounts & characters of "La Colère d'Aurile", a French Neverwinter Nights 2 Server (RPG)
+REST API for managing accounts & characters of "La Colère d'Aurile", a French Neverwinter Nights 2 Server (RPG)
 
-
-# Front end features
-- Character list
-- Character details
-    + name, level, race, alignment, ...
-    + Leveling history
-    + Delete/reactivate character
-    + Download file
-- Account settings:
-    + Change password
-- Account switch for admins
 
 # Backend features
-- GFF, 2DA, TLK reading
-- Json based web API
-- Database link (MySQL)
-- Session store link (redis, memory)
-- Configuration file
+- Account API
+	* Change password
+	* Manage access tokens
 
-# May be done
-- Auction browsing
-- Multi-language localization (currently French only)
-- File modifications (tlk edit?)
+- Character API
+	* Basic info
+	* Build details (level per level)
+	* Quest list with status
+	* Dungeon and associated rewards list with status
+	* Custom notes
+	* Character access can be set to public or private
+
+- Authenticator service (HTML interface)
+	- Login using a session cookie
+	- Generate new access tokens
+
+# Planned work
 - Search items across characters on an account in:
     + Character equipment
     + Character inventory
@@ -51,12 +47,8 @@ dub build --build=release
 
 see
 ```sh
+cp config.example.json config.json
+vim config.json
 ./LcdaAccountManager --help
 ```
 
-
----
-
-Dirty hacks to remove:
-- Edit `node_modules/angular2-materialize/dist/index.js` to require `materialize-css` instead of `materialize`
-- `cp node_modules/materialize-css/js/date_picker/picker.js node_modules/materialize-css/bin` (should be done automatically with npm `postinstall`)

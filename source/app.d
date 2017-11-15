@@ -1,11 +1,12 @@
 import vibe.d;
-import mysql;
 import std.stdio;
-import resourcemanager;
+
+import resourcemanager: ResourceManager;
 import nwn.tlk;
 import lcda.dungeons;
-import api.api;
 import config;
+import api.api;
+import api.auth;
 
 int main(string[] args){
 	import std.getopt : getopt, defaultGetoptPrinter;
@@ -13,17 +14,29 @@ int main(string[] args){
 	import std.path : buildNormalizedPath;
 	import std.algorithm : map;
 	import std.array : array;
+	import std.traits: EnumMembers;
+	import std.conv: to;
+
+	import etc.linux.memoryerror;
+	static if (is(typeof(registerMemoryErrorHandler)))
+		registerMemoryErrorHandler();
 
 	string cfgFile = "config.json";
+	ushort port = 0;
+	LogLevel logLevel = LogLevel.info;
 	auto res = getopt(args,
-		"config", "Configuration file to use", &cfgFile
+		"config", "Configuration file to use", &cfgFile,
+		"p|port", "Override port setting in config", &port,
+		"loglevel", "Log level. Any of ("~EnumMembers!LogLevel.stringof[6..$-1]~"). Default: info", &logLevel
 		);
 
 	if(res.helpWanted){
-	    defaultGetoptPrinter("Some information about the program.",
+	    defaultGetoptPrinter("Usage: " ~ args[0] ~ " [args]",
 	        res.options);
 	    return 0;
 	}
+
+	setLogLevel(logLevel);
 
 	writeln("Using config ",cfgFile);
 	auto cfg = new Config(readText(cfgFile));
@@ -48,60 +61,50 @@ int main(string[] args){
 	GC.collect();
 	GC.minimize();
 
-	size_t cnt = 0;
-	while(cnt++<5){
-		if(cfg["database"] == "mysql"){
-			try{
-				auto client = new MySQLClient(
-					cfg["mysql"]["host"].to!string,
-					cfg["mysql"]["port"].to!ushort,
-					cfg["mysql"]["user"].to!string,
-					cfg["mysql"]["password"].to!string,
-					cfg["mysql"]["database"].to!string,
-					);
-				ResourceManager.store("sql", client);
-				break;
-			}
-			catch(Exception e){
-				stderr.writeln("Could not connect to MySQL", e);
-			}
-		}
-		else{
-			assert(0, "Unsupported database type: '"~cfg["database"].to!string~"'");
-		}
+	if(cfg["database"] == "mysql"){
+		import mysql.pool: MySQLPool;
+		auto sqlPool = new MySQLPool(
+			cfg["mysql"]["host"].to!string,
+			cfg["mysql"]["user"].to!string,
+			cfg["mysql"]["password"].to!string,
+			cfg["mysql"]["database"].to!string,
+			cfg["mysql"]["port"].to!ushort,
+			);
+		ResourceManager.store("sql", sqlPool);
 
-		import core.thread: Thread, dur;
-		Thread.sleep(dur!"seconds"(2));
+		//test connection
+		try sqlPool.lockConnection();
+		catch(Exception e){
+			stderr.writeln("Could not connect to MySQL server: ", e.msg);
+			return 1;
+		}
 	}
-	enforce(cnt<=5, "Could not connect to SQL database !");
-
+	else{
+		assert(0, "Unsupported database type: '"~cfg["database"].to!string~"'");
+	}
 
 
 	auto settings = new HTTPServerSettings;
 	settings.bindAddresses = cfg["server"]["addresses"][].map!(j => j.to!string).array;
 	settings.hostName = cfg["server"]["hostname"].to!string;
-	settings.port = cfg["server"]["port"].to!ushort;
+	settings.port = port != 0 ? port : cfg["server"]["port"].to!ushort;
 	settings.useCompressionIfPossible = cfg["server"]["compression"].to!bool;
 	switch(cfg["server"]["session_store"].to!string){
 		case "redis":
-			cnt = 0;
-			while(cnt++<5){
-				try{
-					settings.sessionStore = new RedisSessionStore(
-						cfg["server"]["redis"]["host"].to!string,
-						cfg["server"]["redis"]["database"].to!long,
-						cfg["server"]["redis"]["port"].to!ushort,
-						);
+			settings.sessionStore = new RedisSessionStore(
+				cfg["server"]["redis"]["host"].to!string,
+				cfg["server"]["redis"]["database"].to!long,
+				cfg["server"]["redis"]["port"].to!ushort,
+				);
 
-					auto sessionTest = settings.sessionStore.create();
-					settings.sessionStore.destroy(sessionTest.id);
-					break;
-				}
-				catch(Exception e){
-					stderr.writeln("Could not connect to Redis server", e);
-				}
+			try{
+				auto sessionTest = settings.sessionStore.create();
+				settings.sessionStore.destroy(sessionTest.id);
 			}
-			enforce(cnt<=5, "Could not connect to Redis database !");
+			catch(Exception e){
+				stderr.writeln("Could not connect to Redis server: ", e.msg);
+				return 1;
+			}
 			break;
 		case "memory":
 			settings.sessionStore = new MemorySessionStore;
@@ -114,19 +117,12 @@ int main(string[] args){
 	immutable indexPath = buildNormalizedPath(publicPath, "index.html");
 
 	auto router = new URLRouter;
-
-	auto ifaceSettings = new WebInterfaceSettings;
-	ifaceSettings.urlPrefix = "/api/";
-	router.registerWebInterface(new Api, ifaceSettings);
-
-	router.get("*", (HTTPServerRequest req, HTTPServerResponse res){
-			import std.path : baseName, extension;
-			auto ext = req.path[$-1]!='/'? req.path.baseName.extension : null;
-			if(ext is null)
-				return serveStaticFile(indexPath)(req, res);
-			return serveStaticFiles(publicPath)(req, res);
-		});
-
+	auto api = new Api;
+	ResourceManager.store!Api("api", api);
+	router.registerRestInterface(api);
+	router.registerWebInterface(new Authenticator(api));
+	import api.apidef: IApi;
+	router.get("/client.js", serveRestJSClient!IApi(cfg["server"]["api_url"].to!string));
 	listenHTTP(settings, router);
 	runEventLoop();
 

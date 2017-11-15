@@ -1,11 +1,14 @@
-name "lcdaaccountmanager"
-description "Manage NWN2 accounts"
+name "lcdaapi"
+description "API for LCDA account & character management"
 copyright "Copyright © 2016, crom"
-authors "crom"
+authors "Crom (Thibaut CHARLES)"
 license "GPL-3.0"
 
-dependency "vibe-d"  version="~>0.7.29-alpha.2"
-dependency "mysql-lited" version="~>0.3.5"
+dependency "vibe-d"  version="~>0.8.2-alpha"
+dependency "mysql-native" version="~>1.1.2"
 dependency "nwn-lib-d" version="*"
 
 versions "VibeNoSSL"
+
+x:ddoxTool "scod"
+x:ddoxFilterArgs "--min-protection=Protected"

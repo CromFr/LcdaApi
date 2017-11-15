@@ -1,82 +1,74 @@
 module sql;
 
-public import mysql: MySQLRow;
+import mysql;
+public import mysql: Connection;
 
-auto ref SqlPlaceholder(T)(in string ph, T value){
-	import std.typecons: tuple;
-	import std.conv: to;
-	static assert(__traits(compiles, value.to!string), T.stringof~" is not convertible to string");
-	return tuple(ph, value);
-}
+debug import std.stdio;
 
-/// example:
-///   replacePlaceholders(VT...)(
-///     "SELECT * FROM account WHERE name='$NAME' and id=$ID",
-///     Placeholder("NAME", "Crom"),
-///     Placeholder("ID", 42))
-string replacePlaceholders(VT...)(in string query, VT placeholders){
-	import std.conv: to;
-	import std.array: replace;
-	import std.typecons: isTuple;
-	import std.traits: ReturnType;
 
-	string ret = query;
+Prepared preparedStatement(VT...)(Connection conn, in string sql, VT placeholders){
+	static assert(placeholders.length % 2 == 0, "Need a pair number of placeholders");
 
-	foreach(i, ph ; placeholders){
-		static assert(
-			   isTuple!(typeof(ph))
-			&& ph.length==2
-			&& is(typeof(ph) == ReturnType!(SqlPlaceholder!(typeof(ph[1])))),
-			"Parameter "~i.to!string~" is not a SqlPlaceholder");
+	//Check if there is a valid placeholder at index offset
+	// ret[0]: Placeholder value index
+	// ret[1]: Placeholder name length. 0 if not found
+	auto getPlaceholder(in string str, size_t offset){
+		import std.traits: isSomeString;
+		import std.typecons: tuple;
 
-		ret = ret.replace("$"~ph[0], ph[1].to!string.escapeString);
+		static struct Ret {
+			size_t valueIndex;
+			size_t nameLength;
+		}
+		Ret ret;
+
+		foreach(i, ph ; placeholders){
+			static if(i % 2 == 0){
+				static assert(isSomeString!(typeof(ph)), "Placeholders must be key value pairs, where the key is a string");
+
+				immutable len = ph.length;
+				if(offset + 1 + len <= str.length && str[offset + 1 .. offset + 1 + len] == ph){
+					ret.valueIndex = i;
+					ret.nameLength = len + 1;
+					return ret;
+				}
+			}
+		}
+		return ret;
 	}
-	return ret;
-}
 
+	string statement;
+	//size_t[] placeholderValuesIdx;
+	size_t phNameIndex = 0;
+	size_t[][placeholders.length / 2] placeholderMap;
 
-string escapeString(in string str){
-	// http://dev.mysql.com/doc/refman/5.7/en/mysql-real-escape-string.html
-	// TODO: find better doc
-	string ret;
-	foreach(c ; str){
-		switch(c){
-			case '\\': ret ~= `\\`; break;
-			case '\'': ret ~= `\'`; break;
-			case '\"': ret ~= `\"`; break;
-			default: ret ~= c;
+	// Find and registers placeholders
+	for(size_t i = 0 ; i < sql.length ; i++){
+		if(sql[i] == '$'){
+			auto ph = getPlaceholder(sql, i);
+			if(ph.nameLength > 0){
+				placeholderMap[ph.valueIndex / 2] ~= phNameIndex++;
+				statement ~= "?";
+				i += ph.nameLength - 1;
+				continue;
+			}
+		}
+		statement ~= sql[i];
+	}
+
+	// Create the prepared statement
+	Prepared ret = prepare(conn, statement);
+
+	// Fill prepared statement arguments
+	foreach(i, ph ; placeholders){
+		static if(i % 2 == 1){
+			foreach(index ; placeholderMap[i / 2])
+				ret.setArg(index, placeholders[i]);
 		}
 	}
+
 	return ret;
 }
 
-unittest{
-	import std.typecons: tuple;
-
-	enum queryQuote =       `SELECT * FROM Users WHERE Name ='$NAME' AND Pass ='$PASS'`;
-	enum queryDoubleQuote = `SELECT * FROM Users WHERE Name ="$NAME" AND Pass ="$PASS"`;
-
-	assert(
-		queryQuote.replacePlaceholders(
-			SqlPlaceholder("NAME", `'`),
-			SqlPlaceholder("PASS", `''='`))
-		== `SELECT * FROM Users WHERE Name ='\'' AND Pass ='\'\'=\''`);
-
-	assert(
-		queryDoubleQuote.replacePlaceholders(
-			SqlPlaceholder("NAME", `"`),
-			SqlPlaceholder("PASS", `""="`))
-		== `SELECT * FROM Users WHERE Name ="\"" AND Pass ="\"\"=\""`);
-
-	assert(
-		queryDoubleQuote.replacePlaceholders(
-			SqlPlaceholder("NAME", `\0x85`),
-			SqlPlaceholder("PASS", `\`))
-		== `SELECT * FROM Users WHERE Name ="\\0x85" AND Pass ="\\"`);
 
 
-	assert(!__traits(compiles, queryQuote.replacePlaceholders(5)));
-	assert(!__traits(compiles, queryQuote.replacePlaceholders(tuple(5, "test"))));
-	assert(!__traits(compiles, queryQuote.replacePlaceholders(tuple("test"))));
-	assert(__traits(compiles, queryQuote.replacePlaceholders(tuple("test", 5))));
-}

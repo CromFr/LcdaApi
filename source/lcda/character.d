@@ -2,12 +2,12 @@ module lcda.character;
 
 import std.conv;
 import std.exception: enforce;
+import nwn.fastgff;
 
-import mysql : MySQLClient;
+struct Character{
+	import lcda.dungeons: DungeonStatus;
 
-class Character{
-
-	this(in string account, in string bicFile, ref MySQLClient.LockedConnection mysqlConnection){
+	this(in string account, in string bicFile){
 		import std.path : baseName;
 		import resourcemanager;
 		import nwn.fastgff;
@@ -16,8 +16,7 @@ class Character{
 		import lcda.compat;
 		import lcda.dungeons;
 
-		this.bicFile = bicFile;
-		bicFileName = baseName(bicFile, ".bic");
+		//this.bicFile = bicFile;
 		auto gff = new FastGff(bicFile);
 
 		immutable strref = ResourceManager.get!StrRefResolver("resolver");
@@ -28,31 +27,18 @@ class Character{
 		immutable skills2da = ResourceManager.fetchFile!TwoDA("skills.2da");
 		immutable feats2da = ResourceManager.fetchFile!TwoDA("feat.2da");
 
-		//Name
-		immutable lastName = gff["LastName"].get!GffLocString.resolve(strref);
-		name = gff["FirstName"].get!GffLocString.resolve(strref)~(lastName !is null ? (" "~lastName) : null);
 
-		//Level / classes
-		lvl = 0;
-		foreach(i, GffStruct classStruct ; gff["ClassList"].get!(GffList)){
-			immutable classID = classStruct["Class"].get!(GffInt);
-			immutable classLvl = classStruct["ClassLevel"].get!(GffShort);
-
-			lvl += classLvl;
-			classes ~= Class(strref[class2da.get!StrRef("Name", classID)], classLvl);
-		}
-
-		//Race
+		fillLightCharacterProperties(gff, bicFile, this);
 		auto raceId = gff["Subrace"].get!GffByte;
-		race = strref[race2da.get!StrRef("Name", raceId)];
+
 
 		//Alignment
 		alignment.good_evil = gff["GoodEvil"].get!GffByte;
 		alignment.law_chaos = gff["LawfulChaotic"].get!GffByte;
-		alignment.id = 0;
-		alignment.id += alignment.good_evil>=75? 0 : alignment.good_evil>25? 1 : 2;
-		alignment.id += alignment.law_chaos>=75? 0 : alignment.law_chaos>25? 3 : 6;
-		alignment.name = strref[alignment2da.get!StrRef("Name", alignment.id)];
+		uint alignmentId = 0;
+		alignmentId += alignment.good_evil>=75? 0 : alignment.good_evil>25? 1 : 2;
+		alignmentId += alignment.law_chaos>=75? 0 : alignment.law_chaos>25? 3 : 6;
+		alignment.name = strref[alignment2da.get!StrRef("Name", alignmentId)];
 
 		//God
 		god = gff["Deity"].get!GffString;
@@ -172,7 +158,7 @@ class Character{
 
 
 		//dungeons status
-		//dungeons = getDungeonStatus(account, name, journalVarTable, mysqlConnection);
+		dungeons = getDungeonStatus(account, name, journalVarTable);
 	}
 
 	string name;
@@ -200,7 +186,6 @@ class Character{
 	string race;
 
 	static struct Alignment{
-		uint id;
 		string name;
 		int good_evil;
 		int law_chaos;
@@ -219,34 +204,48 @@ class Character{
 	}
 	JournalEntry[] journal;
 
-	import lcda.dungeons: DungeonStatus;
 	DungeonStatus[] dungeons;
 
 
-	string bicFile;
+	//string bicFile;
 	string bicFileName;
 }
 
 
-class LightCharacter{
+struct LightCharacter{
 	this(in string bicFile){
-		import std.path : baseName;
-		import resourcemanager;
-		import nwn.fastgff;
-		import nwn.tlk;
-		import nwn.twoda;
-		import lcda.compat;
-
-		bicFileName = baseName(bicFile, ".bic");
 		auto gff = new FastGff(bicFile);
 
-		immutable strref = ResourceManager.get!StrRefResolver("resolver");
-		immutable class2da = ResourceManager.fetchFile!TwoDA("classes.2da");
-		immutable race2da = ResourceManager.fetchFile!TwoDA("racialsubtypes.2da");
-		immutable abilities2da = ResourceManager.fetchFile!TwoDA("iprp_abilities.2da");
+		fillLightCharacterProperties(gff, bicFile, this);
+	}
+
+	string name;
+	string race;
+	int lvl;
+	Character.Class[] classes;
+	string bicFileName;
+}
+
+
+private void fillLightCharacterProperties(T)(FastGff gff, in string fileName, ref T character) if(is(T: LightCharacter) || is(T: Character)){
+	import std.path : baseName;
+	import resourcemanager;
+	import nwn.tlk;
+	import nwn.twoda;
+	import lcda.compat;
+
+
+	immutable strref = ResourceManager.get!StrRefResolver("resolver");
+	immutable class2da = ResourceManager.fetchFile!TwoDA("classes.2da");
+	immutable race2da = ResourceManager.fetchFile!TwoDA("racialsubtypes.2da");
+	immutable abilities2da = ResourceManager.fetchFile!TwoDA("iprp_abilities.2da");
+
+	with(character){
+		bicFileName = baseName(fileName, ".bic");
 
 		//Name
-		name = gff["FirstName"].get!GffLocString.resolve(strref)~" "~gff["LastName"].get!GffLocString.resolve(strref);
+		immutable lastName = gff["LastName"].get!GffLocString.resolve(strref);
+		name = gff["FirstName"].get!GffLocString.resolve(strref)~(lastName !is null ? (" "~lastName) : null);
 
 		//Level / classes
 		lvl = 0;
@@ -263,9 +262,4 @@ class LightCharacter{
 		race = strref[race2da.get!StrRef("Name", raceId)];
 	}
 
-	string name;
-	string race;
-	int lvl;
-	Character.Class[] classes;
-	string bicFileName;
 }
