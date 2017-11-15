@@ -1,11 +1,12 @@
 import vibe.d;
 import std.stdio;
+
 import resourcemanager: ResourceManager;
 import nwn.tlk;
 import lcda.dungeons;
-import api.api;
 import config;
-import auth;
+import api.api;
+import api.auth;
 
 int main(string[] args){
 	import std.getopt : getopt, defaultGetoptPrinter;
@@ -126,7 +127,7 @@ int main(string[] args){
 	auto api = new Api;
 	ResourceManager.store!Api("api", api);
 	router.registerRestInterface(api);
-	router.registerWebInterface(new Authenticator);
+	router.registerWebInterface(new Authenticator(api));
 	import api.apidef: IApi;
 	router.get("/client.js", serveRestJSClient!IApi(cfg["server"]["api_url"].to!string));
 	listenHTTP(settings, router);
