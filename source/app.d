@@ -7,6 +7,7 @@ import lcda.dungeons;
 import config;
 import api.api;
 import api.auth;
+import cache;
 
 int main(string[] args){
 	import std.getopt : getopt, defaultGetoptPrinter;
@@ -57,11 +58,12 @@ int main(string[] args){
 	writeln("Caching dungeon info");
 	initDungeonInfo();
 
-	writeln("Start thread to reload important Bioware databases");
+	writeln("Start thread to reload changed files");
 	import core.thread: Thread;
 	with(new Thread({
 		import nwn.biowaredb: BiowareDB;
 		immutable dbPath = cfg["paths"]["database"].to!string;
+
 		while(1){
 			foreach(dbName ; ["annexe", "quete"]){
 				import std.path: buildPath;
@@ -69,6 +71,9 @@ int main(string[] args){
 				auto db = new BiowareDB(buildPath(dbPath, dbName));
 				ResourceManager.replace(dbName, db);
 			}
+
+			Cache.reduce();
+
 			Thread.sleep(dur!"seconds"(60));
 		}
 	})){

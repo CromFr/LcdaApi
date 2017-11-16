@@ -26,49 +26,81 @@ class Vault(bool deletedChar): IVault!deletedChar{
 
 
 		LightCharacter[] list(string _account) @trusted{
-			import std.file: dirEntries, SpanMode, getTimes;
+			import std.file: dirEntries, SpanMode, getTimes, exists;
 			import std.algorithm: sort, map;
 			import std.array: array;
 			import resourcemanager: ResourceManager, ResourceException;
 
 			immutable vaultPath = getVaultPath(_account, deletedChar);
 
-			CharListCache cache;
-			auto hash = vaultPath
-				.dirEntries("*.bic", SpanMode.shallow)
-				.map!((file){
-					import std.conv: to;
-					SysTime acc, mod;
-					file.getTimes(acc, mod);
-					return file.name~"="~acc.to!string;
-				})
-				.join(":")
-				.hashOf;
 
-			try{
-				cache = ResourceManager.getMut!CharListCache("cache/"~(deletedChar? "deleted/" : null)~_account);
-				if(hash == cache.hash){
-					return cache.data;
+			static struct CachedList{
+				this() @disable;
+				this(in string vaultPath, LightCharacter[] list){
+					this.vaultPath = vaultPath;
+					this.list = list;
+					hash = calcHash();
+				}
+				string vaultPath;
+				LightCharacter[] list;
+
+				ulong hash;
+				ulong calcHash() const{
+					return vaultPath
+						.dirEntries("*.bic", SpanMode.shallow)
+						.map!((file){
+							import std.conv: to;
+							SysTime acc, mod;
+							file.getTimes(acc, mod);
+							return file.name~"="~acc.to!string;
+						})
+						.join(":")
+						.hashOf;
 				}
 			}
-			catch(ResourceException){
-				cache = new CharListCache;
-				ResourceManager.store("cache/"~(deletedChar? "deleted/" : null)~_account, cache);
-			}
 
-			cache.hash = hash;
-			cache.data = vaultPath
-				.dirEntries("*.bic", SpanMode.shallow)
-				.map!(a => LightCharacter(a, true))
-				.array
-				.sort!"a.name<b.name"
-				.array;
-
-			return cache.data;
+			import cache: Cache;
+			return cast(LightCharacter[]) Cache.get!(const CachedList)(vaultPath,
+				function(in CachedList rec, lastAccess){
+					return !rec.vaultPath.exists
+					|| rec.hash != rec.calcHash();
+				},
+				{
+					writeln("Generated character list ", _account ~ (deletedChar ? "/deleted" : null));
+					return CachedList(vaultPath,
+						vaultPath.dirEntries("*.bic", SpanMode.shallow)
+						         .map!(a => LightCharacter(a, true))
+						         .array
+						         .sort!"a.name<b.name"
+						         .array);
+				}).list;
 		}
 
 		Character character(string _account, string _char) @trusted{
-			return getChar(_account, _char, deletedChar);
+			import cache;
+			import std.file: exists, timeLastModified, dur;
+
+			immutable file = getCharFile(_account, _char, deletedChar);
+
+			static struct CachedCharacter{
+				string filePath;
+				SysTime lastModified;
+				Character character;
+			}
+
+			return cast(Character) Cache.get!(const CachedCharacter)(file,
+				function(in CachedCharacter rec, lastAccess){
+					return !rec.filePath.exists
+					|| rec.filePath.timeLastModified > rec.lastModified
+					|| (lastAccess - Clock.currTime()) > dur!"minutes"(15);
+				},
+				{
+					writeln("Generated character info ", _account ~ (deletedChar ? "/deleted/" : "/") ~ _char);
+					return CachedCharacter(
+						file,
+						file.timeLastModified,
+						getChar(_account, _char, deletedChar));
+				}).character;
 		}
 
 
