@@ -112,10 +112,12 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 		}
 		else{
 			//Journal var
-			immutable varName = prefix ~ var;
-			foreach(i, GffStruct v ; journalVarTable){
-				if(v["Name"].get!GffString == varName){
-					return Nullable!(const(NWInt))(v["Value"].get!GffInt);
+			if(journalVarTable.length > 0){
+				immutable varName = prefix ~ var;
+				foreach(i, GffStruct v ; journalVarTable){
+					if(v["Name"].get!GffString == varName){
+						return Nullable!(const(NWInt))(v["Value"].get!GffInt);
+					}
 				}
 			}
 			return Nullable!(const(NWInt))();
