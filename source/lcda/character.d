@@ -1,6 +1,7 @@
 module lcda.character;
 
 import std.conv;
+import std.string: toLower;
 import std.exception: enforce;
 import std.typecons: Nullable;
 import nwn.fastgff;
@@ -62,7 +63,7 @@ struct Character{
 		foreach(i, GffStruct gffFeat ; gff["FeatList"].get!GffList){
 			immutable id = gffFeat["Feat"].get!GffWord;
 			immutable name = strref[feats2da.get!StrRef("FEAT", id)];
-			immutable icon = feats2da.get!string("ICON", id);
+			immutable icon = feats2da.get!string("ICON", id).toLower;
 			immutable category = feats2da.get!string("FeatCategory", id);
 
 			featLookupMap[id] = feats.length;
@@ -76,7 +77,7 @@ struct Character{
 				continue;
 
 			immutable name = strref[skills2da.get!StrRef("Name", id)];
-			immutable icon = skills2da.get!string("Icon", id);
+			immutable icon = skills2da.get!string("Icon", id).toLower;
 			immutable rank = gffFeat["Rank"].get!GffByte;
 
 			size_t abilityIndex;
@@ -337,7 +338,7 @@ private void fillLightCharacterProperties(T)(FastGff gff, in string fileName, re
 			immutable classID = classStruct["Class"].get!GffInt;
 			immutable classLvl = classStruct["ClassLevel"].get!GffShort;
 			immutable className = strref[class2da.get!StrRef("Name", classID)];
-			immutable classIcon = class2da.get!string("Icon", classID);
+			immutable classIcon = class2da.get!string("Icon", classID).toLower;
 
 			lvl += classLvl;
 			classes ~= Character.Class(classID, className, classLvl, classIcon);
