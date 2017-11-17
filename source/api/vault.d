@@ -66,6 +66,7 @@ class Vault(bool deletedChar): IVault!deletedChar{
 					|| rec.hash != rec.calcHash();
 				},
 				{
+					import std.stdio : writeln;
 					writeln("Generated character list ", _account ~ (deletedChar ? "/deleted" : null));
 					return CachedList(vaultPath,
 						vaultPath.dirEntries("*.bic", SpanMode.shallow)
@@ -95,6 +96,7 @@ class Vault(bool deletedChar): IVault!deletedChar{
 					|| (lastAccess - Clock.currTime()) > dur!"minutes"(15);
 				},
 				{
+					import std.stdio : writeln;
 					writeln("Generated character info ", _account ~ (deletedChar ? "/deleted/" : "/") ~ _char);
 					return CachedCharacter(
 						file,
