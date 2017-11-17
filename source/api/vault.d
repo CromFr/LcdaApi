@@ -47,7 +47,7 @@ class Vault(bool deletedChar): IVault!deletedChar{
 				ulong hash;
 				ulong calcHash() const{
 					return vaultPath
-						.dirEntries("*.bic", SpanMode.shallow)
+						.dirEntries("*.bic*", SpanMode.shallow)
 						.map!((file){
 							import std.conv: to;
 							SysTime acc, mod;
