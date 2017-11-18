@@ -6,39 +6,26 @@ import vibe.d;
 import api.apidef;
 import api.api;
 
+struct TranslationContext {
+	import std.typetuple: TypeTuple;
+	alias languages = TypeTuple!("en_US", "fr_FR");
+	mixin translationModule!"localization";
 
+	enum enforceExistingKeys = true;
+}
 
 /// Web pages, CORS restricted. THIS NOT A REST INTERFACE
+@translationContext!TranslationContext
 class Authenticator{
 
 	this(Api api){
 		this.api = api;
 	}
 
-	/// Login page
-	void getLogin(scope HTTPServerRequest req, scope HTTPServerResponse res){
-		render!("login.dt", req)(res);
-	}
-
-	/// Login action
-	void postLogin(string account, string password, scope HTTPServerRequest req, scope HTTPServerResponse res){
-		enforceHTTP(api.passwordAuth(account, password), HTTPStatus.unauthorized, "Bad user / password");
-
-		this.account = account;
-
-		auto redir = req.query.get("redirect", "/user");
-		redirect(redir);
-	}
-
-	/// Stops the session
-	void postLogout(scope HTTPServerRequest req, scope HTTPServerResponse res){
-		res.terminateSession();
-	}
-
 
 	void getGenToken(scope HTTPServerRequest req, scope HTTPServerResponse res,
-		string tokenName, Token.Type tokenType = Token.Type.restricted){
-		render!("gentoken.dt", req, tokenName, tokenType)(res);
+		string tokenName, Token.Type tokenType = Token.Type.restricted, string redir = "/user"){
+		render!("gentoken.dt", req, tokenName, tokenType, redir)(res);
 	}
 
 	void postGenToken(scope HTTPServerRequest req, scope HTTPServerResponse res,
@@ -52,8 +39,6 @@ class Authenticator{
 
 		redirect(redir);
 	}
-
-	SessionVar!(string, "account") account;
 
 private:
 	Api api;

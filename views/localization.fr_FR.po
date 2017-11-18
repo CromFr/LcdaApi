@@ -1,0 +1,42 @@
+
+msgid "GenToken.Title"
+msgstr "Génération d'un token d'accès"
+
+msgid "GenToken.Intro"
+msgstr "Les tokens permettent à des sites tiers d'accéder aux informations de votre compte LCDA sans demander votre mot de passe."
+
+msgid "GenToken.AdminTokenWarning"
+msgstr "Attention : Ce token donne un accès total à votre compte"
+
+msgid "GenToken.TokenName"
+msgstr "Nom du token"
+msgid "GenToken.TokenName.Tooltip"
+msgstr "Nom tel qu'il apparaîtra dans la liste des tokens du compte"
+
+msgid "GenToken.TokenType"
+msgstr "Type d'accès"
+msgid "GenToken.TokenType.Tooltip"
+msgstr "Actions autorisées en utilisant ce token"
+
+msgid "GenToken.TokenType.restricted"
+msgstr "Restreint (personnages uniquement)"
+msgid "GenToken.TokenType.admin"
+msgstr "Admin (accès total)"
+
+msgid "GenToken.Target"
+msgstr "Destinataire"
+msgid "GenToken.Target.Tooltip"
+msgstr "Le token sera envoyé au site web à l'adresse indiquée"
+
+
+msgid "Account"
+msgstr "Compte"
+
+msgid "Password"
+msgstr "Mot de passe"
+
+msgid "Cancel"
+msgstr "Annuler"
+
+msgid "Login"
+msgstr "Connexion"

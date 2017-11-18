@@ -1,20 +1,64 @@
-doctype html
-html
-	head
-		title Lcda API - Gen. token
-	body
-		h1 Génération de token d'authentification
+extends layout
+
+
+block head
+	- import vibe.web.web;
+	- auto title = trWeb("GenToken.Title");
+
+	:css
+		.card-title img {
+			vertical-align: middle;
+		}
+		table.condensed td,
+		table.condensed th {
+			padding: 8px 5px;
+		}
+		body > .card {
+			margin: auto;
+		}
+
+block contents
+	- import vibe.web.web;
+	- import api.apidef;
+
+	form.card(action="#{req.requestURI}", method="post")
+		.card-content
+			.card-title
+				img(src="https://lcda-nwn2.fr/favicon-64x64.png")
+				span #{trWeb("GenToken.Title")}
+
+			p #{trWeb("GenToken.Intro")}
+
+			table.condensed: tbody
+				tr.tooltipped(data-tooltip='#{trWeb("GenToken.TokenName.Tooltip")}')
+					th.right-align #{trWeb("GenToken.TokenName")}
+					td #{tokenName}
+				tr.tooltipped(data-tooltip='#{trWeb("GenToken.TokenType.Tooltip")}')
+					th.right-align #{trWeb("GenToken.TokenType")}
+					td #{trWeb("GenToken.TokenType." ~ tokenType)}
+				tr.tooltipped(data-tooltip='#{trWeb("GenToken.Target.Tooltip")}')
+					th.right-align #{trWeb("GenToken.Target")}
+					td.truncate #{redir}
+
+			.container.section
+				.input-field
+					i.material-icons.prefix account_circle
+					input.validate#input-account(name="account", type="text", placeholder="Bioware account name", required)
+					label(for="input-account") #{trWeb("Account")}
+				.input-field
+					i.material-icons.prefix lock
+					input.validate#input-password(name="password", type="password", placeholder="LCDA Password", required)
+					label(for="input-password") #{trWeb("Password")}
+
+			- if(tokenType == Token.Type.admin)
+				.card-panel.orange.accent-2
+					p #{trWeb("GenToken.AdminTokenWarning")}
+
+
+		.card-action
+			button.waves-effect.waves-light.btn(type="submit") #{trWeb("Login")}
+			button.waves-effect.waves-light.btn.right.red.lighten-3(type="button", onclick="window.history.go(-1); return false;") #{trWeb("Cancel")}
 
 
 
-		form(action="#{req.requestURI}", method="post")
-			label Account
-			input(name="account", placeholder="Bioware account name", required)
 
-			label Password
-			input(name="password", type="password", placeholder="LCDA Password", required)
-
-			button(type="submit") Login
-
-			button(type="button")
-				a(href="/") Cancel
