@@ -78,7 +78,7 @@ class AccountApi: IAccount{
 			import sql: preparedStatement;
 			auto conn = api.mysqlConnPool.lockConnection();
 
-			size_t tokenId;
+			ulong tokenId;
 			{
 				auto affectedRows = conn.preparedStatement("
 					INSERT INTO `api_tokens`
@@ -112,7 +112,7 @@ class AccountApi: IAccount{
 			return TokenWithValue(getToken(_account, tokenId), tokenValue);
 		}
 
-		Token getToken(string _account, size_t _tokenId) @trusted{
+		Token getToken(string _account, ulong _tokenId) @trusted{
 
 			import sql: preparedStatement;
 			auto conn = api.mysqlConnPool.lockConnection();
@@ -135,7 +135,7 @@ class AccountApi: IAccount{
 				result.front[result.colNameIndicies["last_used"]].get!DateTime);
 		}
 
-		void deleteToken(in string _account, size_t _tokenId) @trusted{
+		void deleteToken(in string _account, ulong _tokenId) @trusted{
 			import sql: preparedStatement;
 			auto conn = api.mysqlConnPool.lockConnection();
 			auto affectedRows = conn.preparedStatement("

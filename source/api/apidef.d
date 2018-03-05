@@ -258,7 +258,7 @@ interface IAccount{
 	@path("/:account/tokens/:tokenId")
 	@method(HTTPMethod.GET)
 	@auth(Role.AccountAuthorized & (Role.PasswordAuthenticated | Role.AdminToken))
-	Token getToken(string _account, size_t _tokenId) @safe;
+	Token getToken(string _account, ulong _tokenId) @safe;
 
 	/// Remove an existing token
 	///
@@ -266,7 +266,7 @@ interface IAccount{
 	@path("/:account/tokens/:tokenId")
 	@method(HTTPMethod.DELETE)
 	@auth(Role.AccountAuthorized & (Role.PasswordAuthenticated | Role.AdminToken))
-	void deleteToken(string _account, size_t _tokenId) @safe;
+	void deleteToken(string _account, ulong _tokenId) @safe;
 
 	@noRoute
 	UserInfo authenticate(scope HTTPServerRequest req, scope HTTPServerResponse res) @safe;
