@@ -15,7 +15,8 @@ class AccountApi: IAccount{
 
 	override {
 		bool exists(string _account){
-			import std.path : buildPath, exists, isDir;
+			import std.path : buildPath;
+			import std.file: exists, isDir;
 			immutable accountPath = buildPath(
 				api.cfg["paths"]["servervault"].to!string,
 				_account);

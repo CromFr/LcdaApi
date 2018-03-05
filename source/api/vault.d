@@ -79,7 +79,7 @@ class Vault(bool deletedChar): IVault!deletedChar{
 
 		Character character(string _account, string _char) @trusted{
 			import cache;
-			import std.file: exists, timeLastModified, dur;
+			import std.file: exists, timeLastModified;
 
 			immutable file = getCharFile(_account, _char, deletedChar);
 
