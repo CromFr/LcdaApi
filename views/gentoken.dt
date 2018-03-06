@@ -16,12 +16,15 @@ block head
 		body > .card {
 			margin: auto;
 		}
+		.card-action button {
+		margin: 0 1em;
+		}
 
-block contents
+block content
 	- import vibe.web.web;
 	- import api.apidef;
 
-	form.card(action="#{req.requestURI}", method="post")
+	form.card(action="#{req.requestURI}", method="post", onsubmit="return document.submit();", success-redir="#{redir}")
 		.card-content
 			.card-title
 				img(src="https://lcda-nwn2.fr/favicon-64x64.png")
@@ -56,9 +59,41 @@ block contents
 
 
 		.card-action
+			button.waves-effect.waves-light.btn.red.lighten-3(type="button", onclick="window.history.go(-1); return false;") #{trWeb("Cancel")}
 			button.waves-effect.waves-light.btn(type="submit") #{trWeb("Login")}
-			button.waves-effect.waves-light.btn.right.red.lighten-3(type="button", onclick="window.history.go(-1); return false;") #{trWeb("Cancel")}
 
 
+block scripts
+	:javascript
+		document.submit = function(target) {
+			console.log("submit()");
+			$("form button").addClass("disabled");
+
+			var form = $("form");
+			$.ajax({
+				type: form.attr("method"),
+				url: form.attr("action"),
+				data: form.serialize(),
+				success: function(token) {
+					Materialize.toast('Login successful! Redirecting...', 4000, "green");
+
+					$("form button").removeClass("disabled");
+
+					let url = new URL(form.attr("success-redir"));
+					url.searchParams.set("token", token);
+					window.location = url;
+				},
+				error: function(response) {
+					console.log("Error: ", response);
+					if(response.status === 401)
+						Materialize.toast("Wrong user / password", 4000, "red");
+					else
+						Materialize.toast('Error: ' + response.responseText, 4000, "red");
+
+					$("form button").removeClass("disabled");
+				}
+			});
+			return false;
+		};
 
 

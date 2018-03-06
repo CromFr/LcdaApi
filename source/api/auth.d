@@ -28,16 +28,14 @@ class Authenticator{
 		render!("gentoken.dt", req, tokenName, tokenType, redir)(res);
 	}
 
-	void postGenToken(scope HTTPServerRequest req, scope HTTPServerResponse res,
+	Json postGenToken(scope HTTPServerRequest req, scope HTTPServerResponse res,
 		string account, string password, string tokenName, Token.Type tokenType = Token.Type.restricted, string redir = "/user"
 		){
 		enforceHTTP(api.passwordAuth(account, password), HTTPStatus.unauthorized, "Bad user / password");
 
 		auto token = api.accountApi.newToken(account, tokenName, tokenType);
 
-		redir ~= (redir.indexOf('?') >= 0? "&" : "?") ~ "token="~urlEncode(token.value);
-
-		redirect(redir);
+		return Json(token.value);
 	}
 
 private:
