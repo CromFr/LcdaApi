@@ -147,6 +147,15 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 		}
 	}
 
+	import sql: preparedStatement, MySQLPool, prepare;
+	static MySQLPool connPool;
+	if(connPool is null)
+		connPool = ResourceManager.getMut!MySQLPool("sql");
+	auto conn = connPool.lockConnection();
+	auto prep = conn.prepare("
+		SELECT difficulty
+		FROM score_dungeons
+		WHERE account_name=? AND character_name=? AND dungeon=?");
 
 	DungeonStatus[] ret;
 	foreach(const ref dungeon ; dungeonList){
@@ -168,21 +177,9 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 
 
 		//Difficulty unlocked
-		import sql: preparedStatement, MySQLPool;
 		version(profile) swSQL.start();
-		static MySQLPool connPool;
-		if(connPool is null)
-			connPool = ResourceManager.getMut!MySQLPool("sql");
 
-		auto conn = connPool.lockConnection();
-		auto prep = conn.preparedStatement("
-			SELECT difficulty
-			FROM score_dungeons
-			WHERE account_name=$ACCOUNT AND character_name=$CHARACTER AND dungeon=$DUNGEON",
-			"ACCOUNT", accountName,
-			"CHARACTER", charName,
-			"DUNGEON", dungeon.diffName,
-			);
+		prep.setArgs(accountName, charName, dungeon.diffName);
 		auto result = prep.query();
 		scope(exit) result.close();
 

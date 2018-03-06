@@ -1,7 +1,7 @@
 module sql;
 
 import mysql;
-public import mysql: Connection, exec, MySQLPool;
+public import mysql: Connection, prepare, exec, MySQLPool;
 
 debug import std.stdio;
 
