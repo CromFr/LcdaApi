@@ -89,6 +89,19 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 	import nwn.biowaredb;
 	import lcda.compat;
 
+
+	version(profile){
+		import std.datetime.stopwatch: StopWatch;
+		StopWatch swDatabase, swJournal, swSQL;
+	}
+
+	version(profile){
+		swDatabase.reset();
+		swJournal.reset();
+		swSQL.reset();
+	}
+
+
 	auto cfg = ResourceManager.get!Config("cfg");
 	immutable pcid = accountName ~ charName;
 
@@ -98,6 +111,11 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 		auto idx = var.indexOf('.');
 		if(idx != -1){
 			//Campaign var
+			version(profile){
+				swDatabase.start();
+				scope(exit) swDatabase.stop();
+			}
+
 			immutable dbName = var[0..idx].toLower;
 			immutable varName = prefix ~ var[idx+1 .. $];
 
@@ -113,6 +131,11 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 		else{
 			//Journal var
 			if(journalVarTable.length > 0){
+				version(profile){
+					swJournal.start();
+					scope(exit) swJournal.stop();
+				}
+
 				immutable varName = prefix ~ var;
 				foreach(i, GffStruct v ; journalVarTable){
 					if(v["Name"].get!GffString == varName){
@@ -146,6 +169,7 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 
 		//Difficulty unlocked
 		import sql: preparedStatement, MySQLPool;
+		version(profile) swSQL.start();
 		static MySQLPool connPool;
 		if(connPool is null)
 			connPool = ResourceManager.getMut!MySQLPool("sql");
@@ -165,7 +189,19 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 		if(!result.empty)
 			status.unlockedDiff = result.front[result.colNameIndicies["difficulty"]].get!int;
 
+		version(profile) swSQL.stop();
+
 		ret ~= status;
+	}
+
+	version(profile){
+		auto profDatabase = swDatabase.peek.total!"msecs";
+		auto profJournal = swJournal.peek.total!"msecs";
+		auto profSQL = swSQL.peek.total!"msecs";
+
+		import std.stdio: writeln;
+		writeln("DUNJ ", accountName, ".", charName, ".bic: Database=", profDatabase, "ms Journal=", profJournal, "ms SQL=", profSQL, "ms");
+
 	}
 	return ret;
 

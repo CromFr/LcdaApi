@@ -18,17 +18,37 @@ struct Character{
 		import lcda.compat;
 		import lcda.dungeons;
 
-		//this.bicFile = bicFile;
+
+		version(profile){
+			import std.datetime.stopwatch: StopWatch;
+			StopWatch sw;
+		}
+
+		version(profile){
+			sw.reset();
+			sw.start();
+		}
+
 		auto gff = new FastGff(bicFile);
 
+		version(profile){
+			sw.stop();
+			auto profParsing = sw.peek.total!"msecs";
+		}
+
 		immutable strref = ResourceManager.get!StrRefResolver("resolver");
-		immutable class2da = ResourceManager.fetchFile!TwoDA("classes.2da");
+		//immutable class2da = ResourceManager.fetchFile!TwoDA("classes.2da");
 		immutable race2da = ResourceManager.fetchFile!TwoDA("racialsubtypes.2da");
 		immutable abilities2da = ResourceManager.fetchFile!TwoDA("iprp_abilities.2da");
 		immutable alignment2da = ResourceManager.fetchFile!TwoDA("iprp_alignment.2da");
 		immutable skills2da = ResourceManager.fetchFile!TwoDA("skills.2da");
 		immutable feats2da = ResourceManager.fetchFile!TwoDA("feat.2da");
 
+
+		version(profile){
+			sw.reset();
+			sw.start();
+		}
 
 		fillLightCharacterProperties(gff, bicFile, this);
 		auto raceId = gff["Subrace"].get!GffByte;
@@ -204,9 +224,24 @@ struct Character{
 			}
 		}
 
+		version(profile){
+			sw.stop();
+			auto profBasic = sw.peek.total!"msecs";
+
+			sw.reset();
+			sw.start();
+		}
 
 		//dungeons status
 		dungeons = getDungeonStatus(account, name, journalVarTable);
+
+		version(profile){
+			sw.stop();
+			auto profDungeons = sw.peek.total!"msecs";
+
+			import std.stdio: writeln;
+			writeln("CHAR ", account, ".", bicFile.baseName, ": Parsing=", profParsing, "ms Basic=", profBasic, "ms Dungeons=", profDungeons, "ms");
+		}
 	}
 
 	string name;
