@@ -126,7 +126,9 @@ struct Character{
 			}
 			//feats
 			foreach(i, GffStruct gffFeat ; gffLvl["FeatList"].get!GffList){
-				lvl.featIndices ~= featLookupMap[gffFeat["Feat"].get!GffWord];
+				auto feat = gffFeat["Feat"].get!GffWord in featLookupMap;
+				if(feat)
+					lvl.featIndices ~= *feat;
 			}
 			leveling ~= lvl;
 		}
