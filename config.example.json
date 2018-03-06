@@ -98,19 +98,6 @@
 		"hostname": "",
 		"port": 8080,
 
-		//Where are stored server http session variables
-		// Supported: memory / redis
-		"session_store": "redis",
-
-		//Redis configuration. Ignore if not using redis
-		"redis": {
-			"host": "localhost",
-			"database": 1,
-			"port": 6379,
-		},
-		//Path to the public directory containing frontend files
-		"public_path": "./public",
-
 		//The server can gzip sent files to minimize network load
 		"compression": true
 	},

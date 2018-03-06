@@ -19,7 +19,6 @@ REST API for managing accounts & characters of "La Colère d'Aurile", a French N
 	* Character access can be set to public or private
 
 - Authenticator service (HTML interface)
-	- Login using a session cookie
 	- Generate new access tokens
 
 # Planned work

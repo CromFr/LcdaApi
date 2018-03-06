@@ -115,29 +115,6 @@ int main(string[] args){
 	settings.hostName = cfg["server"]["hostname"].to!string;
 	settings.port = port != 0 ? port : cfg["server"]["port"].to!ushort;
 	settings.useCompressionIfPossible = cfg["server"]["compression"].to!bool;
-	switch(cfg["server"]["session_store"].to!string){
-		case "redis":
-			settings.sessionStore = new RedisSessionStore(
-				cfg["server"]["redis"]["host"].to!string,
-				cfg["server"]["redis"]["database"].to!long,
-				cfg["server"]["redis"]["port"].to!ushort,
-				);
-
-			try{
-				auto sessionTest = settings.sessionStore.create();
-				settings.sessionStore.destroy(sessionTest.id);
-			}
-			catch(Exception e){
-				stderr.writeln("Could not connect to Redis server: ", e.msg);
-				return 1;
-			}
-			break;
-		case "memory":
-			settings.sessionStore = new MemorySessionStore;
-			break;
-		default:
-			assert(0, "Unsupported session store: '"~cfg["server"]["session_store"].to!string~"'");
-	}
 
 	immutable publicPath = cfg["server"]["public_path"].to!string;
 	immutable indexPath = buildNormalizedPath(publicPath, "index.html");
