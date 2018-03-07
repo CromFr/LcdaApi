@@ -77,7 +77,6 @@ struct DungeonStatus{
 	int diffMax;
 
 	bool[] lootedChests;
-	bool[] killedBoss;
 	int unlockedDiff = 0;
 }
 
@@ -170,10 +169,6 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 				auto hasLootedChest = getVarValue(dungeon.chestVar, diffPrefix(i));
 				status.lootedChests ~= hasLootedChest.isNull? false : (hasLootedChest.get == 1);
 			}
-
-			auto hasKilledBoss = getVarValue(dungeon.bossKilledVar, diffPrefix(i));
-			status.killedBoss ~= !hasKilledBoss.isNull;
-
 		}
 
 
