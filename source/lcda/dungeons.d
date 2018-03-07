@@ -185,7 +185,9 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 		scope(exit) result.close();
 
 		if(!result.empty)
-			status.unlockedDiff = result.front[result.colNameIndicies["difficulty"]].get!int;
+			status.unlockedDiff = result.front[result.colNameIndicies["difficulty"]].get!int + 1;
+		if(status.unlockedDiff > status.diffMax)
+			status.unlockedDiff = status.diffMax;
 
 		version(profile) swSQL.stop();
 
