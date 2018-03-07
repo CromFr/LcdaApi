@@ -155,7 +155,8 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 	auto prep = conn.prepare("
 		SELECT difficulty
 		FROM score_dungeons
-		WHERE account_name=? AND character_name=? AND dungeon=?");
+		WHERE account_name=? AND character_name=? AND dungeon=?
+		ORDER BY difficulty DESC LIMIT 1");
 
 	DungeonStatus[] ret;
 	foreach(const ref dungeon ; dungeonList){
