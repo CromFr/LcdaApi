@@ -2,6 +2,7 @@ module lcda.dungeons;
 
 import std.traits: EnumMembers;
 import std.path: buildPath;
+import std.conv: to;
 
 import utils: buildPathCI;
 import nwn.fastgff: GffList;
@@ -91,18 +92,26 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 
 	version(profile){
 		import std.datetime.stopwatch: StopWatch;
-		StopWatch swDatabase, swJournal, swSQL;
+		StopWatch swBiowareDB, swJournal;
 	}
 
 	version(profile){
-		swDatabase.reset();
+		swBiowareDB.reset();
 		swJournal.reset();
-		swSQL.reset();
 	}
 
 
 	auto cfg = ResourceManager.get!Config("cfg");
 	immutable pcid = accountName ~ charName;
+
+	Nullable!GffField findJournalVar(string varName){
+		foreach(i, GffStruct v ; journalVarTable){
+			if(v["Name"].get!GffString == varName){
+				return Nullable!GffField(v["Value"]);
+			}
+		}
+		return Nullable!GffField();
+	}
 
 	Nullable!(const(NWInt)) getVarValue(string var, string prefix){
 		import std.string;
@@ -111,8 +120,8 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 		if(idx != -1){
 			//Campaign var
 			version(profile){
-				swDatabase.start();
-				scope(exit) swDatabase.stop();
+				swBiowareDB.start();
+				scope(exit) swBiowareDB.stop();
 			}
 
 			immutable dbName = var[0..idx].toLower;
@@ -136,26 +145,14 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 				}
 
 				immutable varName = prefix ~ var;
-				foreach(i, GffStruct v ; journalVarTable){
-					if(v["Name"].get!GffString == varName){
-						return Nullable!(const(NWInt))(v["Value"].get!GffInt);
-					}
+				auto jvar = findJournalVar(varName);
+				if(!jvar.isNull){
+					return Nullable!(const(NWInt))(jvar.get.get!GffInt);
 				}
 			}
 			return Nullable!(const(NWInt))();
 		}
 	}
-
-	import sql: preparedStatement, MySQLPool, prepare;
-	static MySQLPool connPool;
-	if(connPool is null)
-		connPool = ResourceManager.getMut!MySQLPool("sql");
-	auto conn = connPool.lockConnection();
-	auto prep = conn.prepare("
-		SELECT difficulty
-		FROM score_dungeons
-		WHERE account_name=? AND character_name=? AND dungeon=?
-		ORDER BY difficulty DESC LIMIT 1");
 
 	DungeonStatus[] ret;
 	foreach(const ref dungeon ; dungeonList){
@@ -164,38 +161,35 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 		status.areaName = dungeon.areaName;
 		status.diffMax = dungeon.diffMax;
 
+		version(profile) swBiowareDB.start();
 		foreach(i ; 0 .. dungeon.diffMax + 1){
 			if(dungeon.chestVar !is null){
 				auto hasLootedChest = getVarValue(dungeon.chestVar, diffPrefix(i));
 				status.lootedChests ~= hasLootedChest.isNull? false : (hasLootedChest.get == 1);
 			}
 		}
+		version(profile) swBiowareDB.stop();
 
 
 		//Difficulty unlocked
-		version(profile) swSQL.start();
+		version(profile) swJournal.start();
 
-		prep.setArgs(accountName, charName, dungeon.diffName);
-		auto result = prep.query();
-		scope(exit) result.close();
+		auto var = findJournalVar("qs#dungeon#" ~ dungeon.diffName);
+		if(!var.isNull){
+			status.unlockedDiff = var.get.get!GffString.to!int;
+		}
 
-		if(!result.empty)
-			status.unlockedDiff = result.front[result.colNameIndicies["difficulty"]].get!int + 1;
-		if(status.unlockedDiff > status.diffMax)
-			status.unlockedDiff = status.diffMax;
-
-		version(profile) swSQL.stop();
+		version(profile) swJournal.stop();
 
 		ret ~= status;
 	}
 
 	version(profile){
-		auto profDatabase = swDatabase.peek.total!"msecs";
+		auto profDatabase = swBiowareDB.peek.total!"msecs";
 		auto profJournal = swJournal.peek.total!"msecs";
-		auto profSQL = swSQL.peek.total!"msecs";
 
 		import std.stdio: writeln;
-		writeln("DUNJ ", accountName, ".", charName, ".bic: Database=", profDatabase, "ms Journal=", profJournal, "ms SQL=", profSQL, "ms");
+		writeln("DUNJ ", accountName, ".", charName, ".bic: BiowareDB=", profDatabase, "ms Journal=", profJournal, "ms");
 
 	}
 	return ret;
