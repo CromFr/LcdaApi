@@ -30,9 +30,11 @@ class Vault(bool deletedChar): IVault!deletedChar{
 			import std.algorithm: sort, map;
 			import std.array: array;
 			import resourcemanager: ResourceManager, ResourceException;
+			import std.file: exists, isDir;
 
 			immutable vaultPath = getVaultPath(_account, deletedChar);
-
+			enforceHTTP(vaultPath.exists && vaultPath.isDir, HTTPStatus.notFound,
+				"Account / Vault not found");
 
 			static struct CachedList{
 				this() @disable;
@@ -66,8 +68,11 @@ class Vault(bool deletedChar): IVault!deletedChar{
 					|| rec.hash != rec.calcHash();
 				},
 				{
-					import std.stdio : writeln;
-					writeln("Generated character list ", _account ~ (deletedChar ? "/deleted" : null));
+					scope(success){
+						import std.stdio : writeln, stdout;
+						writeln("Generated character list ", _account ~ (deletedChar ? "/deleted" : null));
+						stdout.flush();
+					}
 					return CachedList(vaultPath,
 						vaultPath.dirEntries("*.bic", SpanMode.shallow)
 						         .map!(a => LightCharacter(a, true))
@@ -79,9 +84,11 @@ class Vault(bool deletedChar): IVault!deletedChar{
 
 		Character character(string _account, string _char) @trusted{
 			import cache;
-			import std.file: exists, timeLastModified;
+			import std.file: exists, isFile, timeLastModified;
 
-			immutable file = getCharFile(_account, _char, deletedChar);
+			immutable file = getCharPath(_account, _char, deletedChar);
+			enforceHTTP(file.exists && file.isFile, HTTPStatus.notFound,
+				"Character '"~_char~"' not found");
 
 			static struct CachedCharacter{
 				string filePath;
@@ -96,8 +103,11 @@ class Vault(bool deletedChar): IVault!deletedChar{
 					|| (lastAccess - Clock.currTime()) > dur!"minutes"(15);
 				},
 				{
-					import std.stdio : writeln;
-					writeln("Generated character info ", _account ~ (deletedChar ? "/deleted/" : "/") ~ _char);
+					scope(success){
+						import std.stdio : writeln, stdout;
+						writeln("Generated character info ", _account ~ (deletedChar ? "/deleted/" : "/") ~ _char);
+						stdout.flush();
+					}
 					return CachedCharacter(
 						file,
 						file.timeLastModified,
@@ -109,7 +119,11 @@ class Vault(bool deletedChar): IVault!deletedChar{
 		void downloadChar(string _account, string _char, HTTPServerRequest req, HTTPServerResponse res){
 			import std.file: exists, isFile;
 			import std.path : baseName;
-			immutable charFile = getCharFile(_account, _char, deletedChar);
+
+			immutable charFile = getCharPath(_account, _char, deletedChar);
+			enforceHTTP(charFile.exists && charFile.isFile, HTTPStatus.notFound,
+				"Character '"~charFile~"' not found");
+
 			res.headers["Content-Disposition"] = "filename=\"" ~ charFile.baseName ~ "\"";
 			serveStaticFile(charFile)(req, res);
 		}
@@ -119,8 +133,9 @@ class Vault(bool deletedChar): IVault!deletedChar{
 				import std.file : exists, isFile, rename, mkdirRecurse;
 				import std.path : buildPath, baseName;
 
-				immutable charFile = getCharFile(_account, _char, deletedChar);
-				enforceHTTP(charFile.exists && charFile.isFile, HTTPStatus.notFound, "Character '"~_char~"' not found");
+				immutable charFile = getCharPath(_account, _char, deletedChar);
+				enforceHTTP(charFile.exists && charFile.isFile, HTTPStatus.notFound,
+					"Character '"~_char~"' not found");
 
 				immutable deletedVault = getVaultPath(_account, true);
 				if(!deletedVault.exists){
@@ -163,8 +178,9 @@ class Vault(bool deletedChar): IVault!deletedChar{
 				import std.regex : matchFirst, ctRegex;
 				//import sql: replacePlaceholders, SqlPlaceholder;
 
-				immutable charFile = getCharFile(_account, _char, deletedChar);
-				enforceHTTP(charFile.exists && charFile.isFile, HTTPStatus.notFound, "Character '"~_char~"' not found");
+				immutable charFile = getCharPath(_account, _char, deletedChar);
+				enforceHTTP(charFile.exists && charFile.isFile, HTTPStatus.notFound,
+					"Character '"~_char~"' not found");
 
 				immutable accountVault = getVaultPath(_account, false);
 				immutable newName = _char.matchFirst(ctRegex!`^(.+?)-\d+$`)[1];
@@ -197,11 +213,15 @@ class Vault(bool deletedChar): IVault!deletedChar{
 		}
 
 		Metadata meta(string _account, string _char) const{
-			import std.file : exists, readText;
+			import std.file : exists, isFile, readText;
 
 			Metadata metadata;
 
-			immutable charMetaPath = getCharFile(_account, _char, deletedChar)~".meta";
+			immutable charPath = getCharPath(_account, _char, deletedChar);
+			enforceHTTP(charPath.exists && charPath.isFile, HTTPStatus.notFound,
+					"Character '"~_char~"' not found");
+
+			immutable charMetaPath = charPath~".meta";
 			if(charMetaPath.exists){
 				metadata = charMetaPath
 					.readText
@@ -212,7 +232,13 @@ class Vault(bool deletedChar): IVault!deletedChar{
 		}
 
 		void meta(string _account, string _char, Metadata metadata){
-			immutable charMetaPath = getCharFile(_account, _char, deletedChar)~".meta";
+			import std.file : exists, isFile;
+
+			immutable charPath = getCharPath(_account, _char, deletedChar);
+			enforceHTTP(charPath.exists && charPath.isFile, HTTPStatus.notFound,
+					"Character '"~_char~"' not found");
+
+			immutable charMetaPath = charPath~".meta";
 			charMetaPath.writeFile(cast(immutable ubyte[])metadata.serializeToJsonString);
 		}
 
@@ -226,22 +252,22 @@ private:
 	Character getChar(in string account, in string bicName, bool deleted){
 		import std.file : DirEntry, exists, isFile;
 
-		immutable path = getCharFile(account, bicName, deleted);
+		immutable path = getCharPath(account, bicName, deleted);
 		enforceHTTP(path.exists && path.isFile, HTTPStatus.notFound, "Character '"~bicName~"' not found");
 		return Character(account, DirEntry(path));
 	}
 
-	string getCharFile(in string accountName, in string bicFile, bool deleted) const{
+	string getCharPath(in string accountName, in string bicFile, bool deleted) const{
 		import std.path : buildNormalizedPath, baseName;
-		assert(accountName.baseName == accountName, "account name should not be a path");
-		assert(bicFile.baseName == bicFile, "bic file name should not be a path");
+		enforceHTTP(accountName.baseName == accountName, HTTPStatus.badRequest, "account name should not be a path");
+		enforceHTTP(bicFile.baseName == bicFile, HTTPStatus.badRequest, "bic file name should not be a path");
 
 		return buildNormalizedPath(getVaultPath(accountName, deleted), bicFile~".bic");
 	}
 
 	string getVaultPath(in string accountName, bool deleted) const{
 		import std.path : buildNormalizedPath, baseName, isAbsolute;
-		assert(accountName.baseName == accountName, "account name should not be a path");
+		enforceHTTP(accountName.baseName == accountName, HTTPStatus.badRequest, "account name should not be a path");
 
 		if(!deleted){
 			return buildNormalizedPath(api.cfg["paths"]["servervault"].to!string, accountName);
