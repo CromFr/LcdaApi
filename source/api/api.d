@@ -3,7 +3,7 @@ module api.api;
 import vibe.d;
 import vibe.web.auth;
 debug import std.stdio : writeln;
-import mysql : MySQLPool;
+import mysql : MySQLPool, Connection, Prepared, prepare;
 
 import lcda.character;
 import config;
@@ -58,6 +58,7 @@ class Api : IApi{
 		UserInfo authenticate(scope HTTPServerRequest req, scope HTTPServerResponse res) @trusted{
 			import sql: preparedStatement, exec;
 			auto conn = mysqlConnPool.lockConnection();
+			auto preps = prepareStatements(conn);
 
 			UserInfo ret;
 
@@ -83,13 +84,8 @@ class Api : IApi{
 					token = "private-token" in req.query;
 
 				if(token !is null){
-					auto prep = conn.preparedStatement("
-						SELECT `id`, `account_name`, `name`, `type`, `last_used`
-						FROM `api_tokens`
-						WHERE `token`=$TOKEN",
-						"TOKEN", *token,
-						);
-					auto result = prep.query();
+					preps.prepGetToken.setArgs(*token);
+					auto result = preps.prepGetToken.query();
 
 					enforceHTTP(!result.empty, HTTPStatus.notFound, "No matching token found");
 
@@ -103,18 +99,17 @@ class Api : IApi{
 					result.close();
 
 					//Update last used date
-					conn.exec("UPDATE `api_tokens` SET `last_used`=NOW() WHERE `id`=" ~ ret.token.id.to!string);
+					preps.prepUpdateToken.setArgs(ret.token.id);
+					preps.prepUpdateToken.exec();
 				}
 			}
 
 			// GetUser additional info (admin state)
 			if(ret.account !is null){
-				auto prep = conn.preparedStatement("
-					SELECT admin FROM `account` WHERE `name`=$ACCOUNT",
-					"ACCOUNT", ret.account,
-					);
-				auto result = prep.query();
+				preps.prepGetAccount.setArgs(ret.account);
+				auto result = preps.prepGetAccount.query();
 				scope(exit) result.close();
+
 				ret.isAdmin = result.front[result.colNameIndicies["admin"]].get!int > 0;
 			}
 
@@ -147,6 +142,28 @@ package:
 		scope(exit) result.close();
 
 		return !result.empty && result.front[result.colNameIndicies["success"]] == 1;
+	}
+
+	auto prepareStatements(Connection conn){
+		import std.typecons: Tuple;
+		alias Ret = Tuple!(Prepared,"prepGetToken", Prepared,"prepUpdateToken", Prepared,"prepGetAccount");
+		static Ret[size_t] init;
+
+		if(auto ret = conn.toHash in init){
+			return *ret;
+		}
+		else{
+			auto prepGetToken = conn.prepare("
+				SELECT `id`, `account_name`, `name`, `type`, `last_used`
+				FROM `api_tokens`
+				WHERE `token`=?");
+			auto prepUpdateToken = conn.prepare("UPDATE `api_tokens` SET `last_used`=NOW() WHERE `id`=?");
+			auto prepGetAccount = conn.prepare("SELECT admin FROM `account` WHERE `name`=?");
+
+			init[conn.toHash] = Ret(prepGetToken, prepUpdateToken, prepGetAccount);
+			return init[conn.toHash];
+		}
+
 	}
 
 
