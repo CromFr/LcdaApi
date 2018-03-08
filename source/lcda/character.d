@@ -37,7 +37,7 @@ struct Character{
 		}
 
 		immutable strref = ResourceManager.get!StrRefResolver("resolver");
-		//immutable class2da = ResourceManager.fetchFile!TwoDA("classes.2da");
+		immutable class2da = ResourceManager.fetchFile!TwoDA("classes.2da");
 		immutable race2da = ResourceManager.fetchFile!TwoDA("racialsubtypes.2da");
 		immutable abilities2da = ResourceManager.fetchFile!TwoDA("iprp_abilities.2da");
 		immutable alignment2da = ResourceManager.fetchFile!TwoDA("iprp_alignment.2da");
@@ -122,10 +122,12 @@ struct Character{
 		immutable skillsCount = skills2da.rows;
 		uint[] skillRanks;
 		skillRanks.length = skillsCount;
+		size_t[4] levelClassCount;// class index => level count
 		foreach(lvlIndex, GffStruct gffLvl ; gff["LvlStatList"].get!GffList){
 			Level lvl;
 			//class
 			lvl.classIndex = classLookupMap[gffLvl["LvlStatClass"].get!GffByte];
+			lvl.classLevel = ++levelClassCount[lvl.classIndex];
 
 			//ability
 			if(lvlIndex%4 == 3){
@@ -145,10 +147,39 @@ struct Character{
 				}
 			}
 			//feats
+			GffWord[] lvlAutoFeats;// feat IDs
+			auto featsTableName = class2da.get!string("FeatsTable", lvl.classIndex);
+			if(featsTableName != ""){
+				auto featsTable = ResourceManager.fetchFile!TwoDA(featsTableName.toLower~".2da");
+				foreach(i ; 0 .. featsTable.rows){
+					auto lvlStr = featsTable.get!string("GrantedOnLevel", i);
+					if(lvlStr != "" && lvlStr.to!int == lvl.classLevel){
+						lvlAutoFeats ~= featsTable.get!GffWord("FeatIndex", i);
+					}
+				}
+			}
+			if(lvlIndex == 0){
+				auto raceFeatsTableName = race2da.get!string("FeatsTable", raceId);
+				if(raceFeatsTableName != ""){
+					auto raceFeatsTable = ResourceManager.fetchFile!TwoDA(raceFeatsTableName.toLower~".2da");
+					foreach(i ; 0 .. raceFeatsTable.rows){
+						lvlAutoFeats ~= raceFeatsTable.get!GffWord("FeatIndex", i);
+					}
+				}
+			}
+
 			foreach(i, GffStruct gffFeat ; gffLvl["FeatList"].get!GffList){
 				auto feat = gffFeat["Feat"].get!GffWord in featLookupMap;
-				if(feat)
+				if(feat){
 					lvl.featIndices ~= *feat;
+
+					//Automatically given feat detection
+					foreach(featId ; lvlAutoFeats){
+						if(featId == feats[*feat].id){
+							feats[*feat].automatic = true;
+						}
+					}
+				}
 			}
 			leveling ~= lvl;
 		}
@@ -260,6 +291,7 @@ struct Character{
 		string name;
 		string category;
 		string icon;
+		bool automatic = false;
 	}
 	Feat[] feats;
 
@@ -279,6 +311,7 @@ struct Character{
 	}
 	static struct Level{
 		size_t classIndex;
+		size_t classLevel;
 		string ability;
 		LevelingSkill[] skills;
 		size_t[] featIndices;//Index in feats array
