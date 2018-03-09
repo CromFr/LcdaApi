@@ -94,7 +94,7 @@ enum Dungeons: Dungeon {
 	Wyvernes       = Dungeon("Wyvernes",              "epinedorsale-wivernes",            "QUETE.WIVERNECHEFMORT",        "QUETE.COFFREWIVERNE"),
 	Drows          = Dungeon("Drows",                 "ombreterre-forteresse_drow",       "QUETE.BOSSDROWMORT",           "QUETE.COFFREBOSSDROW"),
 	Fees           = Dungeon("Fées",                  "lurkwood-racines-niveau1",         "annexe.FAFNER",                "QUETE.COFFREFEES"),
-	IleMaudite     = Dungeon("Ile maudite",           "ile_maudite",                      "annexe.ZHERGHUL",              "QUETE.COFFREZHERGHUL"),
+	IleMaudite     = Dungeon("Ile maudite",           "ile_maudite-ruines_maudites",      "annexe.ZHERGHUL",              "QUETE.COFFREZHERGHUL"),
 	DesertRuines   = Dungeon("Désert - Ruines",       "desert_anauroch-ruines",           "QUETE.MEPHOS",                 "QUETE.COFFREMEPHOS"),
 	Pirates        = Dungeon("Pirates",               "front_de_mer-galeries",            "annexe.BARBAROSSA",            "QUETE.COFFREPIRATES"),
 	Dorn           = Dungeon("Dorn",                  "ombreterre-dorn-hall",             "QUETE.DornChest_BossKilled",   "QUETE.DornChest_Looted"),
