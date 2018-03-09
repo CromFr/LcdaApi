@@ -149,19 +149,29 @@ struct Character{
 			}
 			//feats
 			GffWord[] lvlAutoFeats;// feat IDs
-			auto featsTableName = class2da.get!string("FeatsTable", classId);
+
+			auto featsTableName = class2da.get("FeatsTable", classId);
 			auto featsTable = ResourceManager.fetchFile!TwoDA(featsTableName.toLower~".2da");
+			immutable featsTableGrantedIdx = featsTable.columnIndex("GrantedOnLevel");
+			immutable featsTableFeatIdx = featsTable.columnIndex("FeatIndex");
+
 			foreach(i ; 0 .. featsTable.rows){
-				auto lvlStr = featsTable.get!string("GrantedOnLevel", i);
-				if(lvlStr != "" && lvlStr.to!int == lvl.classLevel){
-					lvlAutoFeats ~= featsTable.get!GffWord("FeatIndex", i);
+				auto featLvl = featsTable.get!int(featsTableGrantedIdx, i);
+				if(!featLvl.isNull && featLvl == lvl.classLevel){
+					auto feat = featsTable.get!GffWord(featsTableFeatIdx, i);
+					if(!feat.isNull)
+						lvlAutoFeats ~= feat;
 				}
 			}
 			if(lvlIndex == 0){
-				auto raceFeatsTableName = race2da.get!string("FeatsTable", raceId);
+				auto raceFeatsTableName = race2da.get("FeatsTable", raceId);
 				auto raceFeatsTable = ResourceManager.fetchFile!TwoDA(raceFeatsTableName.toLower~".2da");
+				immutable raceFeatsTableFeatIdx = raceFeatsTable.columnIndex("FeatIndex");
+
 				foreach(i ; 0 .. raceFeatsTable.rows){
-					lvlAutoFeats ~= raceFeatsTable.get!GffWord("FeatIndex", i);
+					auto feat = raceFeatsTable.get!GffWord(raceFeatsTableFeatIdx, i);
+					if(!feat.isNull)
+						lvlAutoFeats ~= feat;
 				}
 			}
 
