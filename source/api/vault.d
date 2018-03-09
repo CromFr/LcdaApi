@@ -33,8 +33,16 @@ class Vault(bool deletedChar): IVault!deletedChar{
 			import std.file: exists, isDir;
 
 			immutable vaultPath = getVaultPath(_account, deletedChar);
-			enforceHTTP(vaultPath.exists && vaultPath.isDir, HTTPStatus.notFound,
-				"Account / Vault not found");
+			if(deletedChar == false){
+				enforceHTTP(vaultPath.exists && vaultPath.isDir, HTTPStatus.notFound,
+					"Account / Vault not found");
+			}
+			else{
+				auto activeVaultPath = getVaultPath(_account, false);
+				enforceHTTP(activeVaultPath.exists && activeVaultPath.isDir, HTTPStatus.notFound,
+					"Account / Vault not found");
+				return [];
+			}
 
 			static struct CachedList{
 				this() @disable;
