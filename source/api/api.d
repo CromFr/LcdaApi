@@ -145,7 +145,7 @@ package:
 	bool passwordAuth(string account, string password) @trusted{
 		auto conn = mysqlConnPool.lockConnection();
 
-		auto result = conn.query(prepPasswordLogin.prep, account, password);
+		auto result = conn.query(prepPasswordLogin, account, password);
 		scope(exit) result.close();
 
 		return !result.empty && result.front[result.colNameIndicies["success"]] == 1;
