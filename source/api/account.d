@@ -4,6 +4,7 @@ import vibe.d;
 import vibe.web.auth;
 debug import std.stdio : writeln;
 
+import sql;
 import api.api;
 import api.apidef;
 
@@ -11,7 +12,41 @@ import api.apidef;
 class AccountApi: IAccount{
 	this(Api api){
 		this.api = api;
+
+		// Prepare statements
+		auto conn = api.mysqlConnPool.lockConnection();
+
+		foreach(ref query ; api.cfg["sql_queries"]["set_password"].get!(Json[])){
+			prepSetPassword ~= conn.prepareCustom(query.get!string, ["ACCOUNT", "NEW_PASSWORD"]);
+		}
+		prepGetTokens = conn.prepare("
+			SELECT `id`, `name`, `type`, `last_used`
+			FROM `api_tokens` WHERE `account_name`=?");
+		prepGetToken = conn.prepare("
+			SELECT `id`, `name`, `type`, `last_used`
+			FROM `api_tokens` WHERE `account_name`=? AND `id`=?");
+		prepNewToken = conn.prepare("
+			INSERT INTO `api_tokens`
+			(`account_name`, `name`, `type`, `token`)
+			VALUES (?, ?, ?, SUBSTRING(MD5(RAND()), -32))");
+		prepGetTokenValue = conn.prepare("
+			SELECT `token`
+			FROM `api_tokens`
+			WHERE `account_name`=? AND `id`=?");
+		prepDeleteToken = conn.prepare("
+			DELETE FROM `api_tokens`
+			WHERE `account_name`=? AND `id`=?");
+
 	}
+	private{
+		PreparedCustom[] prepSetPassword;
+		Prepared prepGetTokens;
+		Prepared prepGetToken;
+		Prepared prepNewToken;
+		Prepared prepGetTokenValue;
+		Prepared prepDeleteToken;
+	}
+
 
 	override {
 		bool exists(string _account){
@@ -26,7 +61,6 @@ class AccountApi: IAccount{
 		}
 
 		void changePassword(string _account, string oldPassword, string newPassword, UserInfo user) @trusted{
-			import sql: preparedStatement;
 			auto conn = api.mysqlConnPool.lockConnection();
 
 			string accountToCheck;
@@ -38,13 +72,8 @@ class AccountApi: IAccount{
 			enforceHTTP(api.passwordAuth(accountToCheck, oldPassword), HTTPStatus.conflict,
 				"Old password is incorrect");
 
-			auto setPasswdQuery = api.cfg["sql_queries"]["set_password"].get!(Json[]);
-			foreach(ref query ; setPasswdQuery){
-
-				auto affectedRows = conn.preparedStatement(query.get!string,
-					"ACCOUNT", _account,
-					"NEW_PASSWORD", newPassword,
-					).exec();
+			foreach(ref prep ; prepSetPassword){
+				auto affectedRows = conn.exec(prep, _account, newPassword);
 
 				enforceHTTP(affectedRows > 0, HTTPStatus.notFound,
 					"Could not set password (probably account not found)");
@@ -52,18 +81,12 @@ class AccountApi: IAccount{
 		}
 
 		Token[] tokenList(in string _account) @trusted{
-			Token[] ret;
-
-			import sql: preparedStatement;
 			auto conn = api.mysqlConnPool.lockConnection();
-			auto prep = conn.preparedStatement("
-				SELECT `id`, `name`, `type`, `last_used`
-				FROM `api_tokens` WHERE `account_name`=$ACCOUNT",
-				"ACCOUNT", _account,
-				);
-			auto result = prep.query();
+
+			auto result = conn.query(prepGetTokens, _account);
 			scope(exit) result.close();
 
+			Token[] ret;
 			foreach(ref row ; result){
 				ret ~= Token(
 					row[result.colNameIndicies["id"]].get!size_t,
@@ -75,32 +98,18 @@ class AccountApi: IAccount{
 		}
 
 		TokenWithValue newToken(in string _account, in string tokenName, Token.Type tokenType) @trusted{
-			import sql: preparedStatement;
 			auto conn = api.mysqlConnPool.lockConnection();
 
 			ulong tokenId;
 			{
-				auto affectedRows = conn.preparedStatement("
-					INSERT INTO `api_tokens`
-					(`account_name`, `name`, `type`, `token`)
-					VALUES ($ACCOUNT, $TOKENNAME, $TYPE, SUBSTRING(MD5(RAND()), -32))",
-					"ACCOUNT", _account,
-					"TOKENNAME", tokenName,
-					"TYPE", cast(string)tokenType,
-					).exec();
+				auto affectedRows = conn.exec(prepNewToken, _account, tokenName, cast(string)tokenType);
 
 				enforceHTTP(affectedRows, HTTPStatus.conflict, "Couldn't insert token");
 				tokenId = conn.lastInsertID;
 			}
 			string tokenValue;
 			{
-				auto prep = conn.preparedStatement("
-					SELECT `token`
-					FROM `api_tokens` WHERE `account_name`=$ACCOUNT AND `id`=$TOKENID",
-					"ACCOUNT", _account,
-					"TOKENID", tokenId,
-					);
-				auto result = prep.query();
+				auto result = conn.query(prepGetTokenValue, _account, tokenId);
 				scope(exit) result.close();
 
 				enforceHTTP(!result.empty, HTTPStatus.notFound,
@@ -113,16 +122,9 @@ class AccountApi: IAccount{
 		}
 
 		Token getToken(string _account, ulong _tokenId) @trusted{
-
-			import sql: preparedStatement;
 			auto conn = api.mysqlConnPool.lockConnection();
-			auto prep = conn.preparedStatement("
-				SELECT `id`, `name`, `type`, `last_used`
-				FROM `api_tokens` WHERE `account_name`=$ACCOUNT AND `id`=$TOKENID",
-				"ACCOUNT", _account,
-				"TOKENID", _tokenId,
-				);
-			auto result = prep.query();
+
+			auto result = conn.query(prepGetToken, _account, _tokenId);
 			scope(exit) result.close();
 
 			enforceHTTP(!result.empty, HTTPStatus.notFound,
@@ -136,14 +138,10 @@ class AccountApi: IAccount{
 		}
 
 		void deleteToken(in string _account, ulong _tokenId) @trusted{
-			import sql: preparedStatement;
 			auto conn = api.mysqlConnPool.lockConnection();
-			auto affectedRows = conn.preparedStatement("
-				DELETE FROM `api_tokens`
-				WHERE `account_name`=$ACCOUNT AND `id`=$TOKENID",
-				"ACCOUNT", _account,
-				"TOKENID", _tokenId,
-				).exec();
+
+			auto affectedRows = conn.exec(prepDeleteToken, _account, _tokenId);
+
 			enforceHTTP(affectedRows > 0, HTTPStatus.notFound,
 				"Could not delete token ID=" ~ _tokenId.to!string ~ " on account '" ~ _account ~ "'");
 		}

@@ -1,74 +1,92 @@
 module sql;
 
 import mysql;
-public import mysql: Connection, prepare, exec, MySQLPool;
+import std.conv: to;
+import std.variant;
+
+public import std.variant: Variant;
+public import mysql: Connection, MySQLPool, prepare, Prepared, exec, query;
 
 debug import std.stdio;
 
+struct PreparedCustom {
+	package this(Connection conn, in string sql, in string[] placeholderNames){
 
-Prepared preparedStatement(VT...)(Connection conn, in string sql, VT placeholders){
-	static assert(placeholders.length % 2 == 0, "Need a pair number of placeholders");
+		string sqlStatement;
 
-	//Check if there is a valid placeholder at index offset
-	// ret[0]: Placeholder value index
-	// ret[1]: Placeholder name length. 0 if not found
-	auto getPlaceholder(in string str, size_t offset){
-		import std.traits: isSomeString;
-		import std.typecons: tuple;
+		// Find and registers placeholders
+		for(size_t i = 0 ; i < sql.length ; i++){
+			if(sql[i] == '$'){
+				bool found = false;
+				foreach(nameIndex, ref phName ; placeholderNames){
+					assert(i + 1 < sql.length && phName.length > 0, "Cannot have a zero-length placeholder");
 
-		static struct Ret {
-			size_t valueIndex;
-			size_t nameLength;
-		}
-		Ret ret;
+					if(i + 1 + phName.length <= sql.length && sql[i + 1 .. i + 1 + phName.length] == phName){
 
-		foreach(i, ph ; placeholders){
-			static if(i % 2 == 0){
-				static assert(isSomeString!(typeof(ph)), "Placeholders must be key value pairs, where the key is a string");
+						placeholderIndices ~= nameIndex;
 
-				immutable len = ph.length;
-				if(offset + 1 + len <= str.length && str[offset + 1 .. offset + 1 + len] == ph){
-					ret.valueIndex = i;
-					ret.nameLength = len + 1;
-					return ret;
+						sqlStatement ~= "?";
+						i += phName.length;
+						found = true;
+						break;
+					}
 				}
+
+				if(found)
+					continue;
+
+
 			}
+			sqlStatement ~= sql[i];
 		}
-		return ret;
+
+		prep = conn.prepare(sqlStatement);
 	}
 
-	string statement;
-	//size_t[] placeholderValuesIdx;
-	size_t phNameIndex = 0;
-	size_t[][placeholders.length / 2] placeholderMap;
+	void setArgs(Variant[] args){
+		assert(args.length == placeholderIndices.length,
+			"Wrong number of placeholders: Need " ~ placeholderIndices.length.to!string ~ ", "
+			~ args.length.to!string~" provided for query '" ~ prep.sql ~ "'");
 
-	// Find and registers placeholders
-	for(size_t i = 0 ; i < sql.length ; i++){
-		if(sql[i] == '$'){
-			auto ph = getPlaceholder(sql, i);
-			if(ph.nameLength > 0){
-				placeholderMap[ph.valueIndex / 2] ~= phNameIndex++;
-				statement ~= "?";
-				i += ph.nameLength - 1;
-				continue;
-			}
+		Variant[] values;
+		values.length = placeholderIndices.length;
+		foreach(i, valueIndex ; placeholderIndices){
+			values[i] = args[valueIndex];
 		}
-		statement ~= sql[i];
+
+		prep.setArgs(values);
+	}
+	void setArgs(VT...)(VT args){
+		Variant[args.length] values;
+		foreach(i, arg ; args){
+			static if(is(arg: Variant))
+				values[i] = arg;
+			else
+				values[i] = Variant(arg);
+		}
+		setArgs(values);
 	}
 
-	// Create the prepared statement
-	Prepared ret = prepare(conn, statement);
+	Prepared prep;
+	//alias prep this;
 
-	// Fill prepared statement arguments
-	foreach(i, ph ; placeholders){
-		static if(i % 2 == 1){
-			foreach(index ; placeholderMap[i / 2])
-				ret.setArg(index, placeholders[i]);
-		}
-	}
-
-	return ret;
+private:
+	size_t[] placeholderIndices;
 }
 
-
-
+// For consistency with mysql-native
+PreparedCustom prepareCustom(Connection conn, in string sql, in string[] placeholderNames){
+	return PreparedCustom(conn, sql, placeholderNames);
+}
+ulong exec(T...)(Connection conn, ref PreparedCustom prepared, T args)
+	if(T.length > 0 && !is(T[0] == Variant[]))
+{
+	prepared.setArgs(args);
+	return exec(conn, prepared.prep);
+}
+ResultRange query(T...)(Connection conn, ref PreparedCustom prepared, T args)
+	if(T.length > 0 && !is(T[0] == Variant[]) && !is(T[0] == ColumnSpecialization) && !is(T[0] == ColumnSpecialization[]))
+{
+	prepared.setArgs(args);
+	return query(conn, prepared.prep);
+}

@@ -3,7 +3,7 @@ module api.api;
 import vibe.d;
 import vibe.web.auth;
 debug import std.stdio : writeln;
-import mysql : MySQLPool, Connection, Prepared, prepare;
+import sql;
 
 import lcda.character;
 import config;
@@ -25,6 +25,24 @@ class Api : IApi{
 		vaultApi = new Vault!false(this);
 		backupVaultApi = new Vault!true(this);
 		accountApi = new AccountApi(this);
+
+		// Prepare statements
+		auto conn = mysqlConnPool.lockConnection();
+
+		prepPasswordLogin = conn.prepareCustom(cfg["sql_queries"]["login"].get!string, ["ACCOUNT", "PASSWORD"]);
+
+		prepGetToken = conn.prepare("
+			SELECT `id`, `account_name`, `name`, `type`, `last_used`
+			FROM `api_tokens`
+			WHERE `token`=?");
+		prepUpdateUsedToken = conn.prepare("UPDATE `api_tokens` SET `last_used`=NOW() WHERE `id`=?");
+		prepGetAccountInfo = conn.prepare("SELECT admin FROM `account` WHERE `name`=?");
+	}
+	private{
+		PreparedCustom prepPasswordLogin;
+		Prepared prepGetToken;
+		Prepared prepUpdateUsedToken;
+		Prepared prepGetAccountInfo;
 	}
 
 	override{
@@ -56,9 +74,7 @@ class Api : IApi{
 
 
 		UserInfo authenticate(scope HTTPServerRequest req, scope HTTPServerResponse res) @trusted{
-			import sql: preparedStatement, exec;
 			auto conn = mysqlConnPool.lockConnection();
-			auto preps = prepareStatements(conn);
 
 			UserInfo ret;
 
@@ -84,41 +100,37 @@ class Api : IApi{
 					token = "private-token" in req.query;
 
 				if(token !is null){
-					preps.prepGetToken.setArgs(*token);
-					auto result = preps.prepGetToken.query();
+					//Retrieve token info
+					{
+						auto result = conn.query(prepGetToken, *token);
+						scope(exit) result.close();
 
-					enforceHTTP(!result.empty, HTTPStatus.notFound, "No matching token found");
+						enforceHTTP(!result.empty, HTTPStatus.notFound, "No matching token found");
 
-					ret.token = Token(
-						result.front[result.colNameIndicies["id"]].get!size_t,
-						result.front[result.colNameIndicies["name"]].get!string,
-						result.front[result.colNameIndicies["type"]].get!string.to!(Token.Type),
-						result.front[result.colNameIndicies["last_used"]].get!DateTime,
-						);
-					ret.account = result.front[result.colNameIndicies["account_name"]].get!string;
-					result.close();
+						ret.token = Token(
+							result.front[result.colNameIndicies["id"]].get!size_t,
+							result.front[result.colNameIndicies["name"]].get!string,
+							result.front[result.colNameIndicies["type"]].get!string.to!(Token.Type),
+							result.front[result.colNameIndicies["last_used"]].get!DateTime,
+							);
+						ret.account = result.front[result.colNameIndicies["account_name"]].get!string;
+					}
 
 					//Update last used date
-					preps.prepUpdateToken.setArgs(ret.token.id);
-					preps.prepUpdateToken.exec();
+					conn.exec(prepUpdateUsedToken, ret.token.id.to!size_t);
+
 				}
 			}
 
 			// GetUser additional info (admin state)
 			if(ret.account !is null){
-				preps.prepGetAccount.setArgs(ret.account);
-				auto result = preps.prepGetAccount.query();
+				auto result = conn.query(prepGetAccountInfo, ret.account);
 				scope(exit) result.close();
 
 				ret.isAdmin = result.front[result.colNameIndicies["admin"]].get!int > 0;
 			}
 
-			//debug if(ret.account !is null){
-			//	logInfo("authenticated user: %s%s",
-			//		ret.account, ret.isAdmin? " (admin)" : "");
-			//}
 			return ret;
-
 		}
 	}
 
@@ -131,14 +143,9 @@ package:
 	AccountApi accountApi;
 
 	bool passwordAuth(string account, string password) @trusted{
-		import sql: preparedStatement;
 		auto conn = mysqlConnPool.lockConnection();
 
-		auto prep = conn.preparedStatement(cfg["sql_queries"]["login"].get!string,
-			"ACCOUNT", account,
-			"PASSWORD", password,
-			);
-		auto result = prep.query();
+		auto result = conn.query(prepPasswordLogin.prep, account, password);
 		scope(exit) result.close();
 
 		return !result.empty && result.front[result.colNameIndicies["success"]] == 1;

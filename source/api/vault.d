@@ -3,6 +3,7 @@ module api.vault;
 import vibe.d;
 debug import std.stdio: writeln;
 
+import sql;
 import lcda.character;
 import api.api;
 import api.apidef;
@@ -17,6 +18,19 @@ class CharListCache{
 class Vault(bool deletedChar): IVault!deletedChar{
 	this(Api api){
 		this.api = api;
+
+		auto conn = api.mysqlConnPool.lockConnection();
+
+		foreach(ref query ; api.cfg["sql_queries"]["on_activate"].get!(Json[])){
+			prepOnDelete ~= conn.prepareCustom(query.get!string, ["ACCOUNT", "CHAR"]);
+		}
+		foreach(ref query ; api.cfg["sql_queries"]["on_delete"].get!(Json[])){
+			prepOnDelete ~= conn.prepareCustom(query.get!string, ["ACCOUNT", "CHAR"]);
+		}
+	}
+	private{
+		PreparedCustom[] prepOnActivate;
+		PreparedCustom[] prepOnDelete;
 	}
 
 	override{
@@ -33,7 +47,9 @@ class Vault(bool deletedChar): IVault!deletedChar{
 			import std.file: exists, isDir;
 
 			immutable vaultPath = getVaultPath(_account, deletedChar);
-			if(deletedChar == false){
+
+			bool b = deletedChar;//compiler bug producing warning if b is known at ct
+			if(b == false){
 				enforceHTTP(vaultPath.exists && vaultPath.isDir, HTTPStatus.notFound,
 					"Account / Vault not found");
 			}
@@ -157,14 +173,9 @@ class Vault(bool deletedChar): IVault!deletedChar{
 				}while(target.exists);
 
 
-				auto queries = api.cfg["sql_queries"]["on_delete"].get!(Json[]);
-				foreach(ref query ; queries){
-					import sql: preparedStatement;
-					auto conn = api.mysqlConnPool.lockConnection();
-					conn.preparedStatement(query.get!string,
-						"ACCOUNT", _account,
-						"CHAR", _char,
-						).exec();
+				auto conn = api.mysqlConnPool.lockConnection();
+				foreach(ref prep ; prepOnDelete){
+					conn.exec(prep, _account, _char);
 				}
 
 				debug{
@@ -184,7 +195,6 @@ class Vault(bool deletedChar): IVault!deletedChar{
 				import std.file : exists, isFile, rename, mkdirRecurse;
 				import std.path : buildPath, baseName;
 				import std.regex : matchFirst, ctRegex;
-				//import sql: replacePlaceholders, SqlPlaceholder;
 
 				immutable charFile = getCharPath(_account, _char, deletedChar);
 				enforceHTTP(charFile.exists && charFile.isFile, HTTPStatus.notFound,
@@ -197,14 +207,9 @@ class Vault(bool deletedChar): IVault!deletedChar{
 				enforceHTTP(!target.exists, HTTPStatus.conflict, "An active character has the same name.");
 
 
-				auto queries = api.cfg["sql_queries"]["on_activate"].get!(Json[]);
-				foreach(ref query ; queries){
-					import sql: preparedStatement;
-					auto conn = api.mysqlConnPool.lockConnection();
-					conn.preparedStatement(query.get!string,
-						"ACCOUNT", _account,
-						"CHAR", _char,
-						).exec();
+				auto conn = api.mysqlConnPool.lockConnection();
+				foreach(ref prep ; prepOnActivate){
+					conn.exec(prep, _account, _char);
 				}
 
 				debug{
