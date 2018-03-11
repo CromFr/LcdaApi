@@ -15,18 +15,30 @@ struct Dungeon{
 	int diffMax = 0;
 
 package:
-	string chestVar;
-	string bossKilledVar;//VARNAME for a journalNODROP var, or DBNAME.VARNAME for a campaign var
-	string areaResref;//internal
+	string chestVar;//VARNAME for a journalNODROP var, or DBNAME.VARNAME for a campaign var
+	string area;//internal
 	string diffName = null;//internal
 
 }
 Dungeon[] dungeonList;
 
 
+private struct DungeonDef{
+	string name;
+	string area;
+	string chestVar;
+}
+
+
+string diffPrefix(uint i){
+	import std.conv: to;
+	return i==0? null : "d"~i.to!string~"_";
+}
+
 void initDungeonInfo(){
 	import resourcemanager;
 	import config;
+	import vibe.data.json;
 	import nwn.fastgff;
 	import nwn.tlk;
 	import lcda.compat;
@@ -37,17 +49,16 @@ void initDungeonInfo(){
 	immutable modulePath = cfg["paths"]["module"].to!string;
 
 
-	foreach(d ; EnumMembers!Dungeons){
+	foreach(d ; cfg["dungeons"]["list"].get!(Json[])){
 		Dungeon dungeon;
-		dungeon.name = d.name;
-		dungeon.bossKilledVar = d.bossKilledVar;
-		dungeon.chestVar = d.chestVar;
-		dungeon.areaResref = d.areaResref;
+		dungeon.name = d["name"].get!string;
+		dungeon.chestVar = d["chestVar"].get!string;
+		dungeon.area = d["area"].get!string;
 
-		auto areaARE = new FastGff(buildPathCI(modulePath, dungeon.areaResref~".are"));
+		auto areaARE = new FastGff(buildPathCI(modulePath, dungeon.area~".are"));
 		dungeon.areaName = areaARE["Name"].get!GffLocString.resolve(strref);
 
-		auto areaGIT = new FastGff(buildPathCI(modulePath, dungeon.areaResref~".git"));
+		auto areaGIT = new FastGff(buildPathCI(modulePath, dungeon.area~".git"));
 		auto varTable = "VarTable" in areaGIT.root;
 		if(!varTable.isNull){
 			foreach(i, GffStruct varNode ; varTable.get.get!GffList){

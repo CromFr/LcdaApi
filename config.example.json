@@ -106,6 +106,47 @@
 		"hidden_quests": [
 			"reglesserveur"
 		]
+	},
+
+	"dungeons": {
+		// List of existing dungeons
+		// name: name to display
+		// area: Main area resref
+		// chestVar: kinder looted variable. VARNAME for a journalNODROP var, or DBNAME.VARNAME for a campaign var
+		"list": [
+			{ "name": "Rats",                  "area": "eauprofonde-souterrains",          "chestVar": "COFFRE_ROI_RATS" },
+			{ "name": "Gobelins",              "area": "eauprofonde-portes-gobelins",      "chestVar": "QUETE.COFFREROIGOB" },
+			{ "name": "Contrebandiers",        "area": "eauprofonde-anciennes_mines",      "chestVar": "QUETE.COFFREMORGANE" },
+			{ "name": "Gnolls",                "area": "ravinyard",                        "chestVar": "QUETE.COFFREGNOLLS" },
+			{ "name": "Orcs",                  "area": "lurkwood-fortin_orc",              "chestVar": "QUETE.COFFREGRAMSHH" },
+			{ "name": "Cimetière",             "area": "desolation-crypte",                "chestVar": "QUETE.COFFRECIMETIERE" },
+			{ "name": "Élémentaires d'eau",    "area": "front_de_mer-caverne_innondee",    "chestVar": "QUETE.COFFREGOLGOTH" },
+			{ "name": "Spectres",              "area": "lurkwood-grotte_hantee",           "chestVar": "QUETE.COFFREESPRITANTIQUE" },
+			{ "name": "Araignées",             "area": "desolation-foret",                 "chestVar": "QUETE.COFFREARAIGNEE" },
+			{ "name": "Lézards",               "area": "marais_du_lezard",                 "chestVar": "QUETE.COFFRESHALVA" },
+			{ "name": "Désolation - Collines", "area": "desolation-collines",              "chestVar": "QUETE.COFFRECOLLINE" },
+			{ "name": "Ogres",                 "area": "epinedorsale-galeries",            "chestVar": "QUETE.COFFREKAHRK" },
+			{ "name": "Wyvernes",              "area": "epinedorsale-wivernes",            "chestVar": "QUETE.COFFREWIVERNE" },
+			{ "name": "Drows",                 "area": "ombreterre-forteresse_drow",       "chestVar": "QUETE.COFFREBOSSDROW" },
+			{ "name": "Fées",                  "area": "lurkwood-racines-niveau1",         "chestVar": "QUETE.COFFREFEES" },
+			{ "name": "Ile maudite",           "area": "ile_maudite-ruines_maudites",      "chestVar": "QUETE.COFFREZHERGHUL" },
+			{ "name": "Désert - Ruines",       "area": "desert_anauroch-ruines",           "chestVar": "QUETE.COFFREMEPHOS" },
+			{ "name": "Pirates",               "area": "front_de_mer-galeries",            "chestVar": "QUETE.COFFREPIRATES" },
+			{ "name": "Dorn",                  "area": "ombreterre-dorn-hall",             "chestVar": "QUETE.DornChest_Looted" },
+			{ "name": "Dregs",                 "area": "desert_anauroch_repaire_dreg",     "chestVar": "QUETE.COFFREBOSSDREG" },
+			{ "name": "Imaskaris",             "area": "lurkwood-atelier_imaskari",        "chestVar": "QUETE.COFFRECHOSEOUTREMONDE" },
+			{ "name": "Illithids",             "area": "marais-enclave_illithid",          "chestVar": "QUETE.COFFREGLANCEPHALE" },
+			{ "name": "Seigneur damné",        "area": "ile_des_g-caverne_maudite",        "chestVar": "QUETE.COFFRESEIGNEURDAMNE" },
+			{ "name": "Labyrinthe",            "area": "ile_des_g-etrange_grotte",         "chestVar": "QUETE.COFFRELABYRINTHE" },
+			{ "name": "Driders",               "area": "ombreterre-taniere_driders",       "chestVar": "QUETE.COFFREBOSSDRIDER" },
+			{ "name": "Saisons",               "area": "ile_saisons-temple_printemps-rdc", "chestVar": "QUETE.COFFREAVATARISHTAR" },
+			{ "name": "Façonneur",             "area": "lurkwood-secret",                  "chestVar": "QUETE.COFFRELURKWOODSECRET" },
+			{ "name": "Géants des glaces",     "area": "epinedorsale-grotte_geant",        "chestVar": "COFFRE_HIRKA" },
+			{ "name": "Plan du Feu",           "area": "plan_du_feu",                      "chestVar": "QUETE.COFFREBOSSEMIR" },
+			{ "name": "Dédale",                "area": "desert_anauroch-dedale_rdc",       "chestVar": "QUETE.COFFREBOSSDEDALE" },
+			{ "name": "Tyrannoeils",           "area": "ombreterre-antre_tyrannoeils",     "chestVar": "QUETE.COFFREBOSSTYRANNOEILS" },
+			{ "name": "Mintarn",               "area": "citadelle-passage_souterrain",     "chestVar": "QUETE.COFFRESEIGNEURKRANTAR" },
+		]
 	}
 
 
