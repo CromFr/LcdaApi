@@ -6,7 +6,7 @@ import std.datetime: SysTime, Clock;
 class Cache {
 static:
 
-	auto ref T get(T)(in string name, bool function(in T cachedObject, SysTime lastAccess) isExpired, T delegate() ctor)
+	auto ref T get(T)(in string name, bool function(in T cachedObject, SysTime created) isExpired, T delegate() ctor)
 	if(is(T: CopyConstness!(T, Object))){
 
 		static if(is(T == const) || is(T == immutable))
@@ -21,9 +21,8 @@ static:
 		}
 
 		auto cacheEntry = name in *cacheTable;
-		if(cacheEntry && !isExpired(cast(T)cacheEntry.data, cacheEntry.lastAccess)){
+		if(cacheEntry && !isExpired(cast(T)cacheEntry.data, cacheEntry.created)){
 			// return existing
-			cacheEntry.lastAccess = Clock.currTime();
 			return cast(T)cacheEntry.data;
 		}
 		// Insert new one
@@ -35,13 +34,13 @@ static:
 			).data;
 	}
 
-	auto ref T get(T)(in string name, bool function(in T cachedObject, SysTime lastAccess) isExpired, T delegate() ctor)
+	auto ref T get(T)(in string name, bool function(in T cachedObject, SysTime created) isExpired, T delegate() ctor)
 	if(!is(T: CopyConstness!(T, Object))){
 
 		alias Type = CopyConstness!(T, Wrapper!T);
 		return get!Type(
 			name,
-			function(in Type wrap, SysTime lastAccess){ return wrap.isExpired(wrap.inner, lastAccess); },
+			function(in Type wrap, SysTime created){ return wrap.isExpired(wrap.inner, created); },
 			() => new Type(ctor(), isExpired)
 		).inner;
 	}
@@ -60,7 +59,7 @@ static:
 		foreach(ref cache ; [tlsCache, sharedCache]){
 			foreach(ref table ; cache){
 				foreach(entryKV ; table.byKeyValue){
-					if(entryKV.value.isExpired(entryKV.value.data, entryKV.value.lastAccess)){
+					if(entryKV.value.isExpired(entryKV.value.data, entryKV.value.created)){
 						table.remove(entryKV.key);
 					}
 				}
@@ -78,7 +77,7 @@ private:
 	static struct CacheEntry{
 		Object data;
 		bool function(in Object, SysTime) isExpired;
-		SysTime lastAccess;
+		SysTime created;
 	}
 
 	static class Wrapper(T){

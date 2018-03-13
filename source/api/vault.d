@@ -86,12 +86,13 @@ class Vault(bool deletedChar): IVault!deletedChar{
 			}
 
 			import cache: Cache;
+			//TODO: this cast is awful but should not be a problem
 			return cast(LightCharacter[]) Cache.get!(const CachedList)(vaultPath,
 				function(in CachedList rec, lastAccess){
 					return !rec.vaultPath.exists
 					|| rec.hash != rec.calcHash();
 				},
-				{
+				delegate(){
 					scope(success){
 						import std.stdio : writeln, stdout;
 						writeln("Generated character list ", _account ~ (deletedChar ? "/deleted" : null));
@@ -120,13 +121,14 @@ class Vault(bool deletedChar): IVault!deletedChar{
 				Character character;
 			}
 
+			//TODO: this cast is awful but should not be a problem
 			return cast(Character) Cache.get!(const CachedCharacter)(file,
-				function(in CachedCharacter rec, lastAccess){
+				function(in CachedCharacter rec, created){
 					return !rec.filePath.exists
 					|| rec.filePath.timeLastModified > rec.lastModified
-					|| (lastAccess - Clock.currTime()) > dur!"minutes"(15);
+					|| (Clock.currTime() - created) > dur!"minutes"(5);
 				},
-				{
+				delegate(){
 					scope(success){
 						import std.stdio : writeln, stdout;
 						writeln("Generated character info ", _account ~ (deletedChar ? "/deleted/" : "/") ~ _char);
