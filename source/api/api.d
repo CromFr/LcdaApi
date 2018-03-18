@@ -135,7 +135,7 @@ class Api : IApi{
 	}
 
 package:
-	immutable Config cfg;
+	const Config cfg;
 	MySQLPool mysqlConnPool;
 
 	Vault!false vaultApi;

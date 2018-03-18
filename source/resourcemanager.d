@@ -28,9 +28,9 @@ __gshared static:
 
 	///ditto
 	/// TODO: not thread-safe
-	void store(T)(in string name, auto ref immutable(T) data){
+	void store(T)(in string name, auto ref const(T) data){
 		//writeln("Immutable: ",name," = ",T.stringof);
-		storeResource(name, cast(T)data, Flags.IMMUTABLE);
+		storeResource(name, cast(T)data, Flags.CONST);
 	}
 
 
@@ -73,21 +73,21 @@ __gshared static:
 	}
 
 	///Gets a reference to the resource matching the name and type T
-	auto ref immutable(T) get(T)(in string name){
+	auto ref const(T) get(T)(in string name){
 		static if(is(T==class)){
-			return cast(immutable(T))(getResource!T(name).data);
+			return cast(const(T))(getResource!T(name).data);
 		}
 		else{
-			return *cast(immutable(T)*)(getResource!T(name).data.ptr);
+			return *cast(const(T)*)(getResource!T(name).data.ptr);
 		}
 	}
 
 	///ditto
-	///The resource is mutable and can be changed. Will assert an Error if the resource has been stored as immutable
+	///The resource is mutable and can be changed. Will assert an Error if the resource has been stored as const
 	///Mutability breaks thread safety
 	auto ref T getMut(T)(in string name){
 		auto r = getResource!T(name);
-		if(!(r.flags & Flags.IMMUTABLE)){
+		if(!(r.flags & Flags.CONST)){
 			static if(is(T==class)){
 				return cast(T)(getResource!T(name).data);
 			}
@@ -95,7 +95,7 @@ __gshared static:
 				return *cast(T*)(getResource!T(name).data.ptr);
 			}
 		}
-		assert(0, "Resource name '"~name~"' of type '"~T.stringof~"' has been stored as immutable");
+		assert(0, "Resource name '"~name~"' of type '"~T.stringof~"' has been stored as const");
 	}
 
 
@@ -106,14 +106,14 @@ __gshared static:
 	///Retrieve a resource or construct it if it doesn't exists using a file matching fileName and found in ResourceManager.path
 	/// If needed, the resource will be constructed with the file path as parameter, folowed by additionalCtorArgs
 	/// TODO: not thread-safe
-	auto ref immutable(T) fetchFile(T, VT...)(in string fileName, lazy VT additionalCtorArgs){
+	auto ref const(T) fetchFile(T, VT...)(in string fileName, lazy VT additionalCtorArgs){
 		try return get!T(fileName);
 		catch(ResourceException){}
 
 		auto filePath = path.searchFile(fileName);
 		//may throw ResourceException if file not found
 
-		return cast(immutable)construct!T(fileName, filePath.name, additionalCtorArgs);
+		return cast(const)construct!T(fileName, filePath.name, additionalCtorArgs);
 	}
 
 
@@ -194,7 +194,7 @@ private:
 
 	enum Flags: ubyte {
 		NONE = 0,
-		IMMUTABLE = 1<<0,
+		CONST = 1<<0,
 	}
 
 	auto ref getResource(T)(in string name){
@@ -277,20 +277,20 @@ private:
 			store("rvalue", new TestClass);
 			getMut!TestClass("rvalue").text = "HelloRValue";
 
-			immutable testClassI = cast(immutable)(new TestClass("HelloLValueImmut"));
+			const testClassI = cast(const)(new TestClass("HelloLValueImmut"));
 			store("lvaluei", testClassI);
 
-			store("rvaluei", cast(immutable)(new TestClass("HelloRValueImmut")));
+			store("rvaluei", cast(const)(new TestClass("HelloRValueImmut")));
 
-			//mutable but stored as immutable
+			//mutable but stored as const
 			auto testClass2 = new TestClass;
-			store("test2", cast(immutable)(testClass2));
+			store("test2", cast(const)(testClass2));
 			testClass2.text = "HelloTest2";
 		}
 		GC.collect(); GC.minimize();
 
-		assert((getResource!TestClass("lvalue").flags & Flags.IMMUTABLE)==0);
-		assert((getResource!TestClass("rvalue").flags & Flags.IMMUTABLE)==0);
+		assert((getResource!TestClass("lvalue").flags & Flags.CONST)==0);
+		assert((getResource!TestClass("rvalue").flags & Flags.CONST)==0);
 		assert(get!TestClass("lvalue").text=="HelloLValue");
 		assert(getMut!TestClass("lvalue").text==get!TestClass("lvalue").text);
 		assert(get!TestClass("rvalue").text=="HelloRValue");
@@ -298,8 +298,8 @@ private:
 		getMut!TestClass("lvalue").text = "WorldLValue";
 		assert(get!TestClass("lvalue").text=="WorldLValue");
 
-		assert((getResource!TestClass("lvaluei").flags & Flags.IMMUTABLE)>0);
-		assert((getResource!TestClass("rvaluei").flags & Flags.IMMUTABLE)>0);
+		assert((getResource!TestClass("lvaluei").flags & Flags.CONST)>0);
+		assert((getResource!TestClass("rvaluei").flags & Flags.CONST)>0);
 		assert(get!TestClass("lvaluei").text=="HelloLValueImmut");
 		assert(get!TestClass("rvaluei").text=="HelloRValueImmut");
 		assertThrown!Error(getMut!TestClass("lvaluei"));
@@ -317,15 +317,15 @@ private:
 			store("rvalue", TestStruct());
 			getMut!TestStruct("rvalue").text = "HelloRValue";
 
-			immutable testStructI = cast(immutable)(TestStruct("HelloLValueImmut"));
+			const testStructI = cast(const)(TestStruct("HelloLValueImmut"));
 			store("lvaluei", testStructI);
 
-			store("rvaluei", cast(immutable)(TestStruct("HelloRValueImmut")));
+			store("rvaluei", cast(const)(TestStruct("HelloRValueImmut")));
 		}
 		GC.collect(); GC.minimize();
 
-		assert((getResource!TestStruct("lvalue").flags & Flags.IMMUTABLE)==0);
-		assert((getResource!TestStruct("rvalue").flags & Flags.IMMUTABLE)==0);
+		assert((getResource!TestStruct("lvalue").flags & Flags.CONST)==0);
+		assert((getResource!TestStruct("rvalue").flags & Flags.CONST)==0);
 		assert(get!TestStruct("lvalue").text=="HelloLValue");
 		assert(getMut!TestStruct("lvalue").text==get!TestStruct("lvalue").text);
 		assert(get!TestStruct("rvalue").text=="HelloRValue");
@@ -333,8 +333,8 @@ private:
 		getMut!TestStruct("lvalue").text = "WorldLValue";
 		assert(get!TestStruct("lvalue").text=="WorldLValue");
 
-		assert((getResource!TestStruct("lvaluei").flags & Flags.IMMUTABLE)>0);
-		assert((getResource!TestStruct("rvaluei").flags & Flags.IMMUTABLE)>0);
+		assert((getResource!TestStruct("lvaluei").flags & Flags.CONST)>0);
+		assert((getResource!TestStruct("rvaluei").flags & Flags.CONST)>0);
 		assert(get!TestStruct("lvaluei").text=="HelloLValueImmut");
 		assert(get!TestStruct("rvaluei").text=="HelloRValueImmut");
 		assertThrown!Error(getMut!TestStruct("lvaluei"));
@@ -350,15 +350,15 @@ private:
 			store("rvalue", cast(string)"default");//explicit cast for mutable rvalue
 			getMut!string("rvalue") = "HelloRValue";
 
-			immutable strI = cast(immutable)("HelloLValueImmut");
+			const strI = cast(const)("HelloLValueImmut");
 			store("lvaluei", strI);
 
-			store("rvaluei", cast(immutable)("HelloRValueImmut"));
+			store("rvaluei", cast(const)("HelloRValueImmut"));
 		}
 		GC.collect(); GC.minimize();
 
-		assert((getResource!string("lvalue").flags & Flags.IMMUTABLE)==0);
-		assert((getResource!string("rvalue").flags & Flags.IMMUTABLE)==0);
+		assert((getResource!string("lvalue").flags & Flags.CONST)==0);
+		assert((getResource!string("rvalue").flags & Flags.CONST)==0);
 		assert(get!string("lvalue")=="HelloLValue");
 		assert(getMut!string("lvalue")==get!string("lvalue"));
 		assert(get!string("rvalue")=="HelloRValue");
@@ -366,8 +366,8 @@ private:
 		getMut!string("lvalue") = "WorldLValue";
 		assert(get!string("lvalue")=="WorldLValue");
 
-		assert((getResource!string("lvaluei").flags & Flags.IMMUTABLE)>0);
-		assert((getResource!string("rvaluei").flags & Flags.IMMUTABLE)>0);
+		assert((getResource!string("lvaluei").flags & Flags.CONST)>0);
+		assert((getResource!string("rvaluei").flags & Flags.CONST)>0);
 		assert(get!string("lvaluei")=="HelloLValueImmut");
 		assert(get!string("rvaluei")=="HelloRValueImmut");
 		assertThrown!Error(getMut!string("lvaluei"));

@@ -36,13 +36,13 @@ struct Character{
 			auto profParsing = sw.peek.total!"msecs";
 		}
 
-		immutable strref = ResourceManager.get!StrRefResolver("resolver");
-		immutable class2da = ResourceManager.fetchFile!TwoDA("classes.2da");
-		immutable race2da = ResourceManager.fetchFile!TwoDA("racialsubtypes.2da");
-		immutable abilities2da = ResourceManager.fetchFile!TwoDA("iprp_abilities.2da");
-		immutable alignment2da = ResourceManager.fetchFile!TwoDA("iprp_alignment.2da");
-		immutable skills2da = ResourceManager.fetchFile!TwoDA("skills.2da");
-		immutable feats2da = ResourceManager.fetchFile!TwoDA("feat.2da");
+		const strref = ResourceManager.get!StrRefResolver("resolver");
+		const class2da = ResourceManager.fetchFile!TwoDA("classes.2da");
+		const race2da = ResourceManager.fetchFile!TwoDA("racialsubtypes.2da");
+		const abilities2da = ResourceManager.fetchFile!TwoDA("iprp_abilities.2da");
+		const alignment2da = ResourceManager.fetchFile!TwoDA("iprp_alignment.2da");
+		const skills2da = ResourceManager.fetchFile!TwoDA("skills.2da");
+		const feats2da = ResourceManager.fetchFile!TwoDA("feat.2da");
 
 
 		version(profile){
@@ -398,9 +398,9 @@ private void fillLightCharacterProperties(T)(FastGff gff, in string fileName, re
 	import lcda.compat;
 
 
-	immutable strref = ResourceManager.get!StrRefResolver("resolver");
-	immutable class2da = ResourceManager.fetchFile!TwoDA("classes.2da");
-	immutable race2da = ResourceManager.fetchFile!TwoDA("racialsubtypes.2da");
+	const strref = ResourceManager.get!StrRefResolver("resolver");
+	const class2da = ResourceManager.fetchFile!TwoDA("classes.2da");
+	const race2da = ResourceManager.fetchFile!TwoDA("racialsubtypes.2da");
 
 	with(character){
 		bicFileName = baseName(fileName, ".bic");

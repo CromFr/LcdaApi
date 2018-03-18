@@ -43,7 +43,7 @@ void initDungeonInfo(){
 	import nwn.tlk;
 	import lcda.compat;
 
-	immutable strref = ResourceManager.get!StrRefResolver("resolver");
+	const strref = ResourceManager.get!StrRefResolver("resolver");
 
 	auto cfg = ResourceManager.get!Config("cfg");
 	immutable modulePath = cfg["paths"]["module"].to!string;
