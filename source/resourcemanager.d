@@ -30,17 +30,17 @@ __gshared static:
 	/// TODO: not thread-safe
 	void store(T)(in string name, auto ref const(T) data){
 		//writeln("Immutable: ",name," = ",T.stringof);
-		storeResource(name, cast(T)data, Flags.CONST);
+		storeResource(name, data, Flags.CONST);
 	}
 
 
-	void replace(T)(in string name, auto ref T data) if(isMutable!T){
-		storeResource!(T, true)(name, data, Flags.NONE);
+	void replace(T)(in string name, auto ref T data){
+		storeResource!(T, true)(name, data, isMutable!T? Flags.NONE : Flags.CONST);
 	}
 
 	///Construct a resource and store it in the registry as mutable.
 	auto ref T construct(T, VT...)(in string name, lazy VT constructorArgs){
-		static if(is(T==class)){
+		static if(is(T == class)){
 			store(name, new T(constructorArgs));
 		}
 		else{
@@ -55,7 +55,7 @@ __gshared static:
 	void remove(T)(in string name){
 		mixin SetupAlias!T;
 
-		if(RA* ra = typeid(T) in container){
+		if(RA* ra = typeid(Unqual!T) in container){
 			if(name in *ra){
 				container[typeid(T)].remove(name);
 				return;
@@ -68,13 +68,13 @@ __gshared static:
 	///Check if a resource exists in the registry
 	bool exists(T)(in string name){
 		mixin SetupAlias!T;
-		immutable ra = typeid(T) in container;
-		return ra && name in ra;
+		auto ra = typeid(Unqual!T) in container;
+		return ra && name in *ra;
 	}
 
 	///Gets a reference to the resource matching the name and type T
 	auto ref const(T) get(T)(in string name){
-		static if(is(T==class)){
+		static if(is(T == class)){
 			return cast(const(T))(getResource!T(name).data);
 		}
 		else{
@@ -88,7 +88,7 @@ __gshared static:
 	auto ref T getMut(T)(in string name){
 		auto r = getResource!T(name);
 		if(!(r.flags & Flags.CONST)){
-			static if(is(T==class)){
+			static if(is(T == class)){
 				return cast(T)(getResource!T(name).data);
 			}
 			else{
@@ -211,25 +211,25 @@ private:
 
 	void storeResource(T, bool replace = false)(in string name, auto ref T res, Flags flags){
 		static if(replace == false){
-			if(typeid(T) in resources && name in resources[typeid(T)])
+			if(typeid(Unqual!T) in resources && name in resources[typeid(Unqual!T)])
 				throw new ResourceException("A resource '"~name~"' of type '"~T.stringof~"' already exists in registry");
 		}
 
-		static if(is(T==class)){
+		static if(is(T == class)){
 			//Store object directly
-			objectResources[typeid(T)][name] = ObjectResource(res, flags);
+			objectResources[typeid(Unqual!T)][name] = ObjectResource(cast(Unqual!T)res, flags);
 		}
 		else{
 			//copy value then store
 			auto r = Resource(new void[T.sizeof], flags);
 			*cast(T*)r.data.ptr = res;
 
-			resources[typeid(T)][name] = r;
+			resources[typeid(Unqual!T)][name] = r;
 		}
 	}
 
 	mixin template SetupAlias(T){
-		static if(is(T==class)){
+		static if(is(T == class)){
 			alias RA = ObjectResourceArray;
 			alias R = ObjectResource;
 			alias container = objectResources;

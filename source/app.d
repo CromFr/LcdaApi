@@ -58,23 +58,29 @@ int main(string[] args){
 	writeln("Caching dungeon info");
 	initDungeonInfo();
 
-	writeln("Start thread to reload changed files");
+	writeln("Starting thread to reload large files");
 	import core.thread: Thread;
 	with(new Thread({
-		import nwn.biowaredb: BiowareDB;
-		immutable dbPath = cfg["paths"]["database"].to!string;
+		try{
 
-		while(1){
-			foreach(dbName ; ["annexe", "quete"]){
-				import std.path: buildPath;
+			import nwn.biowaredb;
+			immutable dbPath = cfg["paths"]["database"].to!string;
 
-				auto db = new BiowareDB(buildPath(dbPath, dbName));
-				ResourceManager.replace(dbName, db);
+			while(1){
+				foreach(dbName ; ["quete"]){
+					import std.path: buildPath;
+
+					const db = new BiowareDB(buildPath(dbPath, dbName));
+					ResourceManager.replace(dbName, db);
+				}
+
+				Cache.reduce();
+
+				Thread.sleep(dur!"seconds"(60));
 			}
-
-			Cache.reduce();
-
-			Thread.sleep(dur!"seconds"(60));
+		}
+		catch(Throwable e){
+			writeln("Reload thread exited with: ", e);
 		}
 	})){
 		isDaemon = true;

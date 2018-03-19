@@ -138,14 +138,17 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 			immutable dbName = var[0..idx].toLower;
 			immutable varName = prefix ~ var[idx+1 .. $];
 
-			BiowareDB db;
-			try db = ResourceManager.getMut!BiowareDB(dbName);
-			catch(ResourceException e){
-				db = new BiowareDB(buildPath(cfg["paths"]["database"].to!string, dbName));
-				ResourceManager.store(dbName, db);
-			}
+			try{
+				const db = ResourceManager.get!BiowareDB(dbName);
 
-			return db.getVariableValue!NWInt(pcid, varName);
+				return db.getVariableValue!NWInt(pcid, varName);
+			}
+			catch(ResourceException e){
+				const db = new BiowareDB(buildPath(cfg["paths"]["database"].to!string, dbName));
+				ResourceManager.store(dbName, db);
+
+				return db.getVariableValue!NWInt(pcid, varName);
+			}
 		}
 		else{
 			//Journal var
