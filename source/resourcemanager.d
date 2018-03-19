@@ -222,7 +222,7 @@ private:
 		else{
 			//copy value then store
 			auto r = Resource(new void[T.sizeof], flags);
-			*cast(T*)r.data.ptr = res;
+			*cast(Unqual!T*)r.data.ptr = res;
 
 			resources[typeid(Unqual!T)][name] = r;
 		}
