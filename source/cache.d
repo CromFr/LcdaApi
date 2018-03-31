@@ -58,11 +58,14 @@ static:
 	void reduce(){
 		foreach(ref cache ; [tlsCache, sharedCache]){
 			foreach(ref table ; cache){
-				foreach(entryKV ; table.byKeyValue){
-					if(entryKV.value.isExpired(entryKV.value.data, entryKV.value.created)){
-						table.remove(entryKV.key);
+				string[] keysToRemove;
+				foreach(ref name, ref value ; table){
+					if(value.isExpired(value.data, value.created)){
+						keysToRemove ~= name;
 					}
 				}
+				foreach(ref key ; keysToRemove)
+					table.remove(key);
 			}
 		}
 
