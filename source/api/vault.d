@@ -48,8 +48,7 @@ class Vault(bool deletedChar): IVault!deletedChar{
 
 			immutable vaultPath = getVaultPath(_account, deletedChar);
 
-			bool b = deletedChar;//compiler bug producing warning if b is known at ct
-			if(b == false){
+			static if(deletedChar == false){
 				enforceHTTP(vaultPath.exists && vaultPath.isDir, HTTPStatus.notFound,
 					"Account / Vault not found");
 			}
@@ -57,7 +56,10 @@ class Vault(bool deletedChar): IVault!deletedChar{
 				auto activeVaultPath = getVaultPath(_account, false);
 				enforceHTTP(activeVaultPath.exists && activeVaultPath.isDir, HTTPStatus.notFound,
 					"Account / Vault not found");
-				return [];
+
+				if(!vaultPath.exists){
+					return [];
+				}
 			}
 
 			static struct CachedList{
