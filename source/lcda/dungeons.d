@@ -113,7 +113,7 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 
 
 	auto cfg = ResourceManager.get!Config("cfg");
-	immutable pcid = accountName ~ charName;
+	immutable pcid = PCID(accountName, charName);
 
 	Nullable!GffField findJournalVar(string varName){
 		foreach(i, GffStruct v ; journalVarTable){
