@@ -33,7 +33,7 @@ struct Character{
 
 		version(profile){
 			sw.stop();
-			auto profParsing = sw.peek.total!"msecs";
+			immutable profParsing = sw.peek.total!"msecs";
 		}
 
 		const strref = ResourceManager.get!StrRefResolver("resolver");
@@ -64,7 +64,7 @@ struct Character{
 		uint alignmentId = 0;
 		alignmentId += alignment.good_evil>=75? 0 : alignment.good_evil>25? 1 : 2;
 		alignmentId += alignment.law_chaos>=75? 0 : alignment.law_chaos>25? 3 : 6;
-		alignment.name = strref[alignment2da.get!StrRef("Name", alignmentId)];
+		alignment.name = strref[alignment2da.get!StrRef("Name", alignmentId).get(0)];
 
 		//God
 		god = gff["Deity"].get!GffString;
@@ -73,7 +73,7 @@ struct Character{
 		foreach(i, abilityAdj ; ["StrAdjust","DexAdjust","ConAdjust","IntAdjust","WisAdjust","ChaAdjust"]){
 			immutable abilityLbl = abilities2da.get!string("Label", cast(uint)i);
 			abilities ~= Ability(
-				strref[abilities2da.get!StrRef("Name", cast(uint)i)],
+				strref[abilities2da.get!StrRef("Name", cast(uint)i).get(0)],
 				gff[abilityLbl].get!GffByte + race2da.get!int(abilityAdj, raceId)
 			);
 		}
@@ -82,7 +82,7 @@ struct Character{
 		size_t[size_t] featLookupMap;
 		foreach(i, GffStruct gffFeat ; gff["FeatList"].get!GffList){
 			immutable id = gffFeat["Feat"].get!GffWord;
-			immutable name = strref[feats2da.get!StrRef("FEAT", id)];
+			immutable name = strref[feats2da.get!StrRef("FEAT", id).get(0)];
 			immutable icon = feats2da.get!string("ICON", id).toLower;
 			immutable category = feats2da.get!string("FeatCategory", id);
 
@@ -96,7 +96,7 @@ struct Character{
 			if(skills2da.get!int("REMOVED", id) > 0)
 				continue;
 
-			immutable name = strref[skills2da.get!StrRef("Name", id)];
+			immutable name = strref[skills2da.get!StrRef("Name", id).get(0)];
 			immutable icon = skills2da.get!string("Icon", id).toLower;
 			immutable rank = gffFeat["Rank"].get!GffByte;
 
@@ -132,7 +132,7 @@ struct Character{
 
 			//ability
 			if(lvlIndex%4 == 3){
-				lvl.ability = strref[abilities2da.get!StrRef("Name", gffLvl["LvlStatAbility"].get!GffByte)];
+				lvl.ability = strref[abilities2da.get!StrRef("Name", gffLvl["LvlStatAbility"].get!GffByte).get(0)];
 			}
 			//skills
 			lvl.skills.length = skillsCount;
@@ -156,7 +156,7 @@ struct Character{
 			immutable featsTableFeatIdx = featsTable.columnIndex("FeatIndex");
 
 			foreach(i ; 0 .. featsTable.rows){
-				auto featLvl = featsTable.get!int(featsTableGrantedIdx, i);
+				const featLvl = featsTable.get!int(featsTableGrantedIdx, i);
 				if(!featLvl.isNull && featLvl == lvl.classLevel){
 					auto feat = featsTable.get!GffWord(featsTableFeatIdx, i);
 					if(!feat.isNull)
@@ -165,13 +165,15 @@ struct Character{
 			}
 			if(lvlIndex == 0){
 				auto raceFeatsTableName = race2da.get("FeatsTable", raceId);
-				auto raceFeatsTable = ResourceManager.fetchFile!TwoDA(raceFeatsTableName.toLower~".2da");
-				immutable raceFeatsTableFeatIdx = raceFeatsTable.columnIndex("FeatIndex");
+				if(raceFeatsTableName !is null){
+					auto raceFeatsTable = ResourceManager.fetchFile!TwoDA(raceFeatsTableName.toLower~".2da");
+					immutable raceFeatsTableFeatIdx = raceFeatsTable.columnIndex("FeatIndex");
 
-				foreach(i ; 0 .. raceFeatsTable.rows){
-					auto feat = raceFeatsTable.get!GffWord(raceFeatsTableFeatIdx, i);
-					if(!feat.isNull)
-						lvlAutoFeats ~= feat;
+					foreach(i ; 0 .. raceFeatsTable.rows){
+						auto feat = raceFeatsTable.get!GffWord(raceFeatsTableFeatIdx, i);
+						if(!feat.isNull)
+							lvlAutoFeats ~= feat;
+					}
 				}
 			}
 
@@ -264,13 +266,14 @@ struct Character{
 
 		version(profile){
 			sw.stop();
-			auto profBasic = sw.peek.total!"msecs";
+			immutable profBasic = sw.peek.total!"msecs";
 
 			sw.reset();
 			sw.start();
 		}
 
 		//dungeons status
+		import std.stdio; stderr.writeln(journalVarTable);
 		dungeons = getDungeonStatus(account, name, journalVarTable);
 
 		version(profile){
@@ -414,7 +417,7 @@ private void fillLightCharacterProperties(T)(FastGff gff, in string fileName, re
 		foreach(i, GffStruct classStruct ; gff["ClassList"].get!GffList){
 			immutable classID = classStruct["Class"].get!GffInt;
 			immutable classLvl = classStruct["ClassLevel"].get!GffShort;
-			immutable className = strref[class2da.get!StrRef("Name", classID)];
+			immutable className = strref[class2da.get!StrRef("Name", classID).get(0)];
 			immutable classIcon = class2da.get!string("Icon", classID).toLower;
 
 			lvl += classLvl;
@@ -423,7 +426,7 @@ private void fillLightCharacterProperties(T)(FastGff gff, in string fileName, re
 
 		//Race
 		auto raceId = gff["Subrace"].get!GffByte;
-		race = strref[race2da.get!StrRef("Name", raceId)];
+		race = strref[race2da.get!StrRef("Name", raceId).get(0)];
 	}
 
 }
