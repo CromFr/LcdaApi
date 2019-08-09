@@ -273,7 +273,6 @@ struct Character{
 		}
 
 		//dungeons status
-		import std.stdio; stderr.writeln(journalVarTable);
 		dungeons = getDungeonStatus(account, name, journalVarTable);
 
 		version(profile){

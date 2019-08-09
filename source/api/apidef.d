@@ -5,10 +5,10 @@ import vibe.d;
 import vibe.web.auth;
 
 
-private auto getReq(HTTPServerRequest req, HTTPServerResponse res) @safe {
+auto getReq(HTTPServerRequest req, HTTPServerResponse res) @safe {
 	return req;
 }
-private auto getRes(HTTPServerRequest req, HTTPServerResponse res) @safe {
+auto getRes(HTTPServerRequest req, HTTPServerResponse res) @safe {
 	return res;
 }
 
