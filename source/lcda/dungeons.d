@@ -6,7 +6,9 @@ import std.conv: to;
 
 import utils: buildPathCI;
 import nwn.fastgff: GffList;
+import nwn.types;
 import resourcemanager;
+import mysql;
 
 
 struct Dungeon{
@@ -97,23 +99,18 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 	import resourcemanager;
 	import config;
 	import nwn.fastgff;
-	import nwn.biowaredb;
 	import lcda.compat;
 
 
 	version(profile){
 		import std.datetime.stopwatch: StopWatch;
-		StopWatch swBiowareDB, swJournal;
+		StopWatch swSqlDB, swJournal;
 	}
 
 	version(profile){
-		swBiowareDB.reset();
+		swSqlDB.reset();
 		swJournal.reset();
 	}
-
-
-	auto cfg = ResourceManager.get!Config("cfg");
-	immutable pcid = PCID(accountName, charName);
 
 	Nullable!GffField findJournalVar(string varName){
 		foreach(i, GffStruct v ; journalVarTable){
@@ -131,24 +128,27 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 		if(idx != -1){
 			//Campaign var
 			version(profile){
-				swBiowareDB.start();
-				scope(exit) swBiowareDB.stop();
+				swSqlDB.start();
+				scope(exit) swSqlDB.stop();
 			}
 
 			immutable dbName = var[0..idx].toLower;
 			immutable varName = prefix ~ var[idx+1 .. $];
 
-			try{
-				const db = ResourceManager.get!BiowareDB(dbName);
-
-				return db.getVariableValue!NWInt(pcid, varName);
-			}
-			catch(ResourceException e){
-				const db = new BiowareDB(buildPath(cfg["paths"]["database"].to!string, dbName));
-				ResourceManager.store(dbName, db);
-
-				return db.getVariableValue!NWInt(pcid, varName);
-			}
+			auto mysqlConnPool = ResourceManager.getMut!MySQLPool("sql");
+			auto res = mysqlConnPool
+				.lockConnection()
+				.query("
+					SELECT `value` FROM `cam_" ~ dbName ~ "`
+					WHERE `account_name`=?
+					  AND `character_name`=?
+					  AND `name`=?",
+					accountName, charName, varName
+				);
+			scope(exit) res.close();
+			if(!res.empty)
+				return Nullable!(const(NWInt))(res.front[0].get!string.to!NWInt);
+			return Nullable!(const(NWInt))(0);
 		}
 		else{
 			//Journal var
@@ -175,14 +175,14 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 		status.areaName = dungeon.areaName;
 		status.diffMax = dungeon.diffMax;
 
-		version(profile) swBiowareDB.start();
+		version(profile) swSqlDB.start();
 		foreach(i ; 0 .. dungeon.diffMax + 1){
 			if(dungeon.chestVar !is null){
 				auto hasLootedChest = getVarValue(dungeon.chestVar, diffPrefix(i));
 				status.lootedChests ~= hasLootedChest.isNull? false : (hasLootedChest.get == 1);
 			}
 		}
-		version(profile) swBiowareDB.stop();
+		version(profile) swSqlDB.stop();
 
 
 		//Difficulty unlocked
@@ -199,11 +199,11 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 	}
 
 	version(profile){
-		auto profDatabase = swBiowareDB.peek.total!"msecs";
+		auto profDatabase = swSqlDB.peek.total!"msecs";
 		auto profJournal = swJournal.peek.total!"msecs";
 
 		import std.stdio: writeln;
-		writeln("DUNJ ", accountName, ".", charName, ".bic: BiowareDB=", profDatabase, "ms Journal=", profJournal, "ms");
+		writeln("DUNJ ", accountName, ".", charName, ".bic: SqlDB=", profDatabase, "ms Journal=", profJournal, "ms");
 
 	}
 	return ret;

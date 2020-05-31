@@ -37,7 +37,7 @@ struct UserInfo{
 		return token.isNull;
 	}
 	bool isAdminToken() @safe{
-		return !token.isNull && token.type == Token.Type.admin;
+		return !token.isNull && token.get.type == Token.Type.admin;
 	}
 
 private:

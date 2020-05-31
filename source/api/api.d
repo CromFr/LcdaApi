@@ -101,23 +101,22 @@ class Api : IApi{
 
 				if(token !is null){
 					//Retrieve token info
-					{
-						auto result = conn.query(prepGetToken, *token);
-						scope(exit) result.close();
+					auto result = conn.query(prepGetToken, *token);
 
-						enforceHTTP(!result.empty, HTTPStatus.notFound, "No matching token found");
+					enforceHTTP(!result.empty, HTTPStatus.notFound, "No matching token found");
 
-						ret.token = Token(
-							result.front[result.colNameIndicies["id"]].get!size_t,
-							result.front[result.colNameIndicies["name"]].get!string,
-							result.front[result.colNameIndicies["type"]].get!string.to!(Token.Type),
-							result.front[result.colNameIndicies["last_used"]].get!DateTime,
-							);
-						ret.account = result.front[result.colNameIndicies["account_name"]].get!string;
-					}
+					ret.token = Token(
+						result.front[result.colNameIndicies["id"]].get!size_t,
+						result.front[result.colNameIndicies["name"]].get!string,
+						result.front[result.colNameIndicies["type"]].get!string.to!(Token.Type),
+						result.front[result.colNameIndicies["last_used"]].get!DateTime,
+					);
+					ret.account = result.front[result.colNameIndicies["account_name"]].get!string;
+
+					result.close();
 
 					//Update last used date
-					conn.exec(prepUpdateUsedToken, ret.token.id.to!size_t);
+					conn.exec(prepUpdateUsedToken, ret.token.get.id.to!size_t);
 
 				}
 			}

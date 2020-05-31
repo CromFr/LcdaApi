@@ -62,18 +62,7 @@ int main(string[] args){
 	import core.thread: Thread;
 	with(new Thread({
 		try{
-
-			import nwn.biowaredb;
-			immutable dbPath = cfg["paths"]["database"].to!string;
-
 			while(1){
-				foreach(dbName ; ["quete"]){
-					import std.path: buildPath;
-
-					const db = new BiowareDB(buildPath(dbPath, dbName));
-					ResourceManager.replace(dbName, db);
-				}
-
 				Cache.reduce();
 
 				Thread.sleep(dur!"seconds"(60));
