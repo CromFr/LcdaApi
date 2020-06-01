@@ -80,7 +80,7 @@ struct Character{
 
 		//Feats
 		size_t[size_t] featLookupMap;
-		foreach(i, GffStruct gffFeat ; gff["FeatList"].get!GffList){
+		foreach(i, gffFeat ; gff["FeatList"].get!GffList){
 			immutable id = gffFeat["Feat"].get!GffWord;
 			immutable name = strref[feats2da.get!StrRef("FEAT", id).get(0)];
 			immutable icon = feats2da.get!string("ICON", id).toLower;
@@ -92,7 +92,7 @@ struct Character{
 
 		//Skills
 		size_t[size_t] skillLookupMap;
-		foreach(id, GffStruct gffFeat ; gff["SkillList"].get!GffList){
+		foreach(id, gffFeat ; gff["SkillList"].get!GffList){
 			if(skills2da.get!int("REMOVED", id) > 0)
 				continue;
 
@@ -123,7 +123,7 @@ struct Character{
 		uint[] skillRanks;
 		skillRanks.length = skillsCount;
 		size_t[4] levelClassCount;// class index => level count
-		foreach(lvlIndex, GffStruct gffLvl ; gff["LvlStatList"].get!GffList){
+		foreach(lvlIndex, gffLvl ; gff["LvlStatList"].get!GffList){
 			Level lvl;
 			//class
 			auto classId = gffLvl["LvlStatClass"].get!GffByte;
@@ -136,7 +136,7 @@ struct Character{
 			}
 			//skills
 			lvl.skills.length = skillsCount;
-			foreach(i, GffStruct gffSkill ; gffLvl["SkillList"].get!GffList){
+			foreach(i, gffSkill ; gffLvl["SkillList"].get!GffList){
 				auto earned = gffSkill["Rank"].get!GffByte;
 				if(auto skillIndex = i in skillLookupMap){
 					skillRanks[i] += earned;
@@ -177,7 +177,7 @@ struct Character{
 				}
 			}
 
-			foreach(i, GffStruct gffFeat ; gffLvl["FeatList"].get!GffList){
+			foreach(i, gffFeat ; gffLvl["FeatList"].get!GffList){
 				auto feat = gffFeat["Feat"].get!GffWord in featLookupMap;
 				if(feat){
 					lvl.featIndices ~= *feat;
@@ -205,9 +205,9 @@ struct Character{
 
 
 		GffList journalVarTable;
-		foreach(i, GffStruct item ; gff["ItemList"].get!GffList){
+		foreach(i, item ; gff["ItemList"].get!GffList){
 			if(item["Tag"].get!GffString == "journalNODROP"){
-				journalVarTable = item["VarTable"].get!GffList;
+				journalVarTable = cast(GffList)item["VarTable"].get!GffList;//todo: horrible cast
 				break;
 			}
 		}
@@ -215,7 +215,7 @@ struct Character{
 		int[string] questEntryIds;
 		if(journalVarTable.length > 0){
 			//ignore chars without journal
-			foreach(i, GffStruct var ; journalVarTable){
+			foreach(i, var ; journalVarTable){
 				immutable name = var["Name"].get!GffString;
 				string questTag;
 				if(name.length>1 && name[0]=='j' && name!="j63"){
@@ -413,7 +413,7 @@ private void fillLightCharacterProperties(T)(FastGff gff, in string fileName, re
 
 		//Level / classes
 		lvl = 0;
-		foreach(i, GffStruct classStruct ; gff["ClassList"].get!GffList){
+		foreach(i, classStruct ; gff["ClassList"].get!GffList){
 			immutable classID = classStruct["Class"].get!GffInt;
 			immutable classLvl = classStruct["ClassLevel"].get!GffShort;
 			immutable className = strref[class2da.get!StrRef("Name", classID).get(0)];

@@ -63,7 +63,7 @@ void initDungeonInfo(){
 		auto areaGIT = new FastGff(buildPathCI(modulePath, dungeon.area~".git"));
 		auto varTable = "VarTable" in areaGIT.root;
 		if(!varTable.isNull){
-			foreach(i, GffStruct varNode ; varTable.get.get!GffList){
+			foreach(i, varNode ; varTable.get.get!GffList){
 				switch(varNode["Name"].get!GffString){
 					case "difficulty_name":
 						dungeon.diffName = varNode["Value"].get!GffString;
@@ -112,13 +112,13 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 		swJournal.reset();
 	}
 
-	Nullable!GffField findJournalVar(string varName){
-		foreach(i, GffStruct v ; journalVarTable){
+	Nullable!(const GffField) findJournalVar(string varName){
+		foreach(i, v ; journalVarTable){
 			if(v["Name"].get!GffString == varName){
-				return Nullable!GffField(v["Value"]);
+				return Nullable!(const GffField)(v["Value"]);
 			}
 		}
-		return Nullable!GffField();
+		return Nullable!(const GffField)();
 	}
 
 	Nullable!(const(NWInt)) getVarValue(string var, string prefix){
