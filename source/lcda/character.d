@@ -43,6 +43,7 @@ struct Character{
 		const alignment2da = ResourceManager.fetchFile!TwoDA("iprp_alignment.2da");
 		const skills2da = ResourceManager.fetchFile!TwoDA("skills.2da");
 		const feats2da = ResourceManager.fetchFile!TwoDA("feat.2da");
+		const xpTable = ResourceManager.fetchFile!TwoDA("exptable.2da");
 
 
 		version(profile){
@@ -56,6 +57,10 @@ struct Character{
 		foreach(i, const ref cl ; classes){
 			classLookupMap[cl.id] = i;
 		}
+
+		// Current XP / required XP
+		xp = gff["Experience"].get!GffDWord;
+		xpLevelUp = xpTable.get!ulong("XP", lvl + race2da.get!int("ECL", raceId, 0) + 1).get;
 
 
 		//Alignment
@@ -294,6 +299,9 @@ struct Character{
 		string icon;
 	}
 	Class[] classes;
+
+	ulong xp;
+	ulong xpLevelUp;
 
 	static struct Feat{
 		package size_t id;
