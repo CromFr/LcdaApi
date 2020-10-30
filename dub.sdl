@@ -4,9 +4,9 @@ copyright "Copyright © 2016, crom"
 authors "Crom (Thibaut CHARLES)"
 license "GPL-3.0"
 
-dependency "vibe-d"  version="~>0.8.4"
-dependency "mysql-native" version="~>2.2.0"
-dependency "nwn-lib-d" version="~master"
+dependency "vibe-d"  version="~>0.9.0"
+dependency "mysql-native" version="~>3.0.0"
+dependency "nwn-lib-d" version="~>1.0.0-rc1"
 
 versions "VibeNoSSL"
 
