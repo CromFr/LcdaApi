@@ -25,7 +25,10 @@ struct UserInfo{
 
 
 	bool isAccountAuthorized(string _account) @safe{
-		return account == _account || isAdmin;
+		version(no_auth)
+			return true;
+		else
+			return account == _account || isAdmin;
 	}
 	bool isVaultCharPublic(string _account, string _char) @safe{
 		return isCharPublic!false(_account, _char);
@@ -37,7 +40,10 @@ struct UserInfo{
 		return token.isNull;
 	}
 	bool isAdminToken() @safe{
-		return !token.isNull && token.get.type == Token.Type.admin;
+		version(no_auth)
+			return true;
+		else
+			return !token.isNull && token.get.type == Token.Type.admin;
 	}
 
 private:
