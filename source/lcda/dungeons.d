@@ -85,16 +85,8 @@ void initDungeonInfo(){
 }
 
 
-struct DungeonStatus{
-	string name;
-	string areaName;
-	int diffMax;
-
-	bool[] lootedChests;
-	int unlockedDiff = 0;
-}
-
-DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref GffList journalVarTable){
+import api.apidef: Character;
+Character.DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref GffList journalVarTable){
 	import std.typecons: Nullable;
 	import resourcemanager;
 	import config;
@@ -168,9 +160,9 @@ DungeonStatus[] getDungeonStatus(in string accountName, in string charName, ref 
 		}
 	}
 
-	DungeonStatus[] ret;
+	Character.DungeonStatus[] ret;
 	foreach(const ref dungeon ; dungeonList){
-		DungeonStatus status;
+		Character.DungeonStatus status;
 		status.name = dungeon.name;
 		status.areaName = dungeon.areaName;
 		status.diffMax = dungeon.diffMax;

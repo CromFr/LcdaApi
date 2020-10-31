@@ -18,9 +18,11 @@ int main(string[] args){
 	import std.traits: EnumMembers;
 	import std.conv: to;
 
-	import etc.linux.memoryerror;
-	static if (is(typeof(registerMemoryErrorHandler)))
-		registerMemoryErrorHandler();
+	version(DigitalMars){
+		import etc.linux.memoryerror;
+		static if (is(typeof(registerMemoryErrorHandler)))
+			registerMemoryErrorHandler();
+	}
 
 	string cfgFile = "config.json";
 	ushort port = 0;

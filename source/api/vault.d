@@ -102,7 +102,7 @@ class Vault(bool deletedChar): IVault!deletedChar{
 					}
 					return CachedList(vaultPath,
 						vaultPath.dirEntries("*.bic", SpanMode.shallow)
-						         .map!(a => LightCharacter(a, true))
+						         .map!(a => buildLightCharacter(a, true))
 						         .array
 						         .sort!"a.name<b.name"
 						         .array);
@@ -271,7 +271,7 @@ private:
 
 		immutable path = getCharPath(account, bicName, deleted);
 		enforceHTTP(path.exists && path.isFile, HTTPStatus.notFound, "Character '"~bicName~"' not found");
-		return Character(account, DirEntry(path));
+		return buildCharacter(account, DirEntry(path));
 	}
 
 	string getCharPath(in string accountName, in string bicFile, bool deleted) const{
