@@ -4,6 +4,11 @@ module api.apidef;
 import vibe.d;
 import vibe.web.auth;
 
+version(no_auth){
+	debug static assert(1);
+	else static assert(0, "version no_auth cannot be used with release builds");
+}
+
 
 auto getReq(HTTPServerRequest req, HTTPServerResponse res) @safe {
 	return req;
