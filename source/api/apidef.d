@@ -4,7 +4,7 @@ module api.apidef;
 import vibe.d;
 import vibe.web.auth;
 
-version(NoAuth){
+debug(NoAuth){
 	debug static assert(1);
 	else static assert(0, "version NoAuth cannot be used with release builds");
 }
@@ -30,7 +30,7 @@ struct UserInfo{
 
 
 	bool isAccountAuthorized(string _account) @safe{
-		version(NoAuth)
+		debug(NoAuth)
 			return true;
 		else
 			return account == _account || isAdmin;
@@ -45,7 +45,7 @@ struct UserInfo{
 		return token.isNull;
 	}
 	bool isAdminToken() @safe{
-		version(NoAuth)
+		debug(NoAuth)
 			return true;
 		else
 			return !token.isNull && token.get.type == Token.Type.admin;
