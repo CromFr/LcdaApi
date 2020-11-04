@@ -200,13 +200,12 @@ class Vault(bool deletedChar): IVault!deletedChar{
 			Item[] ret;
 
 			auto gff = new FastGff(file);
-			foreach(_, itemGff ; gff["ItemList"].get!GffList){
+			foreach(itemGff ; gff["ItemList"].get!GffList){
 				ret ~= gffToItem(itemGff);
 
-				auto list = "ItemList" in itemGff;
-				if(!list.isNull){
-					foreach(_, itemGff ; list.get.get!GffList){
-						ret ~= gffToItem(itemGff);
+				if(auto innerList = "ItemList" in itemGff){
+					foreach(innerGff ; innerList.get!GffList){
+						ret ~= gffToItem(innerGff);
 					}
 				}
 			}
@@ -389,15 +388,46 @@ private:
 				~ (paramValue !is null ? " " ~ paramValue : null);
 		}
 
-
 		Item item;
-		item.name = gff["LocalizedName"].get!GffLocString.resolve(resolv);
+		item.name = removeBracedText(gff["LocalizedName"].get!GffLocString.resolve(resolv));
 		item.type = gff["BaseItem"].get!GffInt;
 		item.icon = icons2DA.get("icon", gff["Icon"].get!GffDWord);
 		foreach(_, ipGff ; gff["PropertiesList"].get!GffList){
 			item.properties ~= toDescription(ipGff.toNWItemproperty);
 		}
 		return item;
+	}
+
+
+	static string removeBracedText(in string text){
+		int i = 0;
+		char[] ret;
+		ret.length = text.length;
+
+		uint brackDepth = 0;
+		foreach(c ; text){
+			switch(c){
+				case '{':
+					brackDepth++;
+					break;
+				case '}':
+					if(brackDepth > 0){
+						brackDepth--;
+						break;
+					}
+					goto default;
+				default:
+					if(brackDepth == 0)
+						ret[i++] = c;
+			}
+		}
+		ret.length = i;
+		return cast(immutable)ret;
+	}
+	unittest{
+		assert(removeBracedText("hello{}world") == "helloworld");
+		assert(removeBracedText("h{ellowo}rld") == "hrld");
+		assert(removeBracedText("h{ello{d}wo}rld") == "hrld");
 	}
 
 }

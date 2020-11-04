@@ -61,9 +61,9 @@ void initDungeonInfo(){
 		dungeon.areaName = areaARE["Name"].get!GffLocString.resolve(strref);
 
 		auto areaGIT = new FastGff(buildPathCI(modulePath, dungeon.area~".git"));
-		auto varTable = "VarTable" in areaGIT.root;
-		if(!varTable.isNull){
-			foreach(i, varNode ; varTable.get.get!GffList){
+
+		if(auto varTable = "VarTable" in areaGIT.root){
+			foreach(varNode ; varTable.get!GffList){
 				switch(varNode["Name"].get!GffString){
 					case "difficulty_name":
 						dungeon.diffName = varNode["Value"].get!GffString;
