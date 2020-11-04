@@ -4,9 +4,9 @@ module api.apidef;
 import vibe.d;
 import vibe.web.auth;
 
-version(no_auth){
+version(NoAuth){
 	debug static assert(1);
-	else static assert(0, "version no_auth cannot be used with release builds");
+	else static assert(0, "version NoAuth cannot be used with release builds");
 }
 
 
@@ -30,7 +30,7 @@ struct UserInfo{
 
 
 	bool isAccountAuthorized(string _account) @safe{
-		version(no_auth)
+		version(NoAuth)
 			return true;
 		else
 			return account == _account || isAdmin;
@@ -45,7 +45,7 @@ struct UserInfo{
 		return token.isNull;
 	}
 	bool isAdminToken() @safe{
-		version(no_auth)
+		version(NoAuth)
 			return true;
 		else
 			return !token.isNull && token.get.type == Token.Type.admin;
@@ -309,6 +309,25 @@ interface IVault(bool deletedChar){
 	@before!getReq("req") @before!getRes("res")
 	void downloadChar(string _account, string _char, HTTPServerRequest req, HTTPServerResponse res) @safe;
 
+	/// Single item information
+	static struct Item {
+		string name; /// Item name (may contain NWN2 markup)
+		uint type; /// Base item type (index in baseitems.2da)
+		string icon; /// Icon file name
+		string[] properties; /// Item magical properties
+	}
+
+	/// Get currently equipped items (except creature items)
+	@path("/:account/:char/equipment")
+	@method(HTTPMethod.GET)
+	@auth(Role.AccountAuthorized | AuthIsCharPublic)
+	Item[string] equipment(string _account, string _char) @safe;
+
+	/// Get all items in the inventory
+	@path("/:account/:char/inventory")
+	@method(HTTPMethod.GET)
+	@auth(Role.AccountAuthorized | AuthIsCharPublic)
+	Item[] inventory(string _account, string _char) @safe;
 
 	/// Information to keep track of a moved character
 	static struct MovedCharInfo{
