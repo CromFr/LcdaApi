@@ -60,7 +60,6 @@ Character buildCharacter(in string account, in string bicFile){
 		classLookupMap[cl.id] = i;
 	}
 
-
 	//Alignment
 	character.alignment.good_evil = gff["GoodEvil"].get!GffByte;
 	character.alignment.law_chaos = gff["LawfulChaotic"].get!GffByte;
@@ -71,6 +70,9 @@ Character buildCharacter(in string account, in string bicFile){
 
 	//God
 	character.god = gff["Deity"].get!GffString;
+
+	//Gold
+	character.gold = gff["Gold"].get!GffDWord;
 
 	//Abilities
 	foreach(i, abilityAdj ; ["StrAdjust","DexAdjust","ConAdjust","IntAdjust","WisAdjust","ChaAdjust"]){

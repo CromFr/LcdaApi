@@ -243,6 +243,9 @@ struct Character{
 	/// God name
 	string god;
 
+	/// Gold amount in inventory
+	ulong gold;
+
 	/// Ability information
 	static struct Ability{
 		string label; /// Ability name
