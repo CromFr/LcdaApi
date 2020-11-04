@@ -10,6 +10,16 @@ debug(NoAuth){
 }
 
 
+/// Single item information
+static struct Item {
+	string name; /// Item name (may contain NWN2 markup)
+	uint stack; /// Number of stacked items
+	uint type; /// Base item type (index in baseitems.2da)
+	string icon; /// Icon file name
+	string[] properties; /// Item magical properties
+}
+
+
 auto getReq(HTTPServerRequest req, HTTPServerResponse res) @safe {
 	return req;
 }
@@ -132,6 +142,11 @@ interface IApi{
 	@method(HTTPMethod.GET)
 	@anyAuth
 	UserInfo user(scope UserInfo user) @safe;
+
+	/// Forward to account API. All calls to the forwarded API will use @path as prefix.
+	@path("/ibee/")
+	@noAuth
+	@property IIbee ibee() @safe;
 
 
 	@noRoute
@@ -309,14 +324,6 @@ interface IVault(bool deletedChar){
 	@before!getReq("req") @before!getRes("res")
 	void downloadChar(string _account, string _char, HTTPServerRequest req, HTTPServerResponse res) @safe;
 
-	/// Single item information
-	static struct Item {
-		string name; /// Item name (may contain NWN2 markup)
-		uint type; /// Base item type (index in baseitems.2da)
-		string icon; /// Icon file name
-		string[] properties; /// Item magical properties
-	}
-
 	/// Get currently equipped items (except creature items)
 	@path("/:account/:char/equipment")
 	@method(HTTPMethod.GET)
@@ -429,6 +436,27 @@ interface IAccount{
 	@method(HTTPMethod.DELETE)
 	@auth(Role.AccountAuthorized & (Role.PasswordAuthenticated | Role.AdminToken))
 	void deleteToken(string _account, ulong _tokenId) @safe;
+
+	@noRoute
+	UserInfo authenticate(scope HTTPServerRequest req, scope HTTPServerResponse res) @safe;
+}
+
+
+
+/// REST Api for managing ibee services
+@requiresAuth
+interface IIbee {
+	/// Get the amount of gold in the bank
+	@path("/:account/bank")
+	@method(HTTPMethod.GET)
+	@auth(Role.AccountAuthorized)
+	ulong bank(string _account) @safe;
+
+	/// Get all items in the stash (shared storage between characters)
+	@path("/:account/stash")
+	@method(HTTPMethod.GET)
+	@auth(Role.AccountAuthorized)
+	Item[] stash(string _account) @safe;
 
 	@noRoute
 	UserInfo authenticate(scope HTTPServerRequest req, scope HTTPServerResponse res) @safe;

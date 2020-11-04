@@ -16,6 +16,7 @@ import api.apidef;
 class Api : IApi{
 	import api.vault : Vault;
 	import api.account : AccountApi;
+	import api.ibee : IbeeApi;
 
 	this(){
 		import resourcemanager : ResourceManager;
@@ -25,6 +26,7 @@ class Api : IApi{
 		vaultApi = new Vault!false(this);
 		backupVaultApi = new Vault!true(this);
 		accountApi = new AccountApi(this);
+		ibeeApi = new IbeeApi(this);
 
 		// Prepare statements
 		auto conn = mysqlConnPool.lockConnection();
@@ -66,6 +68,9 @@ class Api : IApi{
 		}
 		IAccount account(){
 			return accountApi;
+		}
+		IIbee ibee(){
+			return ibeeApi;
 		}
 
 		UserInfo user(scope UserInfo user) @safe{
@@ -140,6 +145,7 @@ package:
 	Vault!false vaultApi;
 	Vault!true backupVaultApi;
 	AccountApi accountApi;
+	IbeeApi ibeeApi;
 
 	bool passwordAuth(string account, string password) @trusted{
 		auto conn = mysqlConnPool.lockConnection();
