@@ -123,7 +123,6 @@ class Vault(bool deletedChar): IVault!deletedChar{
 			immutable cacheFile = getCharCacheFile(_account, _char, deletedChar);
 
 			if(cacheFile.exists && cacheFile.timeLastModified > charFile.timeLastModified){
-				writeln("Retrieved character info ", _account ~ (deletedChar ? "/deleted/" : "/") ~ _char, " from ", cacheFile);
 				return cacheFile
 					.readText
 					.parseJsonString

@@ -6,7 +6,7 @@ license "GPL-3.0"
 
 dependency "vibe-d"  version="~>0.9.0"
 dependency "mysql-native" version="~>3.0.0"
-dependency "nwn-lib-d" version="~>1.0.0-rc1"
+dependency "nwn-lib-d" version="~>1.0.0"
 
 versions "VibeNoSSL"
 
