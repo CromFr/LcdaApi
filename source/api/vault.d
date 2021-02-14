@@ -3,6 +3,7 @@ module api.vault;
 import vibe.d;
 debug import std.stdio: writeln;
 import std.file;
+alias writeFile = std.file.write;
 import std.path;
 
 import nwn.fastgff;
@@ -115,36 +116,30 @@ class Vault(bool deletedChar): IVault!deletedChar{
 		}
 
 		Character character(string _account, string _char) @trusted{
-			import cache;
-
-			immutable file = getCharPath(_account, _char, deletedChar);
-			enforceHTTP(file.exists && file.isFile, HTTPStatus.notFound,
+			immutable charFile = getCharPath(_account, _char, deletedChar);
+			enforceHTTP(charFile.exists && charFile.isFile, HTTPStatus.notFound,
 				"Character '"~_char~"' not found");
 
-			static struct CachedCharacter{
-				string filePath;
-				SysTime lastModified;
-				Character character;
+			immutable cacheFile = getCharCacheFile(_account, _char, deletedChar);
+
+			if(cacheFile.exists && cacheFile.timeLastModified > charFile.timeLastModified){
+				writeln("Retrieved character info ", _account ~ (deletedChar ? "/deleted/" : "/") ~ _char, " from ", cacheFile);
+				return cacheFile
+					.readText
+					.parseJsonString
+					.deserializeJson!Character();
 			}
 
-			//TODO: this cast is awful but should not be a problem
-			return cast(Character) Cache.get!(const CachedCharacter)(file,
-				function(in CachedCharacter rec, created){
-					return !rec.filePath.exists
-					|| rec.filePath.timeLastModified > rec.lastModified
-					|| (Clock.currTime() - created) > dur!"minutes"(5);
-				},
-				delegate(){
-					scope(success){
-						import std.stdio : writeln, stdout;
-						writeln("Generated character info ", _account ~ (deletedChar ? "/deleted/" : "/") ~ _char);
-						stdout.flush();
-					}
-					return CachedCharacter(
-						file,
-						file.timeLastModified,
-						getChar(_account, _char, deletedChar));
-				}).character;
+			scope(success){
+				import std.stdio : writeln, stdout;
+				writeln("Generated character info ", _account ~ (deletedChar ? "/deleted/" : "/") ~ _char);
+				stdout.flush();
+			}
+			auto charObj = getChar(_account, _char, deletedChar);
+
+			mkdirRecurse(cacheFile.dirName);
+			cacheFile.writeFile(charObj.serializeToJsonString());
+			return charObj;
 		}
 
 
@@ -341,6 +336,16 @@ private:
 			else
 				return buildNormalizedPath(api.cfg["paths"]["servervault"].to!string, accountName, deletedVault);
 		}
+
+	}
+
+	string getCharCacheFile(in string accountName, in string charName, bool deleted) const{
+		enforceHTTP(accountName.baseName == accountName, HTTPStatus.badRequest, "account name should not be a path");
+
+		if(!deleted)
+			return buildNormalizedPath(api.cfg["paths"]["cache"].to!string, accountName, charName ~ ".json");
+		else
+			return buildNormalizedPath(api.cfg["paths"]["cache"].to!string, accountName, "_deleted", charName ~ ".json");
 
 	}
 

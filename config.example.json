@@ -25,6 +25,9 @@
 
 		//Path to the database directory
 		"database": "C:\\Users\\Drizzt\\Documents\\Neverwinter Nights 2\\database",
+
+		//Path to the api cache, for keeping extracted character data
+		"cache": "C:\\Users\\Drizzt\\Documents\\Neverwinter Nights 2\\api_cache",
 	},
 
 	//Type of the database used. Currenty only MySQL
