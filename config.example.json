@@ -90,6 +90,11 @@
 		"set_password": ["UPDATE accounts SET password=$NEW_PASSWORD WHERE name=$ACCOUNT"],
 	},
 
+	// NWN2 server vault options
+	"vault": {
+		// Delay in minutes before a character is allowed to be deleted (to make sure the character is not connected on the server)
+		"deletion_delay": 30
+	},
 
 	//HTTP server options
 	"server": {

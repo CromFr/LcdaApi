@@ -36,6 +36,8 @@ class Vault(bool deletedChar): IVault!deletedChar{
 		foreach(ref query ; api.cfg["sql_queries"]["on_delete"].get!(Json[])){
 			prepOnDelete ~= conn.prepareCustom(query.get!string, ["ACCOUNT", "CHAR"]);
 		}
+
+		deleteDelay = api.cfg["vault"]["deletion_delay"].to!uint;
 	}
 	private{
 		PreparedCustom[] prepOnActivate;
@@ -123,6 +125,7 @@ class Vault(bool deletedChar): IVault!deletedChar{
 			immutable cacheFile = getCharCacheFile(_account, _char, deletedChar);
 
 			if(cacheFile.exists && cacheFile.timeLastModified > charFile.timeLastModified){
+				//writeln("Retrieved character info ", _account ~ (deletedChar ? "/deleted/" : "/") ~ _char, " from ", cacheFile);
 				return cacheFile
 					.readText
 					.parseJsonString
@@ -213,6 +216,11 @@ class Vault(bool deletedChar): IVault!deletedChar{
 				immutable charFile = getCharPath(_account, _char, deletedChar);
 				enforceHTTP(charFile.exists && charFile.isFile, HTTPStatus.notFound,
 					"Character '"~_char~"' not found");
+
+				auto now = Clock.currTime();
+				auto mtime = charFile.timeLastModified();
+				enforceHTTP(mtime + deleteDelay.minutes > now, HTTPStatus.locked,
+					"This character has been played on the server recently");
 
 				immutable deletedVault = getVaultPath(_account, true);
 				if(!deletedVault.exists){
@@ -307,6 +315,7 @@ class Vault(bool deletedChar): IVault!deletedChar{
 
 private:
 	Api api;
+	uint deleteDelay;
 
 
 	Character getChar(in string account, in string bicName, bool deleted){
