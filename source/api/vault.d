@@ -219,7 +219,7 @@ class Vault(bool deletedChar): IVault!deletedChar{
 
 				auto now = Clock.currTime();
 				auto mtime = charFile.timeLastModified();
-				enforceHTTP(mtime + deleteDelay.minutes > now, HTTPStatus.locked,
+				enforceHTTP(now > mtime + deleteDelay.minutes, HTTPStatus.locked,
 					"This character has been played on the server recently");
 
 				immutable deletedVault = getVaultPath(_account, true);
