@@ -44,9 +44,9 @@ struct PreparedCustom {
 	}
 
 	void setArgs(Variant[] args){
-		assert(args.length == placeholderIndices.length,
-			"Wrong number of placeholders: Need " ~ placeholderIndices.length.to!string ~ ", "
-			~ args.length.to!string~" provided for query '" ~ prep.sql ~ "'");
+		//assert(args.length == placeholderIndices.length,
+		//	"Wrong number of placeholders: Need " ~ placeholderIndices.length.to!string ~ ", "
+		//	~ args.length.to!string~" provided for query '" ~ prep.sql ~ "'");
 
 		Variant[] values;
 		values.length = placeholderIndices.length;

@@ -38,6 +38,7 @@ class Vault(bool deletedChar): IVault!deletedChar{
 		}
 
 		deleteDelay = api.cfg["vault"]["deletion_delay"].to!uint;
+		allowReactivate = api.cfg["vault"]["allow_reactivate"].to!bool;
 	}
 	private{
 		PreparedCustom[] prepOnActivate;
@@ -252,12 +253,15 @@ class Vault(bool deletedChar): IVault!deletedChar{
 		}
 
 		static if(deletedChar){
-			MovedCharInfo restoreChar(string _account, string _char) @trusted{
+			MovedCharInfo restoreChar(string _account, string _char, UserInfo user) @trusted{
 				import std.regex : matchFirst, ctRegex;
 
 				immutable charFile = getCharPath(_account, _char, deletedChar);
 				enforceHTTP(charFile.exists && charFile.isFile, HTTPStatus.notFound,
 					"Character '"~_char~"' not found");
+
+				enforceHTTP(allowReactivate || user.isAdmin, HTTPStatus.forbidden,
+                    "Restoring a deleted character has been disabled");
 
 				immutable accountVault = getVaultPath(_account, false);
 				immutable newName = _char.matchFirst(ctRegex!`^(.+?)-\d+$`)[1];
@@ -316,6 +320,7 @@ class Vault(bool deletedChar): IVault!deletedChar{
 private:
 	Api api;
 	uint deleteDelay;
+	bool allowReactivate;
 
 
 	Character getChar(in string account, in string bicName, bool deleted){

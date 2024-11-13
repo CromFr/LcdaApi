@@ -79,7 +79,7 @@ Character buildCharacter(in string account, in string bicFile){
 		immutable abilityLbl = abilities2da.get!string("Label", cast(uint)i);
 		character.abilities ~= Character.Ability(
 			strref[abilities2da.get!StrRef("Name", cast(uint)i).get(0)],
-			gff[abilityLbl].get!GffByte + race2da.get!int(abilityAdj, raceId)
+			gff[abilityLbl].get!GffByte + race2da.get!int(abilityAdj, raceId).get(0)
 		);
 	}
 
@@ -163,7 +163,7 @@ Character buildCharacter(in string account, in string bicFile){
 			if(!featLvl.isNull && featLvl == lvl.classLevel){
 				auto feat = featsTable.get!GffWord(featsTableFeatIdx, i);
 				if(!feat.isNull)
-					lvlAutoFeats ~= feat;
+					lvlAutoFeats ~= feat.get;
 			}
 		}
 		if(lvlIndex == 0){
@@ -175,7 +175,7 @@ Character buildCharacter(in string account, in string bicFile){
 				foreach(i ; 0 .. raceFeatsTable.rows){
 					auto feat = raceFeatsTable.get!GffWord(raceFeatsTableFeatIdx, i);
 					if(!feat.isNull)
-						lvlAutoFeats ~= feat;
+						lvlAutoFeats ~= feat.get;
 				}
 			}
 		}

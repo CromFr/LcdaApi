@@ -372,7 +372,7 @@ interface IVault(bool deletedChar){
 		@path("/:account/:char/restore")
 		@method(HTTPMethod.POST)
 		@auth(Role.AccountAuthorized)
-		MovedCharInfo restoreChar(string _account, string _char) @safe;
+		MovedCharInfo restoreChar(string _account, string _char, UserInfo user) @safe;
 	}
 
 
